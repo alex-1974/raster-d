@@ -57,8 +57,9 @@ E5.4f.5a     checked-arithmetic carrier audit              complete
 E5.4f.5b.1   sign+magnitude wide arithmetic                complete
 E5.4f.5b.2a  bounded wide Diophantine solver               complete
 E5.4f.5b.2b  affine-overlap equivalence                    complete
-E5.4f.5c     production mapping audit                      in progress
+E5.4f.5c     production mapping audit                      complete
 E5.4f.5c.1   writable execution stride query               complete
+E5.4f.5c.2   affine relation + concrete consumer mapping   complete
 E5.4g        stable public operation exposure              not started
 ```
 
@@ -71,10 +72,19 @@ lease-bound lifetime integration, the first contiguous writable execution
 bridge, and verified integration of that bridge with the existing checked copy
 and exact conversion consumers.
 
-The public operation-contract redesign is now in progress. The current work is
-mapping the completed E5.4f alias, affine-layout, exact-overlap and checked-wide-
-arithmetic research into the smallest production machinery required by concrete
-copy/conversion consumers. No public operation API is stabilized yet.
+The public operation-contract redesign remains in progress. E5.4f.5c production
+mapping is complete: the accepted alias, affine-layout, exact-overlap, and
+checked-wide-arithmetic research is now represented by the smallest production
+machinery required by the concrete same-type copy and ubyte-to-float conversion
+consumers.
+
+The affine relation and checked-wide machinery remains package-internal, and
+the wide/Diophantine implementation remains private. No persistent alias-proof
+token, general writable-target hierarchy, or public operation API has been
+introduced.
+
+The next E5.4f step is the explicit closeout review of the intended public
+operation contract before E5.4g stable public operation exposure begins.
 
 M2 has partial internal implementation used to validate the engine
 architecture; copy, reduction and conversion machinery are not yet exposed as

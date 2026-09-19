@@ -5266,13 +5266,61 @@ thread exclusivity
 
 Those remain separate semantic or operation-local facts.
 
-E5.4f.5c remains in progress.
+##### E5.4f.5c.2 affine relation production mapping
 
-The next implementation slice is E5.4f.5c.2.
+E5.4f.5c.2 completes the production mapping required by the two concrete
+bulk-write consumers established by the preceding research:
 
-Its production shape must be justified by the completed E5.4f research and a
-concrete operation consumer. The implementation must not be generalized merely
-because the underlying arithmetic supports a broader abstraction.
+- same-type copy;
+- ubyte-to-float conversion.
+
+The package-internal affine relation layer now provides
+`AffineByteOverlapRelation`, `affine2DMappingIsInjective(...)`,
+`classifySameTypeAffine2DByteOverlap(...)`, and
+`classifyUbyteToFloatAffine2DByteOverlap(...)`.
+
+The implementation retains the checked sign+magnitude wide arithmetic and
+bounded Diophantine machinery as private implementation detail. No public
+wide-integer, affine-relation, or alias-proof abstraction is introduced.
+
+The same-type copy consumer,
+`tryCopyNonOverlappingAffine2D(...)`, requires an injective writable
+destination and establishes exact physical source/target sample-byte
+non-overlap before the first write.
+
+The affine ubyte-to-float consumer,
+`tryConvertUbyteToFloatAffine2D(...)`, uses the same
+destination-injectivity contract and an exact operation-specific
+1-byte-to-4-byte physical overlap relation before the first write.
+
+Source self-aliasing remains permitted for both operations. Writable
+capability still does not imply uniqueness, noalias, or source/target
+non-overlap.
+
+The existing contiguous copy and conversion execution paths remain available.
+The affine mapping work does not replace them or change their public
+semantics.
+
+The production relations are backed by retained deterministic evidence from:
+
+- the E5.4f affine-relation research;
+- the E5.4f.5c.2 consumer-specific displacement reduction;
+- the same-type production-relation equivalence harness;
+- the ubyte-to-float production-relation equivalence harness.
+
+The independent production-equivalence harnesses compare the composed
+production relation implementations against brute-force small-domain reference
+models on both DMD and LDC.
+
+E5.4f.5c and E5.4f.5c.2 are therefore complete.
+
+This completion does not stabilize a public operation API. It also does not
+introduce persistent alias or injectivity proofs, a general writable-target
+hierarchy, a public wide-integer or Diophantine API, global restrict/noalias
+contracts, or a general affine-operation framework.
+
+Those abstractions remain intentionally absent unless a future concrete
+consumer and supporting evidence justify them.
 
 E5.4g remains blocked until the intended public operation surface has an
 explicitly reviewed contract for:
