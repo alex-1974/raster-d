@@ -354,6 +354,261 @@ nothrow
 }
 
 
+/++
+    Classifies exact physical sample-byte overlap between an affine ubyte
+    source and an equally shaped affine float destination.
+
+    Source samples occupy one byte.
+
+    Float destination samples occupy four bytes.
+
+    Therefore source/target byte overlap requires:
+
+        sourceStart - targetStart
+
+    to be exactly one of:
+
+        0, 1, 2, 3
+
+    This fixed four-displacement reduction was established by the retained
+    E5.4f.5c.2 consumer-reduction research.
+
+    Source self-aliasing is permitted.
+
+    Destination injectivity is a separate write-consumer requirement and is
+    deliberately not established by this relation.
+
+    The operands are expected to originate from already validated raster
+    views. Their individual reachable sample intervals are therefore already
+    physically representable.
++/
+package(imagery.raster)
+AffineByteOverlapRelation classifyUbyteToFloatAffine2DByteOverlap(
+    size_t width,
+    size_t height,
+
+    size_t sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    size_t targetBase,
+    ptrdiff_t targetRowStrideElements,
+    ptrdiff_t targetSampleStrideElements
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    static assert(ubyte.sizeof == 1);
+    static assert(float.sizeof == 4);
+
+    if (
+        width == 0
+        || height == 0
+    )
+    {
+        return
+            AffineByteOverlapRelation.disjoint;
+    }
+
+
+    SignedWide[4] baseByteDifferences;
+
+    if (
+        !ubyteToFloatBaseByteDifferences(
+            sourceBase,
+            targetBase,
+            baseByteDifferences
+        )
+    )
+    {
+        return
+            AffineByteOverlapRelation.arithmeticFailure;
+    }
+
+
+    if (height <= width)
+    {
+        SignedWord sourceStep;
+        SignedWord targetStep;
+
+        if (
+            !tryActiveByteStep(
+                sourceSampleStrideElements,
+                ubyte.sizeof,
+                width,
+                sourceStep
+            )
+            ||
+            !tryActiveByteStep(
+                targetSampleStrideElements,
+                float.sizeof,
+                width,
+                targetStep
+            )
+        )
+        {
+            return
+                AffineByteOverlapRelation.arithmeticFailure;
+        }
+
+
+        foreach (sourceY; 0 .. height)
+        {
+            SignedWide sourceOuter;
+
+            if (
+                !tryByteOffset(
+                    sourceRowStrideElements,
+                    ubyte.sizeof,
+                    sourceY,
+                    sourceOuter
+                )
+            )
+            {
+                return
+                    AffineByteOverlapRelation.arithmeticFailure;
+            }
+
+
+            foreach (targetY; 0 .. height)
+            {
+                SignedWide targetOuter;
+
+                if (
+                    !tryByteOffset(
+                        targetRowStrideElements,
+                        float.sizeof,
+                        targetY,
+                        targetOuter
+                    )
+                )
+                {
+                    return
+                        AffineByteOverlapRelation.arithmeticFailure;
+                }
+
+
+                const relation =
+                    classifyUbyteToFloatLinePair(
+                        sourceStep,
+                        width,
+
+                        targetStep,
+                        width,
+
+                        sourceOuter,
+                        targetOuter,
+
+                        baseByteDifferences
+                    );
+
+
+                if (
+                    relation
+                    != AffineByteOverlapRelation.disjoint
+                )
+                {
+                    return relation;
+                }
+            }
+        }
+    }
+    else
+    {
+        SignedWord sourceStep;
+        SignedWord targetStep;
+
+        if (
+            !tryActiveByteStep(
+                sourceRowStrideElements,
+                ubyte.sizeof,
+                height,
+                sourceStep
+            )
+            ||
+            !tryActiveByteStep(
+                targetRowStrideElements,
+                float.sizeof,
+                height,
+                targetStep
+            )
+        )
+        {
+            return
+                AffineByteOverlapRelation.arithmeticFailure;
+        }
+
+
+        foreach (sourceX; 0 .. width)
+        {
+            SignedWide sourceOuter;
+
+            if (
+                !tryByteOffset(
+                    sourceSampleStrideElements,
+                    ubyte.sizeof,
+                    sourceX,
+                    sourceOuter
+                )
+            )
+            {
+                return
+                    AffineByteOverlapRelation.arithmeticFailure;
+            }
+
+
+            foreach (targetX; 0 .. width)
+            {
+                SignedWide targetOuter;
+
+                if (
+                    !tryByteOffset(
+                        targetSampleStrideElements,
+                        float.sizeof,
+                        targetX,
+                        targetOuter
+                    )
+                )
+                {
+                    return
+                        AffineByteOverlapRelation.arithmeticFailure;
+                }
+
+
+                const relation =
+                    classifyUbyteToFloatLinePair(
+                        sourceStep,
+                        height,
+
+                        targetStep,
+                        height,
+
+                        sourceOuter,
+                        targetOuter,
+
+                        baseByteDifferences
+                    );
+
+
+                if (
+                    relation
+                    != AffineByteOverlapRelation.disjoint
+                )
+                {
+                    return relation;
+                }
+            }
+        }
+    }
+
+
+    return
+        AffineByteOverlapRelation.disjoint;
+}
+
+
 private:
 struct SignedWide
 {
@@ -2080,8 +2335,306 @@ nothrow
 }
 
 
+/*
+ * Converts an active element stride into its signed physical byte step.
+ *
+ * With zero/one logical sample the step is not observable and zero is used.
+ */
+bool tryActiveByteStep(
+    ptrdiff_t strideElements,
+    size_t sampleSize,
+    size_t logicalCount,
+    out SignedWord step
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    step =
+        makeSignedWord(
+            false,
+            0
+        );
+
+    if (logicalCount <= 1)
+        return true;
+
+
+    const wide =
+        multiplyPtrdiffBySize(
+            strideElements,
+            sampleSize
+        );
+
+
+    if (wide.magnitude.hi != 0)
+        return false;
+
+
+    step =
+        makeSignedWord(
+            wide.negative,
+            wide.magnitude.lo
+        );
+
+    return true;
+}
+
+
+/*
+ * Computes:
+ *
+ *     strideElements * sampleSize * coordinate
+ *
+ * in the existing sign+magnitude wide carrier.
+ */
+bool tryByteOffset(
+    ptrdiff_t strideElements,
+    size_t sampleSize,
+    size_t coordinate,
+    out SignedWide offset
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    const byteStride =
+        multiplyPtrdiffBySize(
+            strideElements,
+            sampleSize
+        );
+
+    return tryMultiplySignedByWord(
+        byteStride,
+        cast(ulong) coordinate,
+        offset
+    );
+}
+
+
+/*
+ * For ubyte -> float:
+ *
+ *     sourceStart - targetStart
+ *
+ * must equal one of:
+ *
+ *     0, 1, 2, 3
+ *
+ * Therefore the right-hand side base term is:
+ *
+ *     targetBase - sourceBase + displacement
+ */
+bool ubyteToFloatBaseByteDifferences(
+    size_t sourceBase,
+    size_t targetBase,
+    out SignedWide[4] differences
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    differences[] =
+        SignedWide.init;
+
+    const targetMinusSource =
+        addressDifference(
+            targetBase,
+            sourceBase
+        );
+
+
+    foreach (displacement; 0 .. differences.length)
+    {
+        if (
+            !tryAddSigned(
+                targetMinusSource,
+                fromUnsignedWord(
+                    cast(ulong) displacement
+                ),
+                differences[displacement]
+            )
+        )
+        {
+            return false;
+        }
+    }
+
+
+    return true;
+}
+
+
+AffineByteOverlapRelation classifyUbyteToFloatLinePair(
+    SignedWord sourceStep,
+    size_t sourceCount,
+
+    SignedWord targetStep,
+    size_t targetCount,
+
+    SignedWide sourceOuter,
+    SignedWide targetOuter,
+
+    const SignedWide[4] baseByteDifferences
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    const targetCoefficient =
+        makeSignedWord(
+            !targetStep.negative,
+            targetStep.magnitude
+        );
+
+
+    foreach (baseDifference; baseByteDifferences)
+    {
+        SignedWide withTargetOuter;
+
+        if (
+            !tryAddSigned(
+                baseDifference,
+                targetOuter,
+                withTargetOuter
+            )
+        )
+        {
+            return
+                AffineByteOverlapRelation.arithmeticFailure;
+        }
+
+
+        SignedWide rhs;
+
+        if (
+            !trySubtractSigned(
+                withTargetOuter,
+                sourceOuter,
+                rhs
+            )
+        )
+        {
+            return
+                AffineByteOverlapRelation.arithmeticFailure;
+        }
+
+
+        final switch (
+            boundedLinearEquation(
+                sourceStep,
+                targetCoefficient,
+                rhs,
+                sourceCount,
+                targetCount
+            )
+        )
+        {
+            case DiophantineStatus.noSolution:
+                break;
+
+            case DiophantineStatus.hasSolution:
+                return
+                    AffineByteOverlapRelation.overlap;
+
+            case DiophantineStatus.arithmeticFailure:
+                return
+                    AffineByteOverlapRelation.arithmeticFailure;
+        }
+    }
+
+
+    return
+        AffineByteOverlapRelation.disjoint;
+}
+
+
 version (unittest)
 {
+
+
+/*
+ * Every byte inside one float sample overlaps.
+ */
+unittest
+{
+    foreach (offset; 0 .. 4)
+    {
+        assert(
+            classifyUbyteToFloatAffine2DByteOverlap(
+                1,
+                1,
+
+                64 + offset,
+                0,
+                0,
+
+                64,
+                0,
+                0
+            )
+            == AffineByteOverlapRelation.overlap
+        );
+    }
+}
+
+
+/*
+ * The first byte immediately after the float interval is disjoint.
+ */
+unittest
+{
+    assert(
+        classifyUbyteToFloatAffine2DByteOverlap(
+            1,
+            1,
+
+            68,
+            0,
+            0,
+
+            64,
+            0,
+            0
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+}
+
+
+/*
+ * Overlapping address envelopes do not imply actual sample-byte overlap.
+ *
+ * Source bytes:
+ *
+ *     68, 76
+ *
+ * Target float intervals:
+ *
+ *     [64,68), [72,76)
+ */
+unittest
+{
+    assert(
+        classifyUbyteToFloatAffine2DByteOverlap(
+            2,
+            1,
+
+            68,
+            0,
+            8,
+
+            64,
+            0,
+            2
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+}
 
 /*
  * Empty mappings are vacuously injective without observing either stride.

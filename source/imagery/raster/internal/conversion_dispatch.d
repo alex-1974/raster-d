@@ -16,6 +16,11 @@
 +/
 module imagery.raster.internal.conversion_dispatch;
 
+import imagery.raster.internal.affine_relation :
+    AffineByteOverlapRelation,
+    affine2DMappingIsInjective,
+    classifyUbyteToFloatAffine2DByteOverlap;
+
 import imagery.raster.internal.execution_layout :
     PlaneExecutionTraits;
 
@@ -38,6 +43,9 @@ import imagery.raster.internal.target :
 import imagery.raster.view :
     RasterView;
 
+import imagery.raster.writable_view :
+    WritableRasterView;
+
 
 /++
     Failure category for checked flat ubyte-to-float conversion.
@@ -55,7 +63,11 @@ enum UbyteToFloatConversionError : ubyte
 
     overlapDetected,
 
-    addressRangeUnrepresentable
+    addressRangeUnrepresentable,
+
+    invalidTargetPlaneIndex,
+
+    nonInjectiveTarget
 }
 
 
@@ -183,6 +195,253 @@ nothrow
         targetStart,
         targetByteLength
     );
+}
+
+
+/++
+    Converts validated affine execution pointers to machine addresses and
+    delegates exact ubyte-to-float physical relation classification.
+
+    Pointer-to-integer conversion remains operation-local.
+
+    No source or target sample is dereferenced here.
++/
+private
+AffineByteOverlapRelation classifyUbyteToFloatAffinePhysicalRelation(
+    scope const(ubyte)* sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    scope float* targetBase,
+    ptrdiff_t targetRowStrideElements,
+    ptrdiff_t targetSampleStrideElements,
+
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+
+    return classifyUbyteToFloatAffine2DByteOverlap(
+        width,
+        height,
+
+        cast(size_t) sourceBase,
+        sourceRowStrideElements,
+        sourceSampleStrideElements,
+
+        cast(size_t) targetBase,
+        targetRowStrideElements,
+        targetSampleStrideElements
+    );
+}
+
+
+/++
+    Executes an already-approved affine ubyte-to-float conversion.
+
+    All relation failures have been resolved before entry.
+
+    RasterView and WritableRasterView remain the semantic sample-access
+    boundaries.
++/
+private
+void convertApprovedUbyteToFloatAffine2D(
+    scope RasterView!ubyte source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!float target,
+    size_t targetPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    foreach (y; 0 .. source.height)
+    {
+        foreach (x; 0 .. source.width)
+        {
+            ubyte sourceValue;
+
+            const readOk =
+                source.trySample(
+                    sourcePlaneIndex,
+                    x,
+                    y,
+                    sourceValue
+                );
+
+            assert(readOk);
+
+
+            const writeOk =
+                target.trySetSample(
+                    targetPlaneIndex,
+                    x,
+                    y,
+                    cast(float) sourceValue
+                );
+
+            assert(writeOk);
+        }
+    }
+}
+
+
+/++
+    Converts one affine ubyte source plane into one affine float destination
+    after establishing the E5.4f bulk-write relation contract.
+
+    Source self-aliasing is permitted.
+
+    The finite destination mapping must be injective.
+
+    Actual physical source/target sample-byte overlap is rejected before the
+    first target write.
+
+    The operation checks:
+
+    - source plane index;
+    - target plane index;
+    - logical shape;
+    - empty shape;
+    - destination injectivity;
+    - exact ubyte-to-float physical sample-byte overlap;
+    - scalar semantic conversion.
+
+    No persistent alias or injectivity proof is created.
++/
+package(imagery.raster)
+UbyteToFloatConversionResult tryConvertUbyteToFloatAffine2D(
+    scope RasterView!ubyte source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!float target,
+    size_t targetPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    ptrdiff_t sourceRowStrideElements;
+    ptrdiff_t sourceSampleStrideElements;
+
+    if (
+        !source.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            sourceRowStrideElements,
+            sourceSampleStrideElements
+        )
+    )
+    {
+        return conversionFailure(
+            UbyteToFloatConversionError.invalidPlaneIndex
+        );
+    }
+
+
+    ptrdiff_t targetRowStrideElements;
+    ptrdiff_t targetSampleStrideElements;
+
+    if (
+        !target.tryExecutionPlaneStrides(
+            targetPlaneIndex,
+            targetRowStrideElements,
+            targetSampleStrideElements
+        )
+    )
+    {
+        return conversionFailure(
+            UbyteToFloatConversionError.invalidTargetPlaneIndex
+        );
+    }
+
+
+    if (
+        source.width != target.width
+        || source.height != target.height
+    )
+    {
+        return conversionFailure(
+            UbyteToFloatConversionError.shapeMismatch
+        );
+    }
+
+
+    if (source.empty)
+        return conversionSuccess();
+
+
+    if (
+        !affine2DMappingIsInjective(
+            target.width,
+            target.height,
+            targetRowStrideElements,
+            targetSampleStrideElements
+        )
+    )
+    {
+        return conversionFailure(
+            UbyteToFloatConversionError.nonInjectiveTarget
+        );
+    }
+
+
+    const sourceBase =
+        source.executionRegionBase(
+            sourcePlaneIndex
+        );
+
+    auto targetBase =
+        target.executionRegionBase(
+            targetPlaneIndex
+        );
+
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+
+
+    final switch (
+        classifyUbyteToFloatAffinePhysicalRelation(
+            sourceBase,
+            sourceRowStrideElements,
+            sourceSampleStrideElements,
+
+            targetBase,
+            targetRowStrideElements,
+            targetSampleStrideElements,
+
+            source.width,
+            source.height
+        )
+    )
+    {
+        case AffineByteOverlapRelation.overlap:
+            return conversionFailure(
+                UbyteToFloatConversionError.overlapDetected
+            );
+
+        case AffineByteOverlapRelation.arithmeticFailure:
+            return conversionFailure(
+                UbyteToFloatConversionError.addressRangeUnrepresentable
+            );
+
+        case AffineByteOverlapRelation.disjoint:
+        {
+            convertApprovedUbyteToFloatAffine2D(
+                source,
+                sourcePlaneIndex,
+                target,
+                targetPlaneIndex
+            );
+
+            return conversionSuccess();
+        }
+    }
 }
 
 
@@ -340,8 +599,435 @@ import imagery.raster.owned_resource :
 import imagery.raster.region :
     Region2D;
 
+import imagery.raster.resource :
+    ResourceAccess,
+    ResourceEntry;
+
+import imagery.raster.validation :
+    BackingValidationResult,
+    WritableBackingCertificationResult;
+
 import imagery.raster.view :
     makeRasterViewAssumeValidated;
+
+import imagery.raster.writable_view :
+    tryMakeWritableRasterView;
+
+
+/*
+ * Exact affine classification accepts overlapping physical envelopes when no
+ * source byte actually intersects a target float sample.
+ *
+ * Source bytes are at offsets 4 and 12.
+ *
+ * Target float samples occupy byte intervals:
+ *
+ *     [0,4)
+ *     [8,12)
+ */
+unittest
+{
+    union Storage
+    {
+        ubyte[16] bytes;
+        float[4] floats;
+    }
+
+    Storage storage;
+
+    storage.bytes[4] = 10;
+    storage.bytes[12] = 20;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            storage.bytes.ptr,
+            storage.bytes.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            storage.bytes.ptr + 4,
+            0,
+            8
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            storage.floats.ptr,
+            0,
+            2
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 2, 1)
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!float(
+            resources[],
+            targetDescriptors[],
+            Region2D(0, 0, 2, 1),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryConvertUbyteToFloatAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    assert(storage.floats[0] == 10.0f);
+    assert(storage.floats[2] == 20.0f);
+
+    assert(storage.bytes[4] == 10);
+    assert(storage.bytes[12] == 20);
+}
+
+
+/*
+ * A source byte inside the target float interval is rejected before writing.
+ */
+unittest
+{
+    union Storage
+    {
+        ubyte[16] bytes;
+        float[4] floats;
+    }
+
+    Storage storage;
+
+    storage.bytes[3] = 77;
+
+    const ubyte[16] expected =
+        storage.bytes;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            storage.bytes.ptr,
+            storage.bytes.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            storage.bytes.ptr + 3,
+            0,
+            0
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            storage.floats.ptr,
+            0,
+            0
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 1, 1)
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!float(
+            resources[],
+            targetDescriptors[],
+            Region2D(0, 0, 1, 1),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryConvertUbyteToFloatAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == UbyteToFloatConversionError.overlapDetected
+    );
+
+    assert(storage.bytes == expected);
+}
+
+
+/*
+ * A writable but non-injective float destination is rejected before the first
+ * conversion write.
+ */
+unittest
+{
+    ubyte[6] sourceStorage =
+        [1, 2, 3, 4, 5, 6];
+
+    float[5] targetStorage =
+        [9, 9, 9, 9, 9];
+
+    const float[5] expected =
+        targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length * float.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            3,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            targetStorage.ptr,
+            2,
+            1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 3, 2)
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!float(
+            resources[],
+            targetDescriptors[],
+            Region2D(0, 0, 3, 2),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryConvertUbyteToFloatAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == UbyteToFloatConversionError.nonInjectiveTarget
+    );
+
+    assert(targetStorage == expected);
+}
+
+
+/*
+ * Negative destination sample stride remains valid when the mapping is
+ * injective and the two operands are physically disjoint.
+ */
+unittest
+{
+    ubyte[4] sourceStorage =
+        [1, 2, 3, 4];
+
+    float[4] targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length * float.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            &targetStorage[3],
+            0,
+            -1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!float(
+            resources[],
+            targetDescriptors[],
+            Region2D(0, 0, 4, 1),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryConvertUbyteToFloatAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    assert(
+        targetStorage
+        == [4.0f, 3.0f, 2.0f, 1.0f]
+    );
+}
+
+
+/*
+ * Source self-aliasing remains permitted.
+ */
+unittest
+{
+    ubyte[1] sourceStorage =
+        [77];
+
+    float[6] targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length * float.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            0,
+            0
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            targetStorage.ptr,
+            3,
+            1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 3, 2)
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!float(
+            resources[],
+            targetDescriptors[],
+            Region2D(0, 0, 3, 2),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryConvertUbyteToFloatAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    foreach (value; targetStorage)
+        assert(value == 77.0f);
+}
 
 
 /*
