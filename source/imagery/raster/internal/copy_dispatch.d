@@ -16,6 +16,11 @@ module imagery.raster.internal.copy_dispatch;
 import core.stdc.string :
     memcpy;
 
+import imagery.raster.internal.affine_relation :
+    AffineByteOverlapRelation,
+    affine2DMappingIsInjective,
+    classifySameTypeAffine2DByteOverlap;
+
 import imagery.raster.internal.execution_layout :
     PlaneExecutionTraits;
 
@@ -28,6 +33,9 @@ import imagery.raster.internal.target :
 
 import imagery.raster.view :
     RasterView;
+
+import imagery.raster.writable_view :
+    WritableRasterView;
 
 
 /++
@@ -46,7 +54,11 @@ enum NonOverlappingCopyError : ubyte
 
     overlapDetected,
 
-    addressRangeUnrepresentable
+    addressRangeUnrepresentable,
+
+    invalidTargetPlaneIndex,
+
+    nonInjectiveTarget
 }
 
 
@@ -207,6 +219,269 @@ nothrow
 
 
 /++
+    Converts validated source/target execution pointers to flat machine
+    addresses and delegates exact same-type affine sample-byte classification
+    to the safe relation layer.
+
+    Pointer-to-integer conversion remains an operation-local trusted boundary.
+
+    No pointer is dereferenced here.
++/
+private
+AffineByteOverlapRelation classifySameTypeAffinePhysicalRelation(T)(
+    scope const(T)* sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    scope T* targetBase,
+    ptrdiff_t targetRowStrideElements,
+    ptrdiff_t targetSampleStrideElements,
+
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+    assert(width != 0);
+    assert(height != 0);
+
+    return classifySameTypeAffine2DByteOverlap(
+        width,
+        height,
+
+        cast(size_t) sourceBase,
+        sourceRowStrideElements,
+        sourceSampleStrideElements,
+
+        cast(size_t) targetBase,
+        targetRowStrideElements,
+        targetSampleStrideElements,
+
+        T.sizeof
+    );
+}
+
+
+/++
+    Scalar semantic execution for an already-approved affine same-type copy.
+
+    All failure conditions that can occur for valid operands are established
+    before entering this function.
+
+    In particular:
+
+    - logical shapes match;
+    - both plane indices are valid;
+    - the destination mapping is injective;
+    - source and target sample bytes are physically disjoint.
+
+    RasterView and WritableRasterView remain the semantic access boundaries.
+    No new writable execution representation is introduced for E5.4f.5c.2.
++/
+private
+void copyApprovedAffine2D(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!T target,
+    size_t targetPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    foreach (y; 0 .. source.height)
+    {
+        foreach (x; 0 .. source.width)
+        {
+            T value;
+
+            const readOk =
+                source.trySample(
+                    sourcePlaneIndex,
+                    x,
+                    y,
+                    value
+                );
+
+            assert(readOk);
+
+
+            const writeOk =
+                target.trySetSample(
+                    targetPlaneIndex,
+                    x,
+                    y,
+                    value
+                );
+
+            assert(writeOk);
+        }
+    }
+}
+
+
+/++
+    Copies one equally shaped source plane into one affine writable destination
+    only after establishing the E5.4f bulk-write relation contract.
+
+    Source self-aliasing is permitted.
+
+    The destination finite mapping must be injective.
+
+    Actual physical source/target sample-byte overlap is unsupported and is
+    rejected before the first target write.
+
+    The relation is checked in this order:
+
+    - source plane index;
+    - target plane index;
+    - logical shape;
+    - empty shape;
+    - destination injectivity;
+    - exact same-type physical sample-byte overlap;
+    - scalar semantic execution.
+
+    No caller-provided alias assertion is accepted.
+
+    Successful classification does not create a persistent noalias or
+    injectivity capability.
++/
+package(imagery.raster)
+NonOverlappingCopyResult tryCopyNonOverlappingAffine2D(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!T target,
+    size_t targetPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    ptrdiff_t sourceRowStrideElements;
+    ptrdiff_t sourceSampleStrideElements;
+
+    if (
+        !source.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            sourceRowStrideElements,
+            sourceSampleStrideElements
+        )
+    )
+    {
+        return copyFailure(
+            NonOverlappingCopyError.invalidPlaneIndex
+        );
+    }
+
+
+    ptrdiff_t targetRowStrideElements;
+    ptrdiff_t targetSampleStrideElements;
+
+    if (
+        !target.tryExecutionPlaneStrides(
+            targetPlaneIndex,
+            targetRowStrideElements,
+            targetSampleStrideElements
+        )
+    )
+    {
+        return copyFailure(
+            NonOverlappingCopyError.invalidTargetPlaneIndex
+        );
+    }
+
+
+    if (
+        source.width != target.width
+        || source.height != target.height
+    )
+    {
+        return copyFailure(
+            NonOverlappingCopyError.shapeMismatch
+        );
+    }
+
+
+    if (source.empty)
+        return copySuccess();
+
+
+    if (
+        !affine2DMappingIsInjective(
+            target.width,
+            target.height,
+            targetRowStrideElements,
+            targetSampleStrideElements
+        )
+    )
+    {
+        return copyFailure(
+            NonOverlappingCopyError.nonInjectiveTarget
+        );
+    }
+
+
+    const sourceBase =
+        source.executionRegionBase(
+            sourcePlaneIndex
+        );
+
+    auto targetBase =
+        target.executionRegionBase(
+            targetPlaneIndex
+        );
+
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+
+
+    final switch (
+        classifySameTypeAffinePhysicalRelation(
+            sourceBase,
+            sourceRowStrideElements,
+            sourceSampleStrideElements,
+
+            targetBase,
+            targetRowStrideElements,
+            targetSampleStrideElements,
+
+            source.width,
+            source.height
+        )
+    )
+    {
+        case AffineByteOverlapRelation.overlap:
+            return copyFailure(
+                NonOverlappingCopyError.overlapDetected
+            );
+
+        case AffineByteOverlapRelation.arithmeticFailure:
+            return copyFailure(
+                NonOverlappingCopyError.addressRangeUnrepresentable
+            );
+
+        case AffineByteOverlapRelation.disjoint:
+        {
+            copyApprovedAffine2D(
+                source,
+                sourcePlaneIndex,
+                target,
+                targetPlaneIndex
+            );
+
+            return copySuccess();
+        }
+    }
+}
+
+
+/++
     Copies one source plane into a contiguous target only after proving that
     their complete flat contiguous physical ranges do not overlap.
 
@@ -345,8 +620,480 @@ import imagery.raster.owned_resource :
 import imagery.raster.region :
     Region2D;
 
+import imagery.raster.resource :
+    ResourceAccess,
+    ResourceEntry;
+
+import imagery.raster.validation :
+    BackingValidationResult,
+    WritableBackingCertificationResult;
+
 import imagery.raster.view :
     makeRasterViewAssumeValidated;
+
+import imagery.raster.writable_view :
+    tryMakeWritableRasterView;
+
+
+/*
+ * Exact affine relation accepts the E5.4f bounding-envelope false positive.
+ *
+ * Physical source samples occupy even byte addresses while target samples
+ * occupy odd byte addresses in the same backing:
+ *
+ *     source: 0,2,4,6
+ *     target: 1,3,5,7
+ *
+ * Their address envelopes overlap, but no actual sample byte overlaps.
+ */
+unittest
+{
+    ubyte[8] storage =
+        [1, 0, 2, 0, 3, 0, 4, 0];
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            storage.ptr,
+            storage.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            0,
+            2
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr + 1,
+            0,
+            2
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            )
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!ubyte(
+            resources[],
+            targetDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            ),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryCopyNonOverlappingAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    assert(
+        storage
+        == [1, 1, 2, 2, 3, 3, 4, 4]
+    );
+}
+
+
+/*
+ * Genuine affine source/target overlap is rejected before the first write.
+ */
+unittest
+{
+    ubyte[9] storage =
+        [1, 91, 2, 92, 3, 93, 4, 94, 95];
+
+    const original =
+        storage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            storage.ptr,
+            storage.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            0,
+            2
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr + 2,
+            0,
+            2
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            )
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!ubyte(
+            resources[],
+            targetDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            ),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryCopyNonOverlappingAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == NonOverlappingCopyError.overlapDetected
+    );
+
+    assert(storage == original);
+}
+
+
+/*
+ * A writable but non-injective destination is rejected before any write.
+ *
+ * Target offsets:
+ *
+ *     0 1 2
+ *     2 3 4
+ *
+ * Logical coordinates (2,0) and (0,1) alias the same sample.
+ */
+unittest
+{
+    ubyte[6] sourceStorage =
+        [1, 2, 3, 4, 5, 6];
+
+    ubyte[5] targetStorage =
+        [9, 9, 9, 9, 9];
+
+    const auto original =
+        targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            3,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            targetStorage.ptr,
+            2,
+            1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                3,
+                2
+            )
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!ubyte(
+            resources[],
+            targetDescriptors[],
+            Region2D(
+                0,
+                0,
+                3,
+                2
+            ),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryCopyNonOverlappingAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == NonOverlappingCopyError.nonInjectiveTarget
+    );
+
+    assert(targetStorage == original);
+}
+
+
+/*
+ * Negative destination sample stride is supported when the finite mapping is
+ * injective and source/target storage is disjoint.
+ */
+unittest
+{
+    ubyte[4] sourceStorage =
+        [1, 2, 3, 4];
+
+    ubyte[4] targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            targetStorage.ptr + 3,
+            0,
+            -1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            )
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!ubyte(
+            resources[],
+            targetDescriptors[],
+            Region2D(
+                0,
+                0,
+                4,
+                1
+            ),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryCopyNonOverlappingAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    assert(
+        targetStorage
+        == [4, 3, 2, 1]
+    );
+}
+
+
+/*
+ * Source self-aliasing remains permitted.
+ *
+ * Every logical source coordinate reads the same physical sample. The
+ * destination is injective and physically disjoint.
+ */
+unittest
+{
+    ubyte[1] sourceStorage =
+        [77];
+
+    ubyte[6] targetStorage;
+
+    const ResourceEntry[1] resources =
+    [
+        ResourceEntry(
+            targetStorage.ptr,
+            targetStorage.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            0,
+            0
+        )
+    ];
+
+    const PlaneDescriptor[1] targetDescriptors =
+    [
+        PlaneDescriptor(
+            targetStorage.ptr,
+            3,
+            1
+        )
+    ];
+
+    auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                3,
+                2
+            )
+        );
+
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto target =
+        tryMakeWritableRasterView!ubyte(
+            resources[],
+            targetDescriptors[],
+            Region2D(
+                0,
+                0,
+                3,
+                2
+            ),
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    const result =
+        tryCopyNonOverlappingAffine2D(
+            source,
+            0,
+            target,
+            0
+        );
+
+    assert(result.ok);
+
+    assert(
+        targetStorage
+        == [77, 77, 77, 77, 77, 77]
+    );
+}
 
 
 /*
