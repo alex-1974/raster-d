@@ -1,0 +1,66 @@
+define i64 @d_imagery_sum_u8_u64_mir(ptr nocapture readonly %source_arg, i64 %length_arg) local_unnamed_addr #2 {
+  %.not.i = icmp eq i64 %length_arg, 0            ; [#uses = 1]
+  br i1 %.not.i, label %_D7imagery6raster8internal14scalar_kernels__T21scalarSumContiguous1DTmThZQBcFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwZm.exit, label %forbody.i.preheader
+
+forbody.i.preheader:                              ; preds = %0
+  %min.iters.check = icmp ult i64 %length_arg, 16 ; [#uses = 1]
+  br i1 %min.iters.check, label %forbody.i.preheader9, label %vector.ph
+
+vector.ph:                                        ; preds = %forbody.i.preheader
+  %n.vec = and i64 %length_arg, -16               ; [#uses = 3]
+  br label %vector.body
+
+vector.body:                                      ; preds = %vector.body, %vector.ph
+  %index = phi i64 [ 0, %vector.ph ], [ %index.next, %vector.body ] ; [#uses = 2, type = i64]
+  %vec.phi = phi <4 x i64> [ zeroinitializer, %vector.ph ], [ %9, %vector.body ] ; [#uses = 1, type = <4 x i64>]
+  %vec.phi1 = phi <4 x i64> [ zeroinitializer, %vector.ph ], [ %10, %vector.body ] ; [#uses = 1, type = <4 x i64>]
+  %vec.phi2 = phi <4 x i64> [ zeroinitializer, %vector.ph ], [ %11, %vector.body ] ; [#uses = 1, type = <4 x i64>]
+  %vec.phi3 = phi <4 x i64> [ zeroinitializer, %vector.ph ], [ %12, %vector.body ] ; [#uses = 1, type = <4 x i64>]
+  %1 = getelementptr inbounds i8, ptr %source_arg, i64 %index ; [#uses = 4, type = ptr]
+  %2 = getelementptr inbounds i8, ptr %1, i64 4   ; [#uses = 1, type = ptr]
+  %3 = getelementptr inbounds i8, ptr %1, i64 8   ; [#uses = 1, type = ptr]
+  %4 = getelementptr inbounds i8, ptr %1, i64 12  ; [#uses = 1, type = ptr]
+  %wide.load = load <4 x i8>, ptr %1, align 1     ; [#uses = 1]
+  %wide.load4 = load <4 x i8>, ptr %2, align 1    ; [#uses = 1]
+  %wide.load5 = load <4 x i8>, ptr %3, align 1    ; [#uses = 1]
+  %wide.load6 = load <4 x i8>, ptr %4, align 1    ; [#uses = 1]
+  %5 = zext <4 x i8> %wide.load to <4 x i64>      ; [#uses = 1]
+  %6 = zext <4 x i8> %wide.load4 to <4 x i64>     ; [#uses = 1]
+  %7 = zext <4 x i8> %wide.load5 to <4 x i64>     ; [#uses = 1]
+  %8 = zext <4 x i8> %wide.load6 to <4 x i64>     ; [#uses = 1]
+  %9 = add <4 x i64> %vec.phi, %5                 ; [#uses = 2]
+  %10 = add <4 x i64> %vec.phi1, %6               ; [#uses = 2]
+  %11 = add <4 x i64> %vec.phi2, %7               ; [#uses = 2]
+  %12 = add <4 x i64> %vec.phi3, %8               ; [#uses = 2]
+  %index.next = add nuw i64 %index, 16            ; [#uses = 2]
+  %13 = icmp eq i64 %index.next, %n.vec           ; [#uses = 1]
+  br i1 %13, label %middle.block, label %vector.body, !llvm.loop !16
+
+middle.block:                                     ; preds = %vector.body
+  %bin.rdx = add <4 x i64> %10, %9                ; [#uses = 1]
+  %bin.rdx7 = add <4 x i64> %11, %bin.rdx         ; [#uses = 1]
+  %bin.rdx8 = add <4 x i64> %12, %bin.rdx7        ; [#uses = 1]
+  %14 = tail call i64 @llvm.vector.reduce.add.v4i64(<4 x i64> %bin.rdx8) ; [#uses = 2]
+  %cmp.n = icmp eq i64 %n.vec, %length_arg        ; [#uses = 1]
+  br i1 %cmp.n, label %_D7imagery6raster8internal14scalar_kernels__T21scalarSumContiguous1DTmThZQBcFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwZm.exit, label %forbody.i.preheader9
+
+forbody.i.preheader9:                             ; preds = %middle.block, %forbody.i.preheader
+  %total.06.i.ph = phi i64 [ 0, %forbody.i.preheader ], [ %14, %middle.block ] ; [#uses = 1, type = i64]
+  %__key50.05.i.ph = phi i64 [ 0, %forbody.i.preheader ], [ %n.vec, %middle.block ] ; [#uses = 1, type = i64]
+  br label %forbody.i
+
+forbody.i:                                        ; preds = %forbody.i.preheader9, %forbody.i
+  %total.06.i = phi i64 [ %18, %forbody.i ], [ %total.06.i.ph, %forbody.i.preheader9 ] ; [#uses = 1, type = i64]
+  %__key50.05.i = phi i64 [ %19, %forbody.i ], [ %__key50.05.i.ph, %forbody.i.preheader9 ] ; [#uses = 2, type = i64]
+  %15 = getelementptr inbounds i8, ptr %source_arg, i64 %__key50.05.i ; [#uses = 1, type = ptr]
+  %16 = load i8, ptr %15, align 1                 ; [#uses = 1]
+  %17 = zext i8 %16 to i64                        ; [#uses = 1]
+  %18 = add i64 %total.06.i, %17                  ; [#uses = 2]
+  %19 = add nuw i64 %__key50.05.i, 1              ; [#uses = 2]
+  %exitcond.not.i = icmp eq i64 %19, %length_arg  ; [#uses = 1]
+  br i1 %exitcond.not.i, label %_D7imagery6raster8internal14scalar_kernels__T21scalarSumContiguous1DTmThZQBcFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwZm.exit, label %forbody.i, !llvm.loop !17
+
+_D7imagery6raster8internal14scalar_kernels__T21scalarSumContiguous1DTmThZQBcFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwZm.exit: ; preds = %forbody.i, %middle.block, %0
+  %total.0.lcssa.i = phi i64 [ 0, %0 ], [ %14, %middle.block ], [ %18, %forbody.i ] ; [#uses = 1, type = i64]
+  ret i64 %total.0.lcssa.i
+}

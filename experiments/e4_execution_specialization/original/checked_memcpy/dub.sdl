@@ -1,0 +1,16 @@
+name "d-imagery-e43b-bench"
+description "Temporary E4.3b copy benchmark"
+authors "d-imagery benchmark"
+license "MIT"
+
+targetType "executable"
+targetName "bench"
+targetPath "."
+
+sourceFiles "bench.d"
+
+dependency "d-imagery" path="/home/alexander/Programmiersprachen/dlang/d-imagery"
+
+dflags "-preview=dip1000"
+dflags "-mcpu=native"
+dflags "-boundscheck=off"

@@ -1,0 +1,64 @@
+sum_f32_f64_strict:
+	.cfi_startproc
+	testq	%rsi, %rsi
+	je	.LBB2_1
+	movl	%esi, %eax
+	andl	$7, %eax
+	cmpq	$8, %rsi
+	jae	.LBB2_4
+	vxorps	%xmm0, %xmm0, %xmm0
+	xorl	%ecx, %ecx
+	jmp	.LBB2_6
+.LBB2_1:
+	vxorps	%xmm0, %xmm0, %xmm0
+	retq
+.LBB2_4:
+	andq	$-8, %rsi
+	vxorps	%xmm0, %xmm0, %xmm0
+	xorl	%ecx, %ecx
+	.p2align	4, 0x90
+.LBB2_5:
+	vmovss	(%rdi,%rcx,4), %xmm1
+	vmovss	4(%rdi,%rcx,4), %xmm2
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vcvtss2sd	%xmm2, %xmm2, %xmm1
+	vmovss	8(%rdi,%rcx,4), %xmm2
+	vcvtss2sd	%xmm2, %xmm2, %xmm2
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vaddsd	%xmm2, %xmm0, %xmm0
+	vmovss	12(%rdi,%rcx,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vmovss	16(%rdi,%rcx,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vmovss	20(%rdi,%rcx,4), %xmm2
+	vcvtss2sd	%xmm2, %xmm2, %xmm2
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vaddsd	%xmm2, %xmm0, %xmm0
+	vmovss	24(%rdi,%rcx,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vmovss	28(%rdi,%rcx,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	addq	$8, %rcx
+	cmpq	%rcx, %rsi
+	jne	.LBB2_5
+.LBB2_6:
+	testq	%rax, %rax
+	je	.LBB2_9
+	leaq	(%rdi,%rcx,4), %rcx
+	xorl	%edx, %edx
+	.p2align	4, 0x90
+.LBB2_8:
+	vmovss	(%rcx,%rdx,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	incq	%rdx
+	cmpq	%rdx, %rax
+	jne	.LBB2_8
+.LBB2_9:
+	retq
+.Lfunc_end2:
+	.size	sum_f32_f64_strict, .Lfunc_end2-sum_f32_f64_strict

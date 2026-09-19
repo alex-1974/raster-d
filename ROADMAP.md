@@ -1,4 +1,99 @@
-# d-imagery Roadmap
+# imagery-d Roadmap
+
+## Current implementation checkpoint — 2026-09-19
+
+The repository has progressed beyond the initial architecture-only stage while
+the long-term milestone structure below remains valid.
+
+Current core status:
+
+- retained resource ownership and raster backing are implemented;
+- `RasterView` provides the read-only semantic resident view;
+- signed-stride and multi-plane backing validation are implemented;
+- execution layouts and Mir adapters remain internal;
+- scalar reduction/copy kernels and measured specializations exist internally;
+- `ubyte -> float` conversion has a checked internal dispatch path;
+- per-resource `readOnly` / `readWrite` provenance is retained;
+- writable backing certification is implemented;
+- package-internal `WritableRasterView` with writable ROI, sample read and
+  sample write semantics is implemented and DIP1000-tested with DMD and LDC;
+- `RasterLease` can derive a package-internal lease-bound writable borrow from
+  retained `readWrite` resources, while const leases and escaping borrows are
+  rejected by the DIP1000 lifetime model;
+- `WritableRasterView` now exposes the minimal package-internal execution
+  primitives required by the existing contiguous writable-target consumers:
+  shared plane-layout classification and a lifetime-bound mutable region-origin
+  execution pointer;
+- flat-contiguous planes of a certified `WritableRasterView` can now derive the
+  existing package-internal `RasterTargetPlane` capability while preserving
+  DIP1000 lifetime provenance through the target and existing Mir adapters;
+- the existing checked copy and exact `ubyte -> float` conversion consumers are
+  verified end-to-end through retained `RasterLease -> WritableRasterView ->
+  RasterTargetPlane` destinations without changing their operation-local
+  physical non-overlap checks.
+
+The current raster-operations sequence is:
+
+```text
+E5.4a    public-surface audit                         complete
+E5.4b    writable prerequisites audit                 complete
+E5.4c    retained write-access provenance design      complete
+E5.4c.1  retained ResourceAccess implementation       complete
+E5.4d    semantic writable-view contract              complete
+E5.4d.1a writable backing certification               complete
+E5.4d.1b semantic WritableRasterView implementation   complete
+E5.4d.1c RasterLease -> writable borrow                complete
+E5.4e        writable execution capabilities              complete
+E5.4e.1      writable execution primitives                complete
+E5.4e.2      WritableRasterView -> RasterTargetPlane       complete
+E5.4e.3      existing consumer integration                complete
+E5.4f        public operation contract redesign            in progress
+E5.4f.0      initial contract audit                        complete
+E5.4f.1      public contract matrix audit                  complete
+E5.4f.2      writable affine execution-gap audit           complete
+E5.4f.3      bulk-write alias contract                     complete
+E5.4f.4      exact affine overlap research                 complete
+E5.4f.5a     checked-arithmetic carrier audit              complete
+E5.4f.5b.1   sign+magnitude wide arithmetic                complete
+E5.4f.5b.2a  bounded wide Diophantine solver               complete
+E5.4f.5b.2b  affine-overlap equivalence                    complete
+E5.4f.5c     production mapping audit                      complete
+E5.4f.5c.1   writable execution stride query               complete
+E5.4f.5c.2   affine relation + concrete consumer mapping   complete
+E5.4g        stable public operation exposure              not started
+```
+
+`WritableRasterView` is intentionally still package-internal. It establishes
+write permission but does not imply uniqueness, non-aliasing, contiguity or
+thread exclusivity.
+
+The resident raster/view core now includes both read-only and writable
+lease-bound lifetime integration, the first contiguous writable execution
+bridge, and verified integration of that bridge with the existing checked copy
+and exact conversion consumers.
+
+The public operation-contract redesign remains in progress. E5.4f.5c production
+mapping is complete: the accepted alias, affine-layout, exact-overlap, and
+checked-wide-arithmetic research is now represented by the smallest production
+machinery required by the concrete same-type copy and ubyte-to-float conversion
+consumers.
+
+The affine relation and checked-wide machinery remains package-internal, and
+the wide/Diophantine implementation remains private. No persistent alias-proof
+token, general writable-target hierarchy, or public operation API has been
+introduced.
+
+The next E5.4f step is the explicit closeout review of the intended public
+operation contract before E5.4g stable public operation exposure begins.
+
+M2 has partial internal implementation used to validate the engine
+architecture; copy, reduction and conversion machinery are not yet exposed as
+stable public raster operations.
+
+At this checkpoint, the coordinated repository/worktree rename had not yet been
+performed: the repository and DUB package still used the historical `d-imagery`
+name. The reorganization on 2026-09-18 subsequently renamed the project and DUB
+package to `imagery-d`.
 
 ## R0 — Constraints, Research and Architecture
 

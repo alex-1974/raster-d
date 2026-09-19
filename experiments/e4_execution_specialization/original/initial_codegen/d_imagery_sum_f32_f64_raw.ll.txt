@@ -1,0 +1,85 @@
+define double @d_imagery_sum_f32_f64_raw(ptr nocapture readonly %source_arg, i64 %length_arg) local_unnamed_addr #2 {
+  %.not = icmp eq i64 %length_arg, 0              ; [#uses = 1]
+  br i1 %.not, label %endfor, label %forbody.preheader
+
+forbody.preheader:                                ; preds = %0
+  %xtraiter = and i64 %length_arg, 7              ; [#uses = 2]
+  %1 = icmp ult i64 %length_arg, 8                ; [#uses = 1]
+  br i1 %1, label %endfor.loopexit.unr-lcssa, label %forbody.preheader.new
+
+forbody.preheader.new:                            ; preds = %forbody.preheader
+  %unroll_iter = and i64 %length_arg, -8          ; [#uses = 1]
+  br label %forbody
+
+forbody:                                          ; preds = %forbody, %forbody.preheader.new
+  %total.06 = phi double [ 0.000000e+00, %forbody.preheader.new ], [ %40, %forbody ] ; [#uses = 1, type = double]
+  %__key71.05 = phi i64 [ 0, %forbody.preheader.new ], [ %41, %forbody ] ; [#uses = 9, type = i64]
+  %niter = phi i64 [ 0, %forbody.preheader.new ], [ %niter.next.7, %forbody ] ; [#uses = 1, type = i64]
+  %2 = getelementptr inbounds float, ptr %source_arg, i64 %__key71.05 ; [#uses = 1, type = ptr]
+  %3 = load float, ptr %2, align 4                ; [#uses = 1]
+  %4 = fpext float %3 to double                   ; [#uses = 1]
+  %5 = fadd double %total.06, %4                  ; [#uses = 1]
+  %6 = or disjoint i64 %__key71.05, 1             ; [#uses = 1]
+  %7 = getelementptr inbounds float, ptr %source_arg, i64 %6 ; [#uses = 1, type = ptr]
+  %8 = load float, ptr %7, align 4                ; [#uses = 1]
+  %9 = fpext float %8 to double                   ; [#uses = 1]
+  %10 = fadd double %5, %9                        ; [#uses = 1]
+  %11 = or disjoint i64 %__key71.05, 2            ; [#uses = 1]
+  %12 = getelementptr inbounds float, ptr %source_arg, i64 %11 ; [#uses = 1, type = ptr]
+  %13 = load float, ptr %12, align 4              ; [#uses = 1]
+  %14 = fpext float %13 to double                 ; [#uses = 1]
+  %15 = fadd double %10, %14                      ; [#uses = 1]
+  %16 = or disjoint i64 %__key71.05, 3            ; [#uses = 1]
+  %17 = getelementptr inbounds float, ptr %source_arg, i64 %16 ; [#uses = 1, type = ptr]
+  %18 = load float, ptr %17, align 4              ; [#uses = 1]
+  %19 = fpext float %18 to double                 ; [#uses = 1]
+  %20 = fadd double %15, %19                      ; [#uses = 1]
+  %21 = or disjoint i64 %__key71.05, 4            ; [#uses = 1]
+  %22 = getelementptr inbounds float, ptr %source_arg, i64 %21 ; [#uses = 1, type = ptr]
+  %23 = load float, ptr %22, align 4              ; [#uses = 1]
+  %24 = fpext float %23 to double                 ; [#uses = 1]
+  %25 = fadd double %20, %24                      ; [#uses = 1]
+  %26 = or disjoint i64 %__key71.05, 5            ; [#uses = 1]
+  %27 = getelementptr inbounds float, ptr %source_arg, i64 %26 ; [#uses = 1, type = ptr]
+  %28 = load float, ptr %27, align 4              ; [#uses = 1]
+  %29 = fpext float %28 to double                 ; [#uses = 1]
+  %30 = fadd double %25, %29                      ; [#uses = 1]
+  %31 = or disjoint i64 %__key71.05, 6            ; [#uses = 1]
+  %32 = getelementptr inbounds float, ptr %source_arg, i64 %31 ; [#uses = 1, type = ptr]
+  %33 = load float, ptr %32, align 4              ; [#uses = 1]
+  %34 = fpext float %33 to double                 ; [#uses = 1]
+  %35 = fadd double %30, %34                      ; [#uses = 1]
+  %36 = or disjoint i64 %__key71.05, 7            ; [#uses = 1]
+  %37 = getelementptr inbounds float, ptr %source_arg, i64 %36 ; [#uses = 1, type = ptr]
+  %38 = load float, ptr %37, align 4              ; [#uses = 1]
+  %39 = fpext float %38 to double                 ; [#uses = 1]
+  %40 = fadd double %35, %39                      ; [#uses = 3]
+  %41 = add nuw i64 %__key71.05, 8                ; [#uses = 2]
+  %niter.next.7 = add i64 %niter, 8               ; [#uses = 2]
+  %niter.ncmp.7 = icmp eq i64 %niter.next.7, %unroll_iter ; [#uses = 1]
+  br i1 %niter.ncmp.7, label %endfor.loopexit.unr-lcssa, label %forbody
+
+endfor.loopexit.unr-lcssa:                        ; preds = %forbody, %forbody.preheader
+  %.lcssa.ph = phi double [ poison, %forbody.preheader ], [ %40, %forbody ] ; [#uses = 1, type = double]
+  %total.06.unr = phi double [ 0.000000e+00, %forbody.preheader ], [ %40, %forbody ] ; [#uses = 1, type = double]
+  %__key71.05.unr = phi i64 [ 0, %forbody.preheader ], [ %41, %forbody ] ; [#uses = 1, type = i64]
+  %lcmp.mod.not = icmp eq i64 %xtraiter, 0        ; [#uses = 1]
+  br i1 %lcmp.mod.not, label %endfor, label %forbody.epil
+
+forbody.epil:                                     ; preds = %endfor.loopexit.unr-lcssa, %forbody.epil
+  %total.06.epil = phi double [ %45, %forbody.epil ], [ %total.06.unr, %endfor.loopexit.unr-lcssa ] ; [#uses = 1, type = double]
+  %__key71.05.epil = phi i64 [ %46, %forbody.epil ], [ %__key71.05.unr, %endfor.loopexit.unr-lcssa ] ; [#uses = 2, type = i64]
+  %epil.iter = phi i64 [ %epil.iter.next, %forbody.epil ], [ 0, %endfor.loopexit.unr-lcssa ] ; [#uses = 1, type = i64]
+  %42 = getelementptr inbounds float, ptr %source_arg, i64 %__key71.05.epil ; [#uses = 1, type = ptr]
+  %43 = load float, ptr %42, align 4              ; [#uses = 1]
+  %44 = fpext float %43 to double                 ; [#uses = 1]
+  %45 = fadd double %total.06.epil, %44           ; [#uses = 2]
+  %46 = add nuw i64 %__key71.05.epil, 1           ; [#uses = 1]
+  %epil.iter.next = add i64 %epil.iter, 1         ; [#uses = 2]
+  %epil.iter.cmp.not = icmp eq i64 %epil.iter.next, %xtraiter ; [#uses = 1]
+  br i1 %epil.iter.cmp.not, label %endfor, label %forbody.epil, !llvm.loop !24
+
+endfor:                                           ; preds = %endfor.loopexit.unr-lcssa, %forbody.epil, %0
+  %total.0.lcssa = phi double [ 0.000000e+00, %0 ], [ %.lcssa.ph, %endfor.loopexit.unr-lcssa ], [ %45, %forbody.epil ] ; [#uses = 1, type = double]
+  ret double %total.0.lcssa
+}

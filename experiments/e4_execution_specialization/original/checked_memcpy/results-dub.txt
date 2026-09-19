@@ -1,0 +1,17 @@
+       1 bytes  it=4000000   mir=  85606300 ns  memcpy=  20178000 ns  checked-scalar= 192061600 ns  checked-memcpy= 102899200 ns  mir/memcpy= 4.243  checked-scalar/checked-memcpy= 1.867
+       4 bytes  it=4000000   mir=  90920500 ns  memcpy=  17106800 ns  checked-scalar= 198998400 ns  checked-memcpy= 101206000 ns  mir/memcpy= 5.315  checked-scalar/checked-memcpy= 1.966
+      16 bytes  it=4000000   mir=  87765200 ns  memcpy=  17182300 ns  checked-scalar= 195296100 ns  checked-memcpy= 104092100 ns  mir/memcpy= 5.108  checked-scalar/checked-memcpy= 1.876
+      32 bytes  it=4000000   mir=  89183100 ns  memcpy=  14566200 ns  checked-scalar= 196188200 ns  checked-memcpy= 102383400 ns  mir/memcpy= 6.123  checked-scalar/checked-memcpy= 1.916
+      64 bytes  it=4000000   mir=  92677700 ns  memcpy=  15499800 ns  checked-scalar= 198270400 ns  checked-memcpy= 101975300 ns  mir/memcpy= 5.979  checked-scalar/checked-memcpy= 1.944
+     128 bytes  it=4000000   mir=  91134300 ns  memcpy=  23264100 ns  checked-scalar= 195195500 ns  checked-memcpy= 107021100 ns  mir/memcpy= 3.917  checked-scalar/checked-memcpy= 1.824
+     256 bytes  it=2097152   mir=  49197800 ns  memcpy=  13818400 ns  checked-scalar= 105727200 ns  checked-memcpy=  57307900 ns  mir/memcpy= 3.560  checked-scalar/checked-memcpy= 1.845
+     512 bytes  it=1048576   mir=  28782000 ns  memcpy=  13562900 ns  checked-scalar=  56449600 ns  checked-memcpy=  36250900 ns  mir/memcpy= 2.122  checked-scalar/checked-memcpy= 1.557
+    1024 bytes  it=524288    mir=  20359900 ns  memcpy=   9493100 ns  checked-scalar=  33840600 ns  checked-memcpy=  20486300 ns  mir/memcpy= 2.145  checked-scalar/checked-memcpy= 1.652
+    4096 bytes  it=131072    mir=  14746200 ns  memcpy=   7226400 ns  checked-scalar=  18148700 ns  checked-memcpy=  10174600 ns  mir/memcpy= 2.041  checked-scalar/checked-memcpy= 1.784
+   16384 bytes  it=32768     mir=  13664900 ns  memcpy=  13050800 ns  checked-scalar=  15138400 ns  checked-memcpy=  14346000 ns  mir/memcpy= 1.047  checked-scalar/checked-memcpy= 1.055
+   65536 bytes  it=8192      mir=  19073600 ns  memcpy=  18532600 ns  checked-scalar=  19416900 ns  checked-memcpy=  18909700 ns  mir/memcpy= 1.029  checked-scalar/checked-memcpy= 1.027
+  262144 bytes  it=2048      mir=  29233000 ns  memcpy=  21636200 ns  checked-scalar=  29271900 ns  checked-memcpy=  21812500 ns  mir/memcpy= 1.351  checked-scalar/checked-memcpy= 1.342
+ 1048576 bytes  it=512       mir=  30813900 ns  memcpy=  25019200 ns  checked-scalar=  30764400 ns  checked-memcpy=  25096900 ns  mir/memcpy= 1.232  checked-scalar/checked-memcpy= 1.226
+ 4194304 bytes  it=128       mir=  36420200 ns  memcpy=  30671500 ns  checked-scalar=  36399300 ns  checked-memcpy=  30703900 ns  mir/memcpy= 1.187  checked-scalar/checked-memcpy= 1.185
+16777216 bytes  it=32        mir=  73972700 ns  memcpy=  48952200 ns  checked-scalar=  77541400 ns  checked-memcpy=  48549300 ns  mir/memcpy= 1.511  checked-scalar/checked-memcpy= 1.597
+sink=2343

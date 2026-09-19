@@ -1,0 +1,143 @@
+define noundef zeroext i1 @d_imagery_copy_u8_mir(ptr nocapture readonly %source_arg, ptr nocapture writeonly %target_arg, i64 %length_arg) local_unnamed_addr #0 {
+  %.not = icmp eq i64 %length_arg, 0              ; [#uses = 1]
+  br i1 %.not, label %_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit, label %iter.check
+
+iter.check:                                       ; preds = %0
+  %target_arg4 = ptrtoint ptr %target_arg to i64  ; [#uses = 1]
+  %source_arg5 = ptrtoint ptr %source_arg to i64  ; [#uses = 1]
+  %min.iters.check = icmp ult i64 %length_arg, 16 ; [#uses = 1]
+  %1 = sub i64 %target_arg4, %source_arg5         ; [#uses = 1]
+  %diff.check = icmp ult i64 %1, 128              ; [#uses = 1]
+  %or.cond = select i1 %min.iters.check, i1 true, i1 %diff.check ; [#uses = 1]
+  br i1 %or.cond, label %forbody.i.i.preheader, label %vector.main.loop.iter.check
+
+vector.main.loop.iter.check:                      ; preds = %iter.check
+  %min.iters.check6 = icmp ult i64 %length_arg, 128 ; [#uses = 1]
+  br i1 %min.iters.check6, label %vec.epilog.ph, label %vector.ph
+
+vector.ph:                                        ; preds = %vector.main.loop.iter.check
+  %n.vec = and i64 %length_arg, -128              ; [#uses = 4]
+  br label %vector.body
+
+vector.body:                                      ; preds = %vector.body, %vector.ph
+  %index = phi i64 [ 0, %vector.ph ], [ %index.next, %vector.body ] ; [#uses = 3, type = i64]
+  %2 = getelementptr inbounds i8, ptr %source_arg, i64 %index ; [#uses = 4, type = ptr]
+  %3 = getelementptr inbounds i8, ptr %2, i64 32  ; [#uses = 1, type = ptr]
+  %4 = getelementptr inbounds i8, ptr %2, i64 64  ; [#uses = 1, type = ptr]
+  %5 = getelementptr inbounds i8, ptr %2, i64 96  ; [#uses = 1, type = ptr]
+  %wide.load = load <32 x i8>, ptr %2, align 1    ; [#uses = 1]
+  %wide.load7 = load <32 x i8>, ptr %3, align 1   ; [#uses = 1]
+  %wide.load8 = load <32 x i8>, ptr %4, align 1   ; [#uses = 1]
+  %wide.load9 = load <32 x i8>, ptr %5, align 1   ; [#uses = 1]
+  %6 = getelementptr inbounds i8, ptr %target_arg, i64 %index ; [#uses = 4, type = ptr]
+  %7 = getelementptr inbounds i8, ptr %6, i64 32  ; [#uses = 1, type = ptr]
+  %8 = getelementptr inbounds i8, ptr %6, i64 64  ; [#uses = 1, type = ptr]
+  %9 = getelementptr inbounds i8, ptr %6, i64 96  ; [#uses = 1, type = ptr]
+  store <32 x i8> %wide.load, ptr %6, align 1
+  store <32 x i8> %wide.load7, ptr %7, align 1
+  store <32 x i8> %wide.load8, ptr %8, align 1
+  store <32 x i8> %wide.load9, ptr %9, align 1
+  %index.next = add nuw i64 %index, 128           ; [#uses = 2]
+  %10 = icmp eq i64 %index.next, %n.vec           ; [#uses = 1]
+  br i1 %10, label %middle.block, label %vector.body, !llvm.loop !1
+
+middle.block:                                     ; preds = %vector.body
+  %cmp.n = icmp eq i64 %n.vec, %length_arg        ; [#uses = 1]
+  br i1 %cmp.n, label %_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit, label %vec.epilog.iter.check
+
+vec.epilog.iter.check:                            ; preds = %middle.block
+  %n.vec.remaining = and i64 %length_arg, 112     ; [#uses = 1]
+  %min.epilog.iters.check = icmp eq i64 %n.vec.remaining, 0 ; [#uses = 1]
+  br i1 %min.epilog.iters.check, label %forbody.i.i.preheader, label %vec.epilog.ph
+
+vec.epilog.ph:                                    ; preds = %vector.main.loop.iter.check, %vec.epilog.iter.check
+  %vec.epilog.resume.val = phi i64 [ %n.vec, %vec.epilog.iter.check ], [ 0, %vector.main.loop.iter.check ] ; [#uses = 1, type = i64]
+  %n.vec11 = and i64 %length_arg, -16             ; [#uses = 3]
+  br label %vec.epilog.vector.body
+
+vec.epilog.vector.body:                           ; preds = %vec.epilog.vector.body, %vec.epilog.ph
+  %index12 = phi i64 [ %vec.epilog.resume.val, %vec.epilog.ph ], [ %index.next14, %vec.epilog.vector.body ] ; [#uses = 3, type = i64]
+  %11 = getelementptr inbounds i8, ptr %source_arg, i64 %index12 ; [#uses = 1, type = ptr]
+  %wide.load13 = load <16 x i8>, ptr %11, align 1 ; [#uses = 1]
+  %12 = getelementptr inbounds i8, ptr %target_arg, i64 %index12 ; [#uses = 1, type = ptr]
+  store <16 x i8> %wide.load13, ptr %12, align 1
+  %index.next14 = add nuw i64 %index12, 16        ; [#uses = 2]
+  %13 = icmp eq i64 %index.next14, %n.vec11       ; [#uses = 1]
+  br i1 %13, label %vec.epilog.middle.block, label %vec.epilog.vector.body, !llvm.loop !4
+
+vec.epilog.middle.block:                          ; preds = %vec.epilog.vector.body
+  %cmp.n15 = icmp eq i64 %n.vec11, %length_arg    ; [#uses = 1]
+  br i1 %cmp.n15, label %_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit, label %forbody.i.i.preheader
+
+forbody.i.i.preheader:                            ; preds = %vec.epilog.middle.block, %iter.check, %vec.epilog.iter.check
+  %__key45.08.i.i.ph = phi i64 [ 0, %iter.check ], [ %n.vec, %vec.epilog.iter.check ], [ %n.vec11, %vec.epilog.middle.block ] ; [#uses = 3, type = i64]
+  %xtraiter = and i64 %length_arg, 7              ; [#uses = 2]
+  %lcmp.mod.not = icmp eq i64 %xtraiter, 0        ; [#uses = 1]
+  br i1 %lcmp.mod.not, label %forbody.i.i.prol.loopexit, label %forbody.i.i.prol
+
+forbody.i.i.prol:                                 ; preds = %forbody.i.i.preheader, %forbody.i.i.prol
+  %__key45.08.i.i.prol = phi i64 [ %17, %forbody.i.i.prol ], [ %__key45.08.i.i.ph, %forbody.i.i.preheader ] ; [#uses = 3, type = i64]
+  %prol.iter = phi i64 [ %prol.iter.next, %forbody.i.i.prol ], [ 0, %forbody.i.i.preheader ] ; [#uses = 1, type = i64]
+  %14 = getelementptr inbounds i8, ptr %source_arg, i64 %__key45.08.i.i.prol ; [#uses = 1, type = ptr]
+  %15 = load i8, ptr %14, align 1                 ; [#uses = 1]
+  %16 = getelementptr inbounds i8, ptr %target_arg, i64 %__key45.08.i.i.prol ; [#uses = 1, type = ptr]
+  store i8 %15, ptr %16, align 1
+  %17 = add nuw i64 %__key45.08.i.i.prol, 1       ; [#uses = 2]
+  %prol.iter.next = add i64 %prol.iter, 1         ; [#uses = 2]
+  %prol.iter.cmp.not = icmp eq i64 %prol.iter.next, %xtraiter ; [#uses = 1]
+  br i1 %prol.iter.cmp.not, label %forbody.i.i.prol.loopexit, label %forbody.i.i.prol, !llvm.loop !5
+
+forbody.i.i.prol.loopexit:                        ; preds = %forbody.i.i.prol, %forbody.i.i.preheader
+  %__key45.08.i.i.unr = phi i64 [ %__key45.08.i.i.ph, %forbody.i.i.preheader ], [ %17, %forbody.i.i.prol ] ; [#uses = 1, type = i64]
+  %18 = sub i64 %__key45.08.i.i.ph, %length_arg   ; [#uses = 1]
+  %19 = icmp ugt i64 %18, -8                      ; [#uses = 1]
+  br i1 %19, label %_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit, label %forbody.i.i
+
+forbody.i.i:                                      ; preds = %forbody.i.i.prol.loopexit, %forbody.i.i
+  %__key45.08.i.i = phi i64 [ %51, %forbody.i.i ], [ %__key45.08.i.i.unr, %forbody.i.i.prol.loopexit ] ; [#uses = 10, type = i64]
+  %20 = getelementptr inbounds i8, ptr %source_arg, i64 %__key45.08.i.i ; [#uses = 1, type = ptr]
+  %21 = load i8, ptr %20, align 1                 ; [#uses = 1]
+  %22 = getelementptr inbounds i8, ptr %target_arg, i64 %__key45.08.i.i ; [#uses = 1, type = ptr]
+  store i8 %21, ptr %22, align 1
+  %23 = add nuw i64 %__key45.08.i.i, 1            ; [#uses = 2]
+  %24 = getelementptr inbounds i8, ptr %source_arg, i64 %23 ; [#uses = 1, type = ptr]
+  %25 = load i8, ptr %24, align 1                 ; [#uses = 1]
+  %26 = getelementptr inbounds i8, ptr %target_arg, i64 %23 ; [#uses = 1, type = ptr]
+  store i8 %25, ptr %26, align 1
+  %27 = add nuw i64 %__key45.08.i.i, 2            ; [#uses = 2]
+  %28 = getelementptr inbounds i8, ptr %source_arg, i64 %27 ; [#uses = 1, type = ptr]
+  %29 = load i8, ptr %28, align 1                 ; [#uses = 1]
+  %30 = getelementptr inbounds i8, ptr %target_arg, i64 %27 ; [#uses = 1, type = ptr]
+  store i8 %29, ptr %30, align 1
+  %31 = add nuw i64 %__key45.08.i.i, 3            ; [#uses = 2]
+  %32 = getelementptr inbounds i8, ptr %source_arg, i64 %31 ; [#uses = 1, type = ptr]
+  %33 = load i8, ptr %32, align 1                 ; [#uses = 1]
+  %34 = getelementptr inbounds i8, ptr %target_arg, i64 %31 ; [#uses = 1, type = ptr]
+  store i8 %33, ptr %34, align 1
+  %35 = add nuw i64 %__key45.08.i.i, 4            ; [#uses = 2]
+  %36 = getelementptr inbounds i8, ptr %source_arg, i64 %35 ; [#uses = 1, type = ptr]
+  %37 = load i8, ptr %36, align 1                 ; [#uses = 1]
+  %38 = getelementptr inbounds i8, ptr %target_arg, i64 %35 ; [#uses = 1, type = ptr]
+  store i8 %37, ptr %38, align 1
+  %39 = add nuw i64 %__key45.08.i.i, 5            ; [#uses = 2]
+  %40 = getelementptr inbounds i8, ptr %source_arg, i64 %39 ; [#uses = 1, type = ptr]
+  %41 = load i8, ptr %40, align 1                 ; [#uses = 1]
+  %42 = getelementptr inbounds i8, ptr %target_arg, i64 %39 ; [#uses = 1, type = ptr]
+  store i8 %41, ptr %42, align 1
+  %43 = add nuw i64 %__key45.08.i.i, 6            ; [#uses = 2]
+  %44 = getelementptr inbounds i8, ptr %source_arg, i64 %43 ; [#uses = 1, type = ptr]
+  %45 = load i8, ptr %44, align 1                 ; [#uses = 1]
+  %46 = getelementptr inbounds i8, ptr %target_arg, i64 %43 ; [#uses = 1, type = ptr]
+  store i8 %45, ptr %46, align 1
+  %47 = add nuw i64 %__key45.08.i.i, 7            ; [#uses = 2]
+  %48 = getelementptr inbounds i8, ptr %source_arg, i64 %47 ; [#uses = 1, type = ptr]
+  %49 = load i8, ptr %48, align 1                 ; [#uses = 1]
+  %50 = getelementptr inbounds i8, ptr %target_arg, i64 %47 ; [#uses = 1, type = ptr]
+  store i8 %49, ptr %50, align 1
+  %51 = add nuw i64 %__key45.08.i.i, 8            ; [#uses = 2]
+  %exitcond.not.i.i.7 = icmp eq i64 %51, %length_arg ; [#uses = 1]
+  br i1 %exitcond.not.i.i.7, label %_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit, label %forbody.i.i, !llvm.loop !7
+
+_D7imagery6raster8internal16scalar_pointwise__T22scalarCopyContiguous1DThZQBbFNaNbNiNfMS3mir7ndslice5slice__T9mir_sliceTPxhVmi1VEQBpQBoQBj14mir_slice_kindi2ZQBwMSQCwQCvQCq__TQCnTPhVmi1VQCfi2ZQDeZb.exit: ; preds = %forbody.i.i.prol.loopexit, %forbody.i.i, %middle.block, %vec.epilog.middle.block, %0
+  ret i1 true
+}

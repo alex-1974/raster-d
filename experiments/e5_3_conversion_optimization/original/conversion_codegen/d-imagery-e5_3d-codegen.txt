@@ -1,0 +1,154 @@
+=== PRECHECK ===
+core/raster-operations
+71e223b
+
+=== TOOLCHAIN ===
+LDC - the LLVM D compiler (1.41.0):
+  based on DMD v2.111.0 and LLVM 19.1.7
+  built with LDC - the LLVM D compiler (1.41.0)
+  Default target: x86_64-pc-linux-gnu
+  Host CPU: skylake
+  http://dlang.org - http://wiki.dlang.org/LDC
+
+
+
+=== REBUILD LDC RELEASE ===
+LDC release build: PASS
+
+=== RELEASE ARTIFACT CANDIDATES ===
+
+=== SYMBOL SEARCH ===
+symbol_hits=0
+scalar conversion symbol not found in release artifacts
+
+=== FUNCTION ASSEMBLY ===
+assembly extraction skipped: no symbol
+
+=== SIMD SIGNATURE SEARCH ===
+
+=== LIKELY VECTOR-CODE INDICATORS ===
+
+=== SOURCE KERNEL ===
+bool scalarConvertUbyteToFloatContiguous1D(
+    scope Slice!(const(ubyte)*, 1, Contiguous) source,
+    scope Slice!(float*, 1, Contiguous) target
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    if (source.length!0 != target.length!0)
+        return false;
+
+    foreach (i; 0 .. source.length!0)
+    {
+        target[i] =
+            cast(float)
+                source[i];
+    }
+
+    return true;
+}
+
+=== LDC VECTOR/OPT FLAGS AVAILABLE ===
+  --aarch64-enable-gisel-sve                                                 - Enable / disable SVE scalable vectors in Global ISel
+  --aarch64-insert-extract-base-cost=<uint>                                  - Base cost of vector insert/extract element
+  --aarch64-stress-promote-const                                             - Promote all vector constants
+  --aarch64-sve-vector-bits-max=<uint>                                       - Assume SVE vector registers are at most this big, with zero meaning no maximum size is assumed.
+  --aarch64-sve-vector-bits-min=<uint>                                       - Assume SVE vector registers are at least this big, with zero meaning no minimum size is assumed.
+  --amdgpu-load-store-vectorizer                                             - Enable load store vectorizer
+  --amdgpu-promote-alloca-to-vector-limit=<uint>                             - Maximum byte size to consider promote alloca to vector
+  --amdgpu-vgpr-index-mode                                                   - Use GPR indexing mode instead of movrel for vector indexing
+  --annotate-inline-phase                                                    - If true, annotate inline advisor remarks with LTO and pass information.
+  --cgscc-inline-replay=<filename>                                           - Optimization remarks file containing inline remarks to be replayed by cgscc inlining.
+  --cgscc-inline-replay-scope=<value>                                        - Whether inline replay should be applied to the entire Module or just the Functions (default) that are present as callers in remarks during cgscc inlining.
+    =Function                                                                -   Replay on functions that have remarks associated with them (default)
+  --combiner-vector-fcopysign-extend-round                                   - Enable merging extends and rounds into FCOPYSIGN on vector types
+  --da-disable-delinearization-checks                                        - Disable checks that try to statically verify validity of delinearized subscripts. Enabling this option may result in incorrect dependence vectors for languages that allow the subscript of one dimension to underflow or overflow into another dimension.
+  --da-miv-max-level-threshold=<uint>                                        - Maximum depth allowed for the recursive algorithm used to explore MIV direction vectors.
+  --disable-auto-paired-vec-st                                               - disable automatically generated 32byte paired vector stores
+  --disable-loop-idiom-vectorize-all                                         - Disable Loop Idiom Vectorize Pass.
+  --disable-loop-idiom-vectorize-bytecmp                                     - Proceed with Loop Idiom Vectorize Pass, but do not convert byte-compare loop(s).
+  --disable-loop-vectorization                                               - Disable the loop vectorization pass
+  --disable-nvptx-load-store-vectorizer                                      - Disable load/store vectorizer
+  --disable-promote-alloca-to-vector                                         - Disable promote alloca to vector
+  --disable-replace-with-vec-lib                                             - Disable replace with vector math call pass
+  --disable-slp-vectorization                                                - Disable the slp vectorization pass
+  --disable-vecdbl-nv-stores                                                 - Disable vector double new-value-stores
+  --disable-vector-combine                                                   - Disable all vector combine transforms
+  --enable-cond-stores-vec                                                   - Enable if predication of stores during vectorization.
+  --enable-epilogue-vectorization                                            - Enable vectorization of epilogue loops.
+  --enable-hexagon-vector-print                                              - Enable Hexagon Vector print instr pass
+  --enable-if-conversion                                                     - Enable if-conversion during vectorization.
+  --enable-interleaved-mem-accesses                                          - Enable vectorization on interleaved memory accesses in a loop
+  --enable-masked-interleaved-mem-accesses                                   - Enable vectorization on masked interleaved memory accesses in a loop
+  --enable-mve-interleave                                                    - Enable interleave MVE vector operation lowering
+  --enable-vplan-native-path                                                 - Enable VPlan-native vectorization path with support for outer loop vectorization.
+  --epilogue-vectorization-force-VF=<uint>                                   - When epilogue vectorization is enabled, and a value greater than 1 is specified, forces the given VF for all applicable epilogue loops.
+  --epilogue-vectorization-minimum-VF=<uint>                                 - Only loops with vectorization factor equal to or larger than the specified value are considered for epilogue vectorization.
+  --extra-vectorizer-passes                                                  - Run cleanup optimization passes after vectorization
+  --force-hvx-float                                                          - Enable auto-vectorization of floatint point types on v68.
+  --force-ordered-reductions                                                 - Enable the vectorisation of loops with in-order (strict) FP reductions
+    =data-without-lane-mask                                                  -   Create lane mask with compare/stepvector
+  --force-target-max-vector-interleave=<uint>                                - A flag that overrides the target's max interleave factor for vectorized loops.
+  --force-target-num-vector-regs=<uint>                                      - A flag that overrides the target's number of vector registers.
+  --force-target-supports-scalable-vectors                                   - Pretend that scalable vectors are supported, even if the target does not support them. This flag should only be used for testing.
+  --force-vector-interleave=<uint>                                           - Sets the vectorization interleave count. Zero is autoselect.
+  --force-vector-width=<uint>                                                - Sets the SIMD width. Zero is autoselect.
+  --hexagon-autohvx                                                          - Enable loop vectorizer for HVX
+  --hexagon-hvx-widen=<uint>                                                 - Lower threshold (in bytes) for widening to HVX vectors
+  --hexagon-vector-combine                                                   - Enable HVX vector combining
+  --hints-allow-reordering                                                   - Allow enabling loop hints to reorder FP operations during vectorization.
+  --interleave-loops                                                         - Enable loop interleaving in Loop vectorization passes
+  --loop-distribute-non-if-convertible                                       - Whether to distribute into a loop that may not be if-convertible by the loop vectorizer
+  --loop-idiom-vectorize-bytecmp-vf=<uint>                                   - The vectorization factor for byte-compare patterns.
+  --loop-idiom-vectorize-style=<value>                                       - The vectorization style for loop idiom transform.
+    =masked                                                                  -   Use masked vector intrinsics
+  --loop-idiom-vectorize-verify                                              - Verify loops generated Loop Idiom Vectorize Pass.
+  --loop-vectorize-with-block-frequency                                      - Enable the use of the block frequency analysis to access PGO heuristics minimizing code growth in cold regions and being more aggressive in hot regions.
+  --lto-pass-remarks-filter=<regex>                                          - Only record optimization remarks from passes whose names match the given regular expression
+  --lto-pass-remarks-format=<format>                                         - The format used for serializing remarks (default: YAML)
+  --lto-pass-remarks-hotness-threshold=<value>                               - Minimum profile count required for an optimization remark to be output. Use 'auto' to apply the threshold from profile summary.
+  --lto-pass-remarks-output=<filename>                                       - Output filename for pass remarks
+  --lto-pass-remarks-with-hotness                                            - With PGO, include profile count in optimization remarks
+  --mattr=<a1,+a2,-a3,...>                                                   - Target specific attributes (-mattr=help for details)
+  --mcpu=<cpu-name>                                                          - Target a specific cpu type (-mcpu=help for details)
+  --mhvx                                                                     - Enable Hexagon Vector eXtensions
+  --mhvx=<value>                                                             - Enable Hexagon Vector eXtensions
+  --mno-hvx                                                                  - Disable Hexagon Vector eXtensions
+  --openmp-opt-verbose-remarks                                               - Enables more verbose remarks.
+  --output-ll                                                                - Write LLVM IR
+  --output-s                                                                 - Write native assembly
+  --pass-remarks=<pattern>                                                   - Enable optimization remarks from passes whose name match the given regular expression
+  --pass-remarks-analysis=<pattern>                                          - Enable optimization analysis remarks from passes whose name match the given regular expression
+  --pass-remarks-missed=<pattern>                                            - Enable missed optimization remarks from passes whose name match the given regular expression
+  --pgo-emit-branch-prob                                                     - When this option is on, the annotated branch probability will be emitted as optimization remarks: -{Rpass|pass-remarks}=pgo-instrumentation
+  --ppc-disable-perfect-shuffle                                              - disable vector permute decomposition
+  --ppc-enable-pe-vector-spills                                              - Enable spills in prologue to vector registers.
+  --ppc-vec-mask-cost                                                        - add masking cost for i1 vectors
+  --pragma-vectorize-scev-check-threshold=<uint>                             - The maximum number of SCEV checks allowed with a vectorize(enable) pragma
+  --prefer-inloop-reductions                                                 - Prefer in-loop vector reductions, overriding the targets preference.
+    =predicate-dont-vectorize                                                -   prefers tail-folding, don't attempt vectorization if tail-folding fails.
+  --promote-alloca-vector-loop-user-weight=<uint>                            - The bonus weight of users of allocas within loop when sorting profitable allocas
+  --remarks-section                                                          - Emit a section containing remark diagnostics metadata. By default, this is enabled for the following formats: yaml-strtab, bitstream.
+  --riscv-prefer-whole-register-move                                         - Prefer whole register move for vector registers.
+  --riscv-v-fixed-length-vector-lmul-max=<uint>                              - The maximum LMUL value to use for fixed length vectors. Fractional LMUL values are not supported.
+  --riscv-v-register-bit-width-lmul=<uint>                                   - The LMUL to use for getRegisterBitWidth queries. Affects LMUL used by autovectorized code. Fractional LMULs are not supported.
+  --riscv-v-slp-max-vf=<uint>                                                - Overrides result used for getMaximumVF query which is used exclusively by SLP vectorizer.
+  --riscv-v-vector-bits-max=<uint>                                           - Assume V extension vector registers are at most this big, with zero meaning no maximum size is assumed.
+  --riscv-v-vector-bits-min=<int>                                            - Assume V extension vector registers are at least this big, with zero meaning no minimum size is assumed. A value of -1 means use Zvl*b extension. This is primarily used to enable autovectorization with fixed width vectors.
+  --riscv-vsetvl-after-rvv-regalloc                                          - Insert vsetvls after vector register allocation
+  --sample-profile-inline-replay=<filename>                                  - Optimization remarks file containing inline remarks to be replayed by inlining from sample profile loader.
+  --sample-profile-inline-replay-scope=<value>                               - Whether inline replay should be applied to the entire Module or just the Functions (default) that are present as callers in remarks during sample profile inlining.
+    =Function                                                                -   Replay on functions that have remarks associated with them (default)
+  --scalable-vectorization=<value>                                           - Control whether the compiler can use scalable vectors to vectorize a loop
+    =off                                                                     -   Scalable vectorization is disabled.
+    =preferred                                                               -   Scalable vectorization is available and favored when the cost is inconclusive.
+    =on                                                                      -   Scalable vectorization is available and favored when the cost is inconclusive.
+  --simplifycfg-branch-fold-common-dest-vector-multiplier=<uint>             - Multiplier to apply to threshold when determining whether or not to fold branch to common destination when vector operations are present
+  --slp-max-reg-size=<int>                                                   - Attempt to vectorize for this register size in bits
+  --slp-max-vf=<uint>                                                        - Maximum SLP vectorization factor (0=unlimited)
+  --slp-min-reg-size=<int>                                                   - Attempt to vectorize for this register size in bits
+  --slp-min-tree-size=<uint>                                                 - Only vectorize small trees if they are fully vectorizable
+  --slp-recursion-max-depth=<uint>                                           - Limit the recursion depth when building a vectorizable tree

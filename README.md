@@ -1,6 +1,6 @@
-# d-imagery
+# imagery-d
 
-`d-imagery` is an experimental high-performance image engine written in D,
+`imagery-d` is an experimental high-performance image engine written in D,
 designed primarily for large geospatial imagery such as aerial photographs,
 orthophotos and satellite imagery.
 
@@ -10,13 +10,34 @@ geospatial and large-image processing.
 
 ## Status
 
-Early research and architecture phase.
+Active core-engine implementation following the initial research and
+architecture phase.
 
-The core raster representation, ownership model, region model and execution
-architecture are deliberately not stable yet.
+The retained raster foundation now includes:
 
-Implementation follows measurement and architectural research rather than
-preceding it.
+- owned-resource import and retained backing lifetime;
+- descriptor-space regions and read-only `RasterView` semantics;
+- signed row and sample strides;
+- per-plane execution-layout classification;
+- internal Mir adapters and scalar reference kernels;
+- evidence-driven reduction and copy specialization;
+- checked `ubyte -> float` conversion;
+- per-resource read/write provenance;
+- writable-backing certification;
+- a package-internal semantic `WritableRasterView`;
+- a lease-bound package-internal writable borrow from `RasterLease`.
+
+The writable semantic and execution layers are not public yet. E5.4e is
+complete: retained writable backing can flow through the package-internal
+`WritableRasterView` into the existing `RasterTargetPlane` execution boundary
+used by checked copy and exact conversion consumers.
+
+E5.4f is now in progress and is redesigning the public operation contracts from
+their required semantics rather than exposing the existing internal
+dispatchers. Stable public operation exposure remains deferred to E5.4g.
+
+The public API remains experimental. Performance-sensitive implementation is
+developed from measured evidence and validated with both DMD and LDC.
 
 ## Primary goals
 
@@ -80,3 +101,37 @@ Performance-sensitive work will be tested with both DMD and LDC. LDC/LLVM is
 expected to become the primary performance compiler.
 
 See `ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md`.
+
+## Compiler support
+
+The source/frontend compatibility floor is DMD/Phobos 2.101. The corresponding
+LDC generation is LDC 1.31.0.
+
+Concrete compiler-package floors vary by platform because older macOS compiler
+packages are not compatible with current macOS 15 runners:
+
+| Platform | DMD | LDC |
+| --- | --- | --- |
+| Linux x86-64 | 2.101.2 | 1.31.0 |
+| Linux ARM64 | — | 1.31.0 |
+| Windows x86-64 | 2.101.2 | 1.31.0 |
+| macOS x86-64 | 2.112.1 | 1.41.0 |
+| macOS ARM64 | — | 1.41.0 |
+| Windows ARM64 | experimental | experimental |
+
+Current DMD and LDC releases remain part of the normal CI matrix. See
+`docs/research/compiler-floor-audit.md` for the evidence and boundary tests.
+
+## Workspace context
+
+When developed inside `d-geospatial-workspace`, current shared architecture
+and research context is available locally under:
+
+```text
+.workspace/
+```
+
+That directory is local workspace context and is not part of the `imagery-d`
+repository or DUB package.
+
+Repository-root documentation remains specific to `imagery-d`.

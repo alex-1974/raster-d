@@ -1,0 +1,17 @@
+copy_restrict:
+	.cfi_startproc
+	testq	%rdx, %rdx
+	je	.LBB1_2
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movq	%rdi, %rax
+	movq	%rsi, %rdi
+	movq	%rax, %rsi
+	callq	memcpy@PLT
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 8
+.LBB1_2:
+	movb	$1, %al
+	retq
+.Lfunc_end1:
+	.size	copy_restrict, .Lfunc_end1-copy_restrict

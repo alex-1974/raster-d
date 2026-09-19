@@ -1,0 +1,3 @@
+/tmp/d-imagery-e4-fixed-lane-20260917-173733/reassoc_warning.d(3): Warning: ignoring unrecognized flag parameter `reassoc` for `@ldc.attributes.llvmFastMathFlag`
+@llvmFastMathFlag("reassoc")
+                 ^
