@@ -624,10 +624,12 @@ Cent u128(
     ulong value
 )
 {
-    return Cent(
-        lo: value,
-        hi: 0
-    );
+    Cent result;
+
+    result.lo = value;
+    result.hi = 0;
+
+    return result;
 }
 
 @safe
