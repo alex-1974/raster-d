@@ -1,0 +1,55 @@
+d_imagery_sum_u8_u64_raw:
+	.cfi_startproc
+	testq	%rsi, %rsi
+	je	.LBB5_1
+	cmpq	$16, %rsi
+	jae	.LBB5_4
+	xorl	%eax, %eax
+	xorl	%ecx, %ecx
+	jmp	.LBB5_7
+.LBB5_1:
+	xorl	%eax, %eax
+	retq
+.LBB5_4:
+	movq	%rsi, %rcx
+	andq	$-16, %rcx
+	vpxor	%xmm0, %xmm0, %xmm0
+	xorl	%eax, %eax
+	vpxor	%xmm1, %xmm1, %xmm1
+	vpxor	%xmm2, %xmm2, %xmm2
+	vpxor	%xmm3, %xmm3, %xmm3
+	.p2align	4, 0x90
+.LBB5_5:
+	vpmovzxbq	(%rdi,%rax), %ymm4
+	vpaddq	%ymm4, %ymm0, %ymm0
+	vpmovzxbq	4(%rdi,%rax), %ymm4
+	vpaddq	%ymm4, %ymm1, %ymm1
+	vpmovzxbq	8(%rdi,%rax), %ymm4
+	vpaddq	%ymm4, %ymm2, %ymm2
+	vpmovzxbq	12(%rdi,%rax), %ymm4
+	vpaddq	%ymm4, %ymm3, %ymm3
+	addq	$16, %rax
+	cmpq	%rax, %rcx
+	jne	.LBB5_5
+	vpaddq	%ymm0, %ymm1, %ymm0
+	vpaddq	%ymm0, %ymm2, %ymm0
+	vpaddq	%ymm0, %ymm3, %ymm0
+	vextracti128	$1, %ymm0, %xmm1
+	vpaddq	%xmm1, %xmm0, %xmm0
+	vpshufd	$238, %xmm0, %xmm1
+	vpaddq	%xmm1, %xmm0, %xmm0
+	vmovq	%xmm0, %rax
+	cmpq	%rsi, %rcx
+	je	.LBB5_8
+	.p2align	4, 0x90
+.LBB5_7:
+	movzbl	(%rdi,%rcx), %edx
+	addq	%rdx, %rax
+	incq	%rcx
+	cmpq	%rcx, %rsi
+	jne	.LBB5_7
+.LBB5_8:
+	vzeroupper
+	retq
+.Lfunc_end5:
+	.size	d_imagery_sum_u8_u64_raw, .Lfunc_end5-d_imagery_sum_u8_u64_raw

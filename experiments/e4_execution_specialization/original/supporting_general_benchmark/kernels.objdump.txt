@@ -1,0 +1,329 @@
+
+/tmp/d-imagery-e4-benchmark-20260917-174503/kernels.o:     Dateiformat elf64-x86-64
+
+
+Disassembly of section .text.copyUnknownAlias:
+
+0000000000000000 <copyUnknownAlias>:
+   0:	48 85 d2             	test   %rdx,%rdx
+   3:	0f 84 36 01 00 00    	je     13f <copyUnknownAlias+0x13f>
+   9:	48 83 fa 10          	cmp    $0x10,%rdx
+   d:	0f 92 c0             	setb   %al
+  10:	48 89 f1             	mov    %rsi,%rcx
+  13:	48 29 f9             	sub    %rdi,%rcx
+  16:	48 81 f9 80 00 00 00 	cmp    $0x80,%rcx
+  1d:	0f 92 c1             	setb   %cl
+  20:	08 c1                	or     %al,%cl
+  22:	74 07                	je     2b <copyUnknownAlias+0x2b>
+  24:	31 c0                	xor    %eax,%eax
+  26:	e9 91 00 00 00       	jmp    bc <copyUnknownAlias+0xbc>
+  2b:	48 81 fa 80 00 00 00 	cmp    $0x80,%rdx
+  32:	73 04                	jae    38 <copyUnknownAlias+0x38>
+  34:	31 c0                	xor    %eax,%eax
+  36:	eb 5d                	jmp    95 <copyUnknownAlias+0x95>
+  38:	48 89 d0             	mov    %rdx,%rax
+  3b:	48 83 e0 80          	and    $0xffffffffffffff80,%rax
+  3f:	31 c9                	xor    %ecx,%ecx
+  41:	66 66 66 66 66 66 2e 	data16 data16 data16 data16 data16 cs nopw 0x0(%rax,%rax,1)
+  48:	0f 1f 84 00 00 00 00 
+  4f:	00 
+  50:	c5 fc 10 04 0f       	vmovups (%rdi,%rcx,1),%ymm0
+  55:	c5 fc 10 4c 0f 20    	vmovups 0x20(%rdi,%rcx,1),%ymm1
+  5b:	c5 fc 10 54 0f 40    	vmovups 0x40(%rdi,%rcx,1),%ymm2
+  61:	c5 fc 10 5c 0f 60    	vmovups 0x60(%rdi,%rcx,1),%ymm3
+  67:	c5 fc 11 04 0e       	vmovups %ymm0,(%rsi,%rcx,1)
+  6c:	c5 fc 11 4c 0e 20    	vmovups %ymm1,0x20(%rsi,%rcx,1)
+  72:	c5 fc 11 54 0e 40    	vmovups %ymm2,0x40(%rsi,%rcx,1)
+  78:	c5 fc 11 5c 0e 60    	vmovups %ymm3,0x60(%rsi,%rcx,1)
+  7e:	48 83 e9 80          	sub    $0xffffffffffffff80,%rcx
+  82:	48 39 c8             	cmp    %rcx,%rax
+  85:	75 c9                	jne    50 <copyUnknownAlias+0x50>
+  87:	48 39 d0             	cmp    %rdx,%rax
+  8a:	0f 84 af 00 00 00    	je     13f <copyUnknownAlias+0x13f>
+  90:	f6 c2 70             	test   $0x70,%dl
+  93:	74 27                	je     bc <copyUnknownAlias+0xbc>
+  95:	48 89 c1             	mov    %rax,%rcx
+  98:	48 89 d0             	mov    %rdx,%rax
+  9b:	48 83 e0 f0          	and    $0xfffffffffffffff0,%rax
+  9f:	90                   	nop
+  a0:	c5 f8 10 04 0f       	vmovups (%rdi,%rcx,1),%xmm0
+  a5:	c5 f8 11 04 0e       	vmovups %xmm0,(%rsi,%rcx,1)
+  aa:	48 83 c1 10          	add    $0x10,%rcx
+  ae:	48 39 c8             	cmp    %rcx,%rax
+  b1:	75 ed                	jne    a0 <copyUnknownAlias+0xa0>
+  b3:	48 39 d0             	cmp    %rdx,%rax
+  b6:	0f 84 83 00 00 00    	je     13f <copyUnknownAlias+0x13f>
+  bc:	49 89 d0             	mov    %rdx,%r8
+  bf:	48 89 c1             	mov    %rax,%rcx
+  c2:	49 83 e0 07          	and    $0x7,%r8
+  c6:	74 19                	je     e1 <copyUnknownAlias+0xe1>
+  c8:	48 89 c1             	mov    %rax,%rcx
+  cb:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+  d0:	44 0f b6 0c 0f       	movzbl (%rdi,%rcx,1),%r9d
+  d5:	44 88 0c 0e          	mov    %r9b,(%rsi,%rcx,1)
+  d9:	48 ff c1             	inc    %rcx
+  dc:	49 ff c8             	dec    %r8
+  df:	75 ef                	jne    d0 <copyUnknownAlias+0xd0>
+  e1:	48 29 d0             	sub    %rdx,%rax
+  e4:	48 83 f8 f8          	cmp    $0xfffffffffffffff8,%rax
+  e8:	77 55                	ja     13f <copyUnknownAlias+0x13f>
+  ea:	66 0f 1f 44 00 00    	nopw   0x0(%rax,%rax,1)
+  f0:	0f b6 04 0f          	movzbl (%rdi,%rcx,1),%eax
+  f4:	88 04 0e             	mov    %al,(%rsi,%rcx,1)
+  f7:	0f b6 44 0f 01       	movzbl 0x1(%rdi,%rcx,1),%eax
+  fc:	88 44 0e 01          	mov    %al,0x1(%rsi,%rcx,1)
+ 100:	0f b6 44 0f 02       	movzbl 0x2(%rdi,%rcx,1),%eax
+ 105:	88 44 0e 02          	mov    %al,0x2(%rsi,%rcx,1)
+ 109:	0f b6 44 0f 03       	movzbl 0x3(%rdi,%rcx,1),%eax
+ 10e:	88 44 0e 03          	mov    %al,0x3(%rsi,%rcx,1)
+ 112:	0f b6 44 0f 04       	movzbl 0x4(%rdi,%rcx,1),%eax
+ 117:	88 44 0e 04          	mov    %al,0x4(%rsi,%rcx,1)
+ 11b:	0f b6 44 0f 05       	movzbl 0x5(%rdi,%rcx,1),%eax
+ 120:	88 44 0e 05          	mov    %al,0x5(%rsi,%rcx,1)
+ 124:	0f b6 44 0f 06       	movzbl 0x6(%rdi,%rcx,1),%eax
+ 129:	88 44 0e 06          	mov    %al,0x6(%rsi,%rcx,1)
+ 12d:	0f b6 44 0f 07       	movzbl 0x7(%rdi,%rcx,1),%eax
+ 132:	88 44 0e 07          	mov    %al,0x7(%rsi,%rcx,1)
+ 136:	48 83 c1 08          	add    $0x8,%rcx
+ 13a:	48 39 ca             	cmp    %rcx,%rdx
+ 13d:	75 b1                	jne    f0 <copyUnknownAlias+0xf0>
+ 13f:	b0 01                	mov    $0x1,%al
+ 141:	c5 f8 77             	vzeroupper
+ 144:	c3                   	ret
+
+Disassembly of section .text.copyNoAlias:
+
+0000000000000000 <copyNoAlias>:
+   0:	48 85 d2             	test   %rdx,%rdx
+   3:	74 13                	je     18 <copyNoAlias+0x18>
+   5:	50                   	push   %rax
+   6:	48 89 f8             	mov    %rdi,%rax
+   9:	48 89 f7             	mov    %rsi,%rdi
+   c:	48 89 c6             	mov    %rax,%rsi
+   f:	e8 00 00 00 00       	call   14 <copyNoAlias+0x14>
+  14:	48 83 c4 08          	add    $0x8,%rsp
+  18:	b0 01                	mov    $0x1,%al
+  1a:	c3                   	ret
+
+Disassembly of section .text.sumStrict:
+
+0000000000000000 <sumStrict>:
+   0:	48 85 f6             	test   %rsi,%rsi
+   3:	74 16                	je     1b <sumStrict+0x1b>
+   5:	89 f0                	mov    %esi,%eax
+   7:	83 e0 07             	and    $0x7,%eax
+   a:	48 83 fe 08          	cmp    $0x8,%rsi
+   e:	73 10                	jae    20 <sumStrict+0x20>
+  10:	c5 f8 57 c0          	vxorps %xmm0,%xmm0,%xmm0
+  14:	31 c9                	xor    %ecx,%ecx
+  16:	e9 8d 00 00 00       	jmp    a8 <sumStrict+0xa8>
+  1b:	c5 f8 57 c0          	vxorps %xmm0,%xmm0,%xmm0
+  1f:	c3                   	ret
+  20:	48 83 e6 f8          	and    $0xfffffffffffffff8,%rsi
+  24:	c5 f8 57 c0          	vxorps %xmm0,%xmm0,%xmm0
+  28:	31 c9                	xor    %ecx,%ecx
+  2a:	66 0f 1f 44 00 00    	nopw   0x0(%rax,%rax,1)
+  30:	c5 fa 10 0c 8f       	vmovss (%rdi,%rcx,4),%xmm1
+  35:	c5 fa 10 54 8f 04    	vmovss 0x4(%rdi,%rcx,4),%xmm2
+  3b:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  3f:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  43:	c5 ea 5a ca          	vcvtss2sd %xmm2,%xmm2,%xmm1
+  47:	c5 fa 10 54 8f 08    	vmovss 0x8(%rdi,%rcx,4),%xmm2
+  4d:	c5 ea 5a d2          	vcvtss2sd %xmm2,%xmm2,%xmm2
+  51:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  55:	c5 fb 58 c2          	vaddsd %xmm2,%xmm0,%xmm0
+  59:	c5 fa 10 4c 8f 0c    	vmovss 0xc(%rdi,%rcx,4),%xmm1
+  5f:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  63:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  67:	c5 fa 10 4c 8f 10    	vmovss 0x10(%rdi,%rcx,4),%xmm1
+  6d:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  71:	c5 fa 10 54 8f 14    	vmovss 0x14(%rdi,%rcx,4),%xmm2
+  77:	c5 ea 5a d2          	vcvtss2sd %xmm2,%xmm2,%xmm2
+  7b:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  7f:	c5 fb 58 c2          	vaddsd %xmm2,%xmm0,%xmm0
+  83:	c5 fa 10 4c 8f 18    	vmovss 0x18(%rdi,%rcx,4),%xmm1
+  89:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  8d:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  91:	c5 fa 10 4c 8f 1c    	vmovss 0x1c(%rdi,%rcx,4),%xmm1
+  97:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  9b:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  9f:	48 83 c1 08          	add    $0x8,%rcx
+  a3:	48 39 ce             	cmp    %rcx,%rsi
+  a6:	75 88                	jne    30 <sumStrict+0x30>
+  a8:	48 85 c0             	test   %rax,%rax
+  ab:	74 28                	je     d5 <sumStrict+0xd5>
+  ad:	48 8d 0c 8f          	lea    (%rdi,%rcx,4),%rcx
+  b1:	31 d2                	xor    %edx,%edx
+  b3:	66 66 66 66 2e 0f 1f 	data16 data16 data16 cs nopw 0x0(%rax,%rax,1)
+  ba:	84 00 00 00 00 00 
+  c0:	c5 fa 10 0c 91       	vmovss (%rcx,%rdx,4),%xmm1
+  c5:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  c9:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  cd:	48 ff c2             	inc    %rdx
+  d0:	48 39 d0             	cmp    %rdx,%rax
+  d3:	75 eb                	jne    c0 <sumStrict+0xc0>
+  d5:	c3                   	ret
+
+Disassembly of section .text.sumFixedLane4:
+
+0000000000000000 <sumFixedLane4>:
+   0:	48 83 fe 04          	cmp    $0x4,%rsi
+   4:	72 19                	jb     1f <sumFixedLane4+0x1f>
+   6:	48 8d 4e fc          	lea    -0x4(%rsi),%rcx
+   a:	48 83 f9 04          	cmp    $0x4,%rcx
+   e:	73 26                	jae    36 <sumFixedLane4+0x36>
+  10:	c5 f9 57 c0          	vxorpd %xmm0,%xmm0,%xmm0
+  14:	31 c0                	xor    %eax,%eax
+  16:	c5 f1 57 c9          	vxorpd %xmm1,%xmm1,%xmm1
+  1a:	e9 92 00 00 00       	jmp    b1 <sumFixedLane4+0xb1>
+  1f:	c5 f9 57 c0          	vxorpd %xmm0,%xmm0,%xmm0
+  23:	31 c0                	xor    %eax,%eax
+  25:	48 89 c1             	mov    %rax,%rcx
+  28:	48 29 f1             	sub    %rsi,%rcx
+  2b:	0f 82 cd 00 00 00    	jb     fe <sumFixedLane4+0xfe>
+  31:	e9 72 01 00 00       	jmp    1a8 <sumFixedLane4+0x1a8>
+  36:	48 89 ca             	mov    %rcx,%rdx
+  39:	48 c1 ea 02          	shr    $0x2,%rdx
+  3d:	48 ff c2             	inc    %rdx
+  40:	48 83 e2 fe          	and    $0xfffffffffffffffe,%rdx
+  44:	c5 f9 57 c0          	vxorpd %xmm0,%xmm0,%xmm0
+  48:	31 c0                	xor    %eax,%eax
+  4a:	c5 f1 57 c9          	vxorpd %xmm1,%xmm1,%xmm1
+  4e:	66 90                	xchg   %ax,%ax
+  50:	c5 fa 10 14 87       	vmovss (%rdi,%rax,4),%xmm2
+  55:	c5 fa 10 5c 87 04    	vmovss 0x4(%rdi,%rax,4),%xmm3
+  5b:	c5 fa 10 64 87 10    	vmovss 0x10(%rdi,%rax,4),%xmm4
+  61:	c5 fa 10 6c 87 14    	vmovss 0x14(%rdi,%rax,4),%xmm5
+  67:	c4 e3 69 21 54 87 08 	vinsertps $0x10,0x8(%rdi,%rax,4),%xmm2,%xmm2
+  6e:	10 
+  6f:	c5 f8 5a d2          	vcvtps2pd %xmm2,%xmm2
+  73:	c5 f9 58 c2          	vaddpd %xmm2,%xmm0,%xmm0
+  77:	c4 e3 61 21 54 87 0c 	vinsertps $0x10,0xc(%rdi,%rax,4),%xmm3,%xmm2
+  7e:	10 
+  7f:	c5 f8 5a d2          	vcvtps2pd %xmm2,%xmm2
+  83:	c5 f1 58 ca          	vaddpd %xmm2,%xmm1,%xmm1
+  87:	c4 e3 59 21 54 87 18 	vinsertps $0x10,0x18(%rdi,%rax,4),%xmm4,%xmm2
+  8e:	10 
+  8f:	c5 f8 5a d2          	vcvtps2pd %xmm2,%xmm2
+  93:	c4 e3 51 21 5c 87 1c 	vinsertps $0x10,0x1c(%rdi,%rax,4),%xmm5,%xmm3
+  9a:	10 
+  9b:	c5 f9 58 c2          	vaddpd %xmm2,%xmm0,%xmm0
+  9f:	c5 f8 5a d3          	vcvtps2pd %xmm3,%xmm2
+  a3:	c5 f1 58 ca          	vaddpd %xmm2,%xmm1,%xmm1
+  a7:	48 83 c0 08          	add    $0x8,%rax
+  ab:	48 83 c2 fe          	add    $0xfffffffffffffffe,%rdx
+  af:	75 9f                	jne    50 <sumFixedLane4+0x50>
+  b1:	f6 c1 04             	test   $0x4,%cl
+  b4:	75 2f                	jne    e5 <sumFixedLane4+0xe5>
+  b6:	c5 fa 10 14 87       	vmovss (%rdi,%rax,4),%xmm2
+  bb:	c5 fa 10 5c 87 04    	vmovss 0x4(%rdi,%rax,4),%xmm3
+  c1:	c4 e3 69 21 54 87 08 	vinsertps $0x10,0x8(%rdi,%rax,4),%xmm2,%xmm2
+  c8:	10 
+  c9:	c5 f8 5a d2          	vcvtps2pd %xmm2,%xmm2
+  cd:	c5 f9 58 c2          	vaddpd %xmm2,%xmm0,%xmm0
+  d1:	c4 e3 61 21 54 87 0c 	vinsertps $0x10,0xc(%rdi,%rax,4),%xmm3,%xmm2
+  d8:	10 
+  d9:	c5 f8 5a d2          	vcvtps2pd %xmm2,%xmm2
+  dd:	c5 f1 58 ca          	vaddpd %xmm2,%xmm1,%xmm1
+  e1:	48 83 c0 04          	add    $0x4,%rax
+  e5:	c5 f9 58 c1          	vaddpd %xmm1,%xmm0,%xmm0
+  e9:	c5 f9 c6 c8 01       	vshufpd $0x1,%xmm0,%xmm0,%xmm1
+  ee:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  f2:	48 89 c1             	mov    %rax,%rcx
+  f5:	48 29 f1             	sub    %rsi,%rcx
+  f8:	0f 83 aa 00 00 00    	jae    1a8 <sumFixedLane4+0x1a8>
+  fe:	89 f2                	mov    %esi,%edx
+ 100:	29 c2                	sub    %eax,%edx
+ 102:	83 e2 07             	and    $0x7,%edx
+ 105:	74 1e                	je     125 <sumFixedLane4+0x125>
+ 107:	66 0f 1f 84 00 00 00 	nopw   0x0(%rax,%rax,1)
+ 10e:	00 00 
+ 110:	c5 fa 10 0c 87       	vmovss (%rdi,%rax,4),%xmm1
+ 115:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 119:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 11d:	48 ff c0             	inc    %rax
+ 120:	48 ff ca             	dec    %rdx
+ 123:	75 eb                	jne    110 <sumFixedLane4+0x110>
+ 125:	48 83 f9 f8          	cmp    $0xfffffffffffffff8,%rcx
+ 129:	77 7d                	ja     1a8 <sumFixedLane4+0x1a8>
+ 12b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+ 130:	c5 fa 10 0c 87       	vmovss (%rdi,%rax,4),%xmm1
+ 135:	c5 fa 10 54 87 04    	vmovss 0x4(%rdi,%rax,4),%xmm2
+ 13b:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 13f:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 143:	c5 ea 5a ca          	vcvtss2sd %xmm2,%xmm2,%xmm1
+ 147:	c5 fa 10 54 87 08    	vmovss 0x8(%rdi,%rax,4),%xmm2
+ 14d:	c5 ea 5a d2          	vcvtss2sd %xmm2,%xmm2,%xmm2
+ 151:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 155:	c5 fb 58 c2          	vaddsd %xmm2,%xmm0,%xmm0
+ 159:	c5 fa 10 4c 87 0c    	vmovss 0xc(%rdi,%rax,4),%xmm1
+ 15f:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 163:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 167:	c5 fa 10 4c 87 10    	vmovss 0x10(%rdi,%rax,4),%xmm1
+ 16d:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 171:	c5 fa 10 54 87 14    	vmovss 0x14(%rdi,%rax,4),%xmm2
+ 177:	c5 ea 5a d2          	vcvtss2sd %xmm2,%xmm2,%xmm2
+ 17b:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 17f:	c5 fb 58 c2          	vaddsd %xmm2,%xmm0,%xmm0
+ 183:	c5 fa 10 4c 87 18    	vmovss 0x18(%rdi,%rax,4),%xmm1
+ 189:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 18d:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 191:	c5 fa 10 4c 87 1c    	vmovss 0x1c(%rdi,%rax,4),%xmm1
+ 197:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+ 19b:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+ 19f:	48 83 c0 08          	add    $0x8,%rax
+ 1a3:	48 39 c6             	cmp    %rax,%rsi
+ 1a6:	75 88                	jne    130 <sumFixedLane4+0x130>
+ 1a8:	c3                   	ret
+
+Disassembly of section .text.sumFast:
+
+0000000000000000 <sumFast>:
+   0:	48 85 f6             	test   %rsi,%rsi
+   3:	74 11                	je     16 <sumFast+0x16>
+   5:	48 83 fe 10          	cmp    $0x10,%rsi
+   9:	73 10                	jae    1b <sumFast+0x1b>
+   b:	c5 f9 57 c0          	vxorpd %xmm0,%xmm0,%xmm0
+   f:	31 c0                	xor    %eax,%eax
+  11:	e9 8a 00 00 00       	jmp    a0 <sumFast+0xa0>
+  16:	c5 f8 57 c0          	vxorps %xmm0,%xmm0,%xmm0
+  1a:	c3                   	ret
+  1b:	48 89 f0             	mov    %rsi,%rax
+  1e:	48 83 e0 f0          	and    $0xfffffffffffffff0,%rax
+  22:	c5 f9 57 c0          	vxorpd %xmm0,%xmm0,%xmm0
+  26:	31 c9                	xor    %ecx,%ecx
+  28:	c5 f1 57 c9          	vxorpd %xmm1,%xmm1,%xmm1
+  2c:	c5 e9 57 d2          	vxorpd %xmm2,%xmm2,%xmm2
+  30:	c5 e1 57 db          	vxorpd %xmm3,%xmm3,%xmm3
+  34:	66 66 66 2e 0f 1f 84 	data16 data16 cs nopw 0x0(%rax,%rax,1)
+  3b:	00 00 00 00 00 
+  40:	c5 fc 5a 24 8f       	vcvtps2pd (%rdi,%rcx,4),%ymm4
+  45:	c5 fd 58 c4          	vaddpd %ymm4,%ymm0,%ymm0
+  49:	c5 fc 5a 64 8f 10    	vcvtps2pd 0x10(%rdi,%rcx,4),%ymm4
+  4f:	c5 f5 58 cc          	vaddpd %ymm4,%ymm1,%ymm1
+  53:	c5 fc 5a 64 8f 20    	vcvtps2pd 0x20(%rdi,%rcx,4),%ymm4
+  59:	c5 ed 58 d4          	vaddpd %ymm4,%ymm2,%ymm2
+  5d:	c5 fc 5a 64 8f 30    	vcvtps2pd 0x30(%rdi,%rcx,4),%ymm4
+  63:	c5 e5 58 dc          	vaddpd %ymm4,%ymm3,%ymm3
+  67:	48 83 c1 10          	add    $0x10,%rcx
+  6b:	48 39 c8             	cmp    %rcx,%rax
+  6e:	75 d0                	jne    40 <sumFast+0x40>
+  70:	c5 f5 58 c0          	vaddpd %ymm0,%ymm1,%ymm0
+  74:	c5 ed 58 c0          	vaddpd %ymm0,%ymm2,%ymm0
+  78:	c5 e5 58 c0          	vaddpd %ymm0,%ymm3,%ymm0
+  7c:	c4 e3 7d 19 c1 01    	vextractf128 $0x1,%ymm0,%xmm1
+  82:	c5 f9 58 c1          	vaddpd %xmm1,%xmm0,%xmm0
+  86:	c5 f9 c6 c8 01       	vshufpd $0x1,%xmm0,%xmm0,%xmm1
+  8b:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  8f:	48 39 f0             	cmp    %rsi,%rax
+  92:	74 21                	je     b5 <sumFast+0xb5>
+  94:	66 66 66 2e 0f 1f 84 	data16 data16 cs nopw 0x0(%rax,%rax,1)
+  9b:	00 00 00 00 00 
+  a0:	c5 fa 10 0c 87       	vmovss (%rdi,%rax,4),%xmm1
+  a5:	c5 f2 5a c9          	vcvtss2sd %xmm1,%xmm1,%xmm1
+  a9:	c5 fb 58 c1          	vaddsd %xmm1,%xmm0,%xmm0
+  ad:	48 ff c0             	inc    %rax
+  b0:	48 39 c6             	cmp    %rax,%rsi
+  b3:	75 eb                	jne    a0 <sumFast+0xa0>
+  b5:	c5 f8 77             	vzeroupper
+  b8:	c3                   	ret

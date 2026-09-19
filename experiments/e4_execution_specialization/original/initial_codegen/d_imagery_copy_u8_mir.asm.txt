@@ -1,0 +1,97 @@
+d_imagery_copy_u8_mir:
+	.cfi_startproc
+	testq	%rdx, %rdx
+	je	.LBB0_17
+	cmpq	$16, %rdx
+	setb	%al
+	movq	%rsi, %rcx
+	subq	%rdi, %rcx
+	cmpq	$128, %rcx
+	setb	%cl
+	orb	%al, %cl
+	je	.LBB0_3
+	xorl	%eax, %eax
+	jmp	.LBB0_12
+.LBB0_3:
+	cmpq	$128, %rdx
+	jae	.LBB0_5
+	xorl	%eax, %eax
+	jmp	.LBB0_9
+.LBB0_5:
+	movq	%rdx, %rax
+	andq	$-128, %rax
+	xorl	%ecx, %ecx
+	.p2align	4, 0x90
+.LBB0_6:
+	vmovups	(%rdi,%rcx), %ymm0
+	vmovups	32(%rdi,%rcx), %ymm1
+	vmovups	64(%rdi,%rcx), %ymm2
+	vmovups	96(%rdi,%rcx), %ymm3
+	vmovups	%ymm0, (%rsi,%rcx)
+	vmovups	%ymm1, 32(%rsi,%rcx)
+	vmovups	%ymm2, 64(%rsi,%rcx)
+	vmovups	%ymm3, 96(%rsi,%rcx)
+	subq	$-128, %rcx
+	cmpq	%rcx, %rax
+	jne	.LBB0_6
+	cmpq	%rdx, %rax
+	je	.LBB0_17
+	testb	$112, %dl
+	je	.LBB0_12
+.LBB0_9:
+	movq	%rax, %rcx
+	movq	%rdx, %rax
+	andq	$-16, %rax
+	.p2align	4, 0x90
+.LBB0_10:
+	vmovups	(%rdi,%rcx), %xmm0
+	vmovups	%xmm0, (%rsi,%rcx)
+	addq	$16, %rcx
+	cmpq	%rcx, %rax
+	jne	.LBB0_10
+	cmpq	%rdx, %rax
+	je	.LBB0_17
+.LBB0_12:
+	movq	%rdx, %r8
+	movq	%rax, %rcx
+	andq	$7, %r8
+	je	.LBB0_15
+	movq	%rax, %rcx
+	.p2align	4, 0x90
+.LBB0_14:
+	movzbl	(%rdi,%rcx), %r9d
+	movb	%r9b, (%rsi,%rcx)
+	incq	%rcx
+	decq	%r8
+	jne	.LBB0_14
+.LBB0_15:
+	subq	%rdx, %rax
+	cmpq	$-8, %rax
+	ja	.LBB0_17
+	.p2align	4, 0x90
+.LBB0_16:
+	movzbl	(%rdi,%rcx), %eax
+	movb	%al, (%rsi,%rcx)
+	movzbl	1(%rdi,%rcx), %eax
+	movb	%al, 1(%rsi,%rcx)
+	movzbl	2(%rdi,%rcx), %eax
+	movb	%al, 2(%rsi,%rcx)
+	movzbl	3(%rdi,%rcx), %eax
+	movb	%al, 3(%rsi,%rcx)
+	movzbl	4(%rdi,%rcx), %eax
+	movb	%al, 4(%rsi,%rcx)
+	movzbl	5(%rdi,%rcx), %eax
+	movb	%al, 5(%rsi,%rcx)
+	movzbl	6(%rdi,%rcx), %eax
+	movb	%al, 6(%rsi,%rcx)
+	movzbl	7(%rdi,%rcx), %eax
+	movb	%al, 7(%rsi,%rcx)
+	addq	$8, %rcx
+	cmpq	%rcx, %rdx
+	jne	.LBB0_16
+.LBB0_17:
+	movb	$1, %al
+	vzeroupper
+	retq
+.Lfunc_end0:
+	.size	d_imagery_copy_u8_mir, .Lfunc_end0-d_imagery_copy_u8_mir

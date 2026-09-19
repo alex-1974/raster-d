@@ -1,0 +1,4 @@
+/home/alexander/.dub/packages/mir-algorithm/3.22.4/mir-algorithm//source/
+/home/alexander/.dub/packages/mir-core/1.7.4/mir-core//source/
+/home/alexander/.dub/packages/silly/1.1.1/silly//.
+/home/alexander/Programmiersprachen/dlang/d-imagery//source/

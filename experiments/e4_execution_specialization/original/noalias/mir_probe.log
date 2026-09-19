@@ -1,0 +1,32 @@
+Attribute 'noalias' applied to incompatible type!
+ptr @e43CopyMirRestrict
+Attribute 'noalias' applied to incompatible type!
+ptr @e43CopyMirRestrict
+LLVM ERROR: Broken module found, compilation aborted!
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM.so.19.1 0x00007623371701df llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 63
+1  libLLVM.so.19.1 0x000076233716debb llvm::sys::RunSignalHandlers() + 43
+2  libLLVM.so.19.1 0x0000762337170930
+3  libc.so.6       0x0000762332c45cb0
+4  libc.so.6       0x0000762332ca61ac pthread_kill + 284
+5  libc.so.6       0x0000762332c45b7e gsignal + 30
+6  libc.so.6       0x0000762332c288ec abort + 39
+7  libLLVM.so.19.1 0x00007623370c69d4 llvm::report_fatal_error(llvm::Twine const&, bool) + 452
+8  libLLVM.so.19.1 0x00007623370c680d
+9  libLLVM.so.19.1 0x00007623373328f1
+10 ldc2            0x00005f914aac1b36 llvm::detail::PassModel<llvm::Module, llvm::VerifierPass, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) + 38
+11 libLLVM.so.19.1 0x0000762337301d78 llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) + 552
+12 ldc2            0x00005f914aabfc22 runOptimizationPasses(llvm::Module*, llvm::TargetMachine*) + 3250
+13 ldc2            0x00005f914aac1526 ldc_optimize_module(llvm::Module*, llvm::TargetMachine*) + 38
+14 ldc2            0x00005f914ab7bf1e writeModule(llvm::Module*, char const*) + 174
+15 ldc2            0x00005f914ab77021 ldc::CodeGenerator::writeAndFreeLLModule(char const*) + 1137
+16 ldc2            0x00005f914ab4f935 codegenModules(Array<Module*>&) + 1461
+17 ldc2            0x00005f914a9068e8 mars_tryMain(Param&, Array<char const*>&) + 8312
+18 ldc2            0x00005f914ab4e1cd cppmain() + 6637
+19 ldc2            0x00005f914acbdc1d _D2rt6dmain212_d_run_main2UAAamPUQgZiZ6runAllMFZv + 77
+20 ldc2            0x00005f914acbda38 _d_run_main2 + 408
+21 ldc2            0x00005f914acbd88d _d_run_main + 141
+22 ldc2            0x00005f914a7bb49c main + 524
+23 libc.so.6       0x0000762332c2a601
+24 libc.so.6       0x0000762332c2a718 __libc_start_main + 136
+25 ldc2            0x00005f914a7bdc05 _start + 37

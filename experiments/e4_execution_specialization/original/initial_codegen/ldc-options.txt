@@ -1,0 +1,7 @@
+  --boundscheck=<value>                        - Array bounds check
+  --checkaction=<value>                        - Action to take when an assert/boundscheck/final-switch fails
+  --enable-inlining=<value>                    - (*) Enable function inlining (default in -O2 and higher)
+  --mcpu=<cpu-name>                            - Target a specific cpu type (-mcpu=help for details)
+  --output-ll                                  - Write LLVM IR
+  --output-s                                   - Write native assembly
+-d-debug can also be specified without options, in which case it enables all debug checks (i.e. asserts, boundschecks, contracts and invariants) as well as acting as -d-debug=1.

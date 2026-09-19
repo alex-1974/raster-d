@@ -1,0 +1,55 @@
+sum_f32_f64_fastmath:
+	.cfi_startproc
+	testq	%rsi, %rsi
+	je	.LBB3_1
+	cmpq	$16, %rsi
+	jae	.LBB3_4
+	vxorpd	%xmm0, %xmm0, %xmm0
+	xorl	%eax, %eax
+	jmp	.LBB3_7
+.LBB3_1:
+	vxorps	%xmm0, %xmm0, %xmm0
+	retq
+.LBB3_4:
+	movq	%rsi, %rax
+	andq	$-16, %rax
+	vxorpd	%xmm0, %xmm0, %xmm0
+	xorl	%ecx, %ecx
+	vxorpd	%xmm1, %xmm1, %xmm1
+	vxorpd	%xmm2, %xmm2, %xmm2
+	vxorpd	%xmm3, %xmm3, %xmm3
+	.p2align	4, 0x90
+.LBB3_5:
+	vcvtps2pd	(%rdi,%rcx,4), %ymm4
+	vaddpd	%ymm4, %ymm0, %ymm0
+	vcvtps2pd	16(%rdi,%rcx,4), %ymm4
+	vaddpd	%ymm4, %ymm1, %ymm1
+	vcvtps2pd	32(%rdi,%rcx,4), %ymm4
+	vaddpd	%ymm4, %ymm2, %ymm2
+	vcvtps2pd	48(%rdi,%rcx,4), %ymm4
+	vaddpd	%ymm4, %ymm3, %ymm3
+	addq	$16, %rcx
+	cmpq	%rcx, %rax
+	jne	.LBB3_5
+	vaddpd	%ymm0, %ymm1, %ymm0
+	vaddpd	%ymm0, %ymm2, %ymm0
+	vaddpd	%ymm0, %ymm3, %ymm0
+	vextractf128	$1, %ymm0, %xmm1
+	vaddpd	%xmm1, %xmm0, %xmm0
+	vshufpd	$1, %xmm0, %xmm0, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	cmpq	%rsi, %rax
+	je	.LBB3_8
+	.p2align	4, 0x90
+.LBB3_7:
+	vmovss	(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	incq	%rax
+	cmpq	%rax, %rsi
+	jne	.LBB3_7
+.LBB3_8:
+	vzeroupper
+	retq
+.Lfunc_end3:
+	.size	sum_f32_f64_fastmath, .Lfunc_end3-sum_f32_f64_fastmath

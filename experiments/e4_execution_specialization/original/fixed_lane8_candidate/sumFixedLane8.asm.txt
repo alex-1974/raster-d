@@ -1,0 +1,96 @@
+sumFixedLane8:
+	.cfi_startproc
+	cmpq	$8, %rsi
+	jb	.LBB1_1
+	vxorpd	%xmm0, %xmm0, %xmm0
+	xorl	%eax, %eax
+	movq	%rsi, %rcx
+	vxorpd	%xmm1, %xmm1, %xmm1
+	vxorpd	%xmm2, %xmm2, %xmm2
+	vxorpd	%xmm3, %xmm3, %xmm3
+	.p2align	4, 0x90
+.LBB1_3:
+	vmovss	16(%rdi,%rax,4), %xmm4
+	vmovss	20(%rdi,%rax,4), %xmm5
+	vmovss	24(%rdi,%rax,4), %xmm6
+	vmovss	28(%rdi,%rax,4), %xmm7
+	vinsertps	$16, (%rdi,%rax,4), %xmm4, %xmm4
+	vcvtps2pd	%xmm4, %xmm4
+	vaddpd	%xmm4, %xmm3, %xmm3
+	vinsertps	$16, 4(%rdi,%rax,4), %xmm5, %xmm4
+	vcvtps2pd	%xmm4, %xmm4
+	vinsertps	$16, 8(%rdi,%rax,4), %xmm7, %xmm5
+	vaddpd	%xmm4, %xmm2, %xmm2
+	vcvtps2pd	%xmm5, %xmm4
+	vaddpd	%xmm4, %xmm1, %xmm1
+	vinsertps	$16, 12(%rdi,%rax,4), %xmm6, %xmm4
+	vcvtps2pd	%xmm4, %xmm4
+	vaddpd	%xmm4, %xmm0, %xmm0
+	addq	$8, %rax
+	addq	$-8, %rcx
+	cmpq	$7, %rcx
+	ja	.LBB1_3
+	vaddpd	%xmm3, %xmm2, %xmm2
+	vaddpd	%xmm1, %xmm0, %xmm0
+	vaddpd	%xmm2, %xmm0, %xmm0
+	vshufpd	$1, %xmm0, %xmm0, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	movq	%rax, %rcx
+	subq	%rsi, %rcx
+	jb	.LBB1_6
+	jmp	.LBB1_10
+.LBB1_1:
+	vxorpd	%xmm0, %xmm0, %xmm0
+	xorl	%eax, %eax
+	movq	%rax, %rcx
+	subq	%rsi, %rcx
+	jae	.LBB1_10
+.LBB1_6:
+	movl	%esi, %edx
+	subl	%eax, %edx
+	andl	$7, %edx
+	je	.LBB1_8
+	.p2align	4, 0x90
+.LBB1_7:
+	vmovss	(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	incq	%rax
+	decq	%rdx
+	jne	.LBB1_7
+.LBB1_8:
+	cmpq	$-8, %rcx
+	ja	.LBB1_10
+	.p2align	4, 0x90
+.LBB1_9:
+	vmovss	(%rdi,%rax,4), %xmm1
+	vmovss	4(%rdi,%rax,4), %xmm2
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vcvtss2sd	%xmm2, %xmm2, %xmm1
+	vmovss	8(%rdi,%rax,4), %xmm2
+	vcvtss2sd	%xmm2, %xmm2, %xmm2
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vaddsd	%xmm2, %xmm0, %xmm0
+	vmovss	12(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vmovss	16(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vmovss	20(%rdi,%rax,4), %xmm2
+	vcvtss2sd	%xmm2, %xmm2, %xmm2
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vaddsd	%xmm2, %xmm0, %xmm0
+	vmovss	24(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	vmovss	28(%rdi,%rax,4), %xmm1
+	vcvtss2sd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	addq	$8, %rax
+	cmpq	%rax, %rsi
+	jne	.LBB1_9
+.LBB1_10:
+	retq
+.Lfunc_end1:
+	.size	sumFixedLane8, .Lfunc_end1-sumFixedLane8
