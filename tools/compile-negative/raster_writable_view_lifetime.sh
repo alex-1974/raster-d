@@ -113,6 +113,34 @@ compile_probe()
 }
 
 
+compiler_supports_named_arguments()
+{
+    cat > "$tmp_dir/named_argument_capability.d" <<'D'
+module raster_writable_named_argument_capability;
+
+private int combine(
+    int left,
+    int right
+)
+{
+    return left + right;
+}
+
+enum namedArgumentCapability =
+    combine(
+        left: 1,
+        right: 2
+    );
+D
+
+    "$compiler" \
+        -c \
+        -of="$tmp_dir/named_argument_capability.o" \
+        "$tmp_dir/named_argument_capability.d" \
+        >"$tmp_dir/named_argument_capability.log" 2>&1
+}
+
+
 cat > "$tmp_dir/positive.d" <<'D'
 module imagery.raster.writable_view_positive;
 
@@ -743,10 +771,13 @@ compile_probe external_surface pass
 compile_probe external_factory_surface reject
 compile_probe external_execution_surface reject
 compile_probe external_lease_surface pass
-compile_probe external_named_arguments pass
+
+if compiler_supports_named_arguments; then
+    compile_probe external_named_arguments pass
+else
+    echo 'SKIP expected-pass: external_named_arguments (compiler syntax unsupported)'
+fi
 
 echo "FAILURES=$failures"
 
-if [ "$failures" -ne 0 ]; then
-    exit 1
-fi
+[ "$failures" -eq 0 ]

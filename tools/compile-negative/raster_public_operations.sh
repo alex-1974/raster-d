@@ -97,6 +97,34 @@ main()
         fi
     }
 
+
+    compiler_supports_named_arguments()
+    {
+        cat > "$tmp_dir/named_argument_capability.d" <<'D'
+module raster_named_argument_capability;
+
+private int combine(
+    int left,
+    int right
+)
+{
+    return left + right;
+}
+
+enum namedArgumentCapability =
+    combine(
+        left: 1,
+        right: 2
+    );
+D
+
+        "$compiler" \
+            -c \
+            -of="$tmp_dir/named_argument_capability.o" \
+            "$tmp_dir/named_argument_capability.d" \
+            >"$tmp_dir/named_argument_capability.log" 2>&1
+    }
+
     cat > "$tmp_dir/public_surface.d" <<'D'
 module raster_public_operations_positive;
 
@@ -112,6 +140,84 @@ import imagery.raster :
 
 @safe
 bool exercisePublicRasterOperations(
+    ref RasterLease!ubyte byteLease,
+    ref RasterLease!float floatLease,
+    scope RasterView!float floatSource
+)
+{
+    bool byteWritableOk;
+
+    scope WritableRasterView!ubyte byteDestination =
+        byteLease.tryWritableView(
+            byteWritableOk
+        );
+
+    bool floatWritableOk;
+
+    scope WritableRasterView!float floatDestination =
+        floatLease.tryWritableView(
+            floatWritableOk
+        );
+
+    double sum;
+
+    const sumOk =
+        trySumFloatToDouble(
+            floatSource,
+            0,
+            sum
+        );
+
+    RasterCopyError copyError;
+
+    const copyOk =
+        tryCopyRasterPlane(
+            byteLease.view(),
+            0,
+            byteDestination,
+            0,
+            copyError
+        );
+
+    UbyteToFloatConversionError conversionError;
+
+    const conversionOk =
+        tryConvertUbyteToFloatPlane(
+            byteLease.view(),
+            0,
+            floatDestination,
+            0,
+            conversionError
+        );
+
+    return
+        (!byteWritableOk || byteDestination.planeCount != 0)
+        && (!floatWritableOk || floatDestination.planeCount != 0)
+        && (sumOk || sum == 0.0)
+        && (copyOk || copyError != RasterCopyError.none)
+        && (
+            conversionOk
+            || conversionError != UbyteToFloatConversionError.none
+        );
+}
+D
+
+
+    cat > "$tmp_dir/named_arguments.d" <<'D'
+module raster_public_operations_named_arguments;
+
+import imagery.raster :
+    RasterCopyError,
+    RasterLease,
+    RasterView,
+    UbyteToFloatConversionError,
+    WritableRasterView,
+    tryConvertUbyteToFloatPlane,
+    tryCopyRasterPlane,
+    trySumFloatToDouble;
+
+@safe
+bool exercisePublicRasterNamedArguments(
     ref RasterLease!ubyte byteLease,
     ref RasterLease!float floatLease,
     scope RasterView!float floatSource
@@ -209,7 +315,7 @@ WritableRasterView!ubyte invalidEscape()
 
     scope auto view =
         lease.tryWritableView(
-            success: success
+            success
         );
 
     return view;
@@ -223,7 +329,7 @@ import imagery.raster :
     RasterLease,
     WritableRasterView;
 
-__gshared WritableRasterView!ubyte escaped;
+WritableRasterView!ubyte escaped;
 
 @safe
 void invalidGlobal(
@@ -234,7 +340,7 @@ void invalidGlobal(
 
     scope auto view =
         lease.tryWritableView(
-            success: success
+            success
         );
 
     escaped = view;
@@ -242,6 +348,13 @@ void invalidGlobal(
 D
 
     compile_probe public_surface pass
+
+    if compiler_supports_named_arguments; then
+        compile_probe named_arguments pass
+    else
+        echo 'SKIP named_arguments: compiler does not support D named-argument syntax'
+    fi
+
     compile_probe internal_umbrella_surface reject
     compile_probe writable_escape reject
     compile_probe writable_global reject
@@ -254,4 +367,4 @@ D
 main "$@"
 status=$?
 cleanup
-return "$status" 2>/dev/null || true
+[ "$status" -eq 0 ]

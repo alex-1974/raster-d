@@ -218,7 +218,11 @@ import imagery.raster :
     RasterView,
     trySumFloatToDouble;
 
-/* MUST PASS: stable public strict reduction and named arguments. */
+/*
+ * MUST PASS: stable public strict reduction on the full compiler floor.
+ *
+ * Named-argument compatibility is covered by capability-aware public probes.
+ */
 @safe
 bool exercisePublicStrictSum(
     scope RasterView!float source
@@ -228,9 +232,9 @@ bool exercisePublicStrictSum(
 
     return
         trySumFloatToDouble(
-            source: source,
-            planeIndex: 0,
-            sum: sum
+            source,
+            0,
+            sum
         )
         || sum == 0.0;
 }
@@ -324,7 +328,8 @@ import imagery.raster :
  *
  * E5.4g.3 exposes the semantic same-type plane copy.
  *
- * Named arguments deliberately lock the stable public parameter names.
+ * Parameter-name compatibility is covered by capability-aware public
+ * named-argument probes.
  */
 @safe
 bool exercisePublicRasterCopy(
@@ -336,11 +341,11 @@ bool exercisePublicRasterCopy(
 
     return
         tryCopyRasterPlane(
-            source: source,
-            sourcePlaneIndex: 0,
-            destination: destination,
-            destinationPlaneIndex: 0,
-            error: error
+            source,
+            0,
+            destination,
+            0,
+            error
         )
         || error
             != RasterCopyError.none;
@@ -363,7 +368,8 @@ import imagery.raster :
  *
  * E5.4g.4 exposes only the exact semantic ubyte-to-float plane conversion.
  *
- * Named arguments deliberately lock the public parameter names.
+ * Parameter-name compatibility is covered by capability-aware public
+ * named-argument probes.
  */
 @safe
 bool exercisePublicUbyteToFloatConversion(
@@ -375,11 +381,11 @@ bool exercisePublicUbyteToFloatConversion(
 
     return
         tryConvertUbyteToFloatPlane(
-            source: source,
-            sourcePlaneIndex: 0,
-            destination: destination,
-            destinationPlaneIndex: 0,
-            error: error
+            source,
+            0,
+            destination,
+            0,
+            error
         )
         || error
             != UbyteToFloatConversionError.none;
