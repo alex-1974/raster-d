@@ -388,9 +388,11 @@ unittest
         == RasterCopyError.shapeMismatch
     );
 
+    const ubyte[4] expectedDestination;
+
     assert(
         destinationStorage
-        == ubyte[4].init
+        == expectedDestination
     );
 }
 
