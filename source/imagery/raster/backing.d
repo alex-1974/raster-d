@@ -59,14 +59,8 @@ import imagery.raster.writable_view :
     RasterView itself owns none of these objects.
 +/
 package(imagery.raster)
-struct RasterBacking(T)
+struct RasterBacking
 {
-    static assert(
-        isRasterSampleType!T,
-        "RasterBacking sample type must be an unqualified POD value type "
-        ~ "without indirections."
-    );
-
 private:
     ResourceEntry[] resources_;
 
@@ -168,11 +162,37 @@ public:
 }
 
 
-private alias RasterBackingOwner(T) =
+private alias RasterBackingOwner =
     SafeRefCounted!(
-        RasterBacking!T,
+        RasterBacking,
         RefCountedAutoInitialize.no
     );
+
+
+/++
+    Creates the untyped retained owner inside the imagery-d library.
+
+    RasterBacking itself contains byte-addressed resources, descriptors and
+    resident geometry only. Sample-type interpretation remains on RasterLease!T,
+    RasterView!T and validation/construction boundaries.
+
+    Keeping this function non-templated also gives separate-library builds one
+    concrete code-generation anchor for SafeRefCounted!RasterBacking and its
+    destruction path.
++/
+private
+RasterBackingOwner makeRasterBackingOwner(
+    RasterBacking backing
+)
+@trusted
+{
+    auto owner =
+        safeRefCounted(
+            move(backing)
+        );
+
+    return move(owner);
+}
 
 
 /++
@@ -186,12 +206,12 @@ private alias RasterBackingOwner(T) =
 +/
 package(imagery.raster)
 RasterLease!T retainRasterBacking(T)(
-    RasterBacking!T backing
+    RasterBacking backing
 )
 @trusted
 {
     auto owner =
-        safeRefCounted(
+        makeRasterBackingOwner(
             move(backing)
         );
 
@@ -210,7 +230,7 @@ RasterLease!T retainRasterBacking(T)(
 +/
 private
 RasterView!T makeViewFromBacking(T)(
-    return ref RasterBacking!T backing
+    return ref RasterBacking backing
 )
 @safe
 pure
@@ -248,7 +268,7 @@ nothrow
 +/
 private
 WritableRasterView!T makeWritableViewFromBacking(T)(
-    return ref RasterBacking!T backing
+    return ref RasterBacking backing
 )
 @safe
 nothrow
@@ -284,10 +304,10 @@ struct RasterLease(T)
     );
 
 private:
-    RasterBackingOwner!T owner_;
+    RasterBackingOwner owner_;
 
     package(imagery.raster)
-    this(RasterBackingOwner!T owner)
+    this(RasterBackingOwner owner)
     @trusted
     nothrow
     @nogc
@@ -445,7 +465,7 @@ nothrow
 +/
 private
 @trusted
-RasterBacking!ubyte makeLifetimeTestBacking(
+RasterBacking makeLifetimeTestBacking(
     size_t* releaseCounters
 )
 {
@@ -518,7 +538,7 @@ RasterBacking!ubyte makeLifetimeTestBacking(
             );
     }
 
-    RasterBacking!ubyte backing;
+    RasterBacking backing;
 
     backing.resources_ = resources;
     backing.descriptors_ = descriptors;
