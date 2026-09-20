@@ -37,5 +37,9 @@ public import imagery.raster.writable_view :
 public import imagery.raster.reduction :
     trySumFloatToDouble;
 
+public import imagery.raster.copy :
+    RasterCopyError,
+    tryCopyRasterPlane;
+
 public import imagery.raster.backing :
     RasterLease;

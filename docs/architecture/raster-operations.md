@@ -5666,6 +5666,102 @@ internal implementation uses Mir; it does not make Mir part of the public API.
 E5.4g.3 may now expose the reviewed same-type copy semantic independently.
 
 
+
+##### E5.4g.3 public same-type raster copy
+
+The stable public same-type copy surface is:
+
+```d
+enum RasterCopyError : ubyte
+{
+    none,
+    invalidSourcePlane,
+    invalidDestinationPlane,
+    shapeMismatch,
+    nonInjectiveDestination,
+    sourceDestinationOverlap
+}
+
+bool tryCopyRasterPlane(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+    scope ref WritableRasterView!T destination,
+    size_t destinationPlaneIndex,
+    out RasterCopyError error
+)
+@safe
+nothrow
+@nogc;
+```
+
+A boolean alone is insufficient because the reviewed contract contains several
+actionable semantic request failures. A second result aggregate is unnecessary:
+the operation produces no successful value other than the destination mutation,
+so `bool + out RasterCopyError` carries the complete public failure information.
+
+The public error vocabulary contains exactly the E5.4f semantic failures:
+
+```text
+invalid source plane
+invalid destination plane
+shape mismatch
+non-injective destination
+actual source/destination sample-byte overlap
+```
+
+The following remain internal and are not public errors:
+
+```text
+unsupportedExecution
+addressRangeUnrepresentable
+contiguous target availability
+physical range classification
+checked-wide / Diophantine relation states
+```
+
+Matching empty operands succeed as a no-op.
+
+Source self-aliasing is permitted. Shared retained backing is also permitted
+when the actually reachable source and destination sample bytes are disjoint.
+
+Actual reachable sample-byte overlap is rejected before the first destination
+write. The operation does not provide snapshot or memmove semantics.
+
+Execution selection is replaceable:
+
+```text
+flat contiguous source + destination
+    -> existing checked memcpy specialization
+
+other validated layouts
+    -> exact affine relation + scalar semantic copy
+
+defensive checked-wide arithmetic failure
+    -> exact allocation-free pairwise byte-overlap fallback
+       before any destination write
+```
+
+Public wrapper verification covers:
+
+- successful contiguous copy;
+- invalid source plane;
+- invalid destination plane;
+- shape mismatch with unchanged destination;
+- non-injective destination with no write;
+- actual overlap with unchanged destination;
+- matching empty no-op;
+- shared backing with disjoint reachable bytes;
+- a valid negative-stride destination through the general affine path;
+- named-argument compilation of `source`, `sourcePlaneIndex`, `destination`,
+  `destinationPlaneIndex` and `error`.
+
+Internal copy dispatcher types and relation machinery remain inaccessible from
+external modules.
+
+E5.4g.4 may now expose the reviewed exact `ubyte -> float` conversion semantic
+independently.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains

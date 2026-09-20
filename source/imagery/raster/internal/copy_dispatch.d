@@ -29,7 +29,8 @@ import imagery.raster.internal.physical_range :
     classifyByteAddressRanges;
 
 import imagery.raster.internal.target :
-    RasterTargetPlane;
+    RasterTargetPlane,
+    tryBorrowContiguousTarget;
 
 import imagery.raster.view :
     RasterView;
@@ -588,6 +589,374 @@ nothrow
             return copyFailure(
                 NonOverlappingCopyError.addressRangeUnrepresentable
             );
+    }
+}
+
+
+/++
+    Semantic failure categories for the stable same-type raster-plane copy.
+
+    This package-internal type contains only public-meaningful request failures.
+    Execution coverage and arithmetic-carrier states are deliberately absent.
++/
+package(imagery.raster)
+enum SameTypeRasterCopyError : ubyte
+{
+    none,
+
+    invalidSourcePlane,
+
+    invalidDestinationPlane,
+
+    shapeMismatch,
+
+    nonInjectiveDestination,
+
+    sourceDestinationOverlap
+}
+
+
+/++
+    Exact allocation-free fallback for same-type source/destination sample-byte
+    overlap.
+
+    The normal affine relation uses the checked-wide Diophantine classifier.
+
+    This fallback is reached only if that defensive arithmetic carrier reports
+    failure. It enumerates already-validated reachable sample pointers and
+    compares their byte intervals before any destination write occurs.
+
+    Source self-aliasing is permitted.
+
+    Destination injectivity must already have been established.
+
+    The comparison avoids end-address addition: for equal-sized sample byte
+    ranges, overlap exists exactly when the absolute start-address difference
+    is less than T.sizeof.
++/
+private
+bool sameTypeAffineSampleBytesOverlapFallback(T)(
+    scope const(T)* sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    scope T* destinationBase,
+    ptrdiff_t destinationRowStrideElements,
+    ptrdiff_t destinationSampleStrideElements,
+
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(destinationBase !is null);
+    assert(width != 0);
+    assert(height != 0);
+
+    auto sourceRow =
+        sourceBase;
+
+    foreach (sourceY; 0 .. height)
+    {
+        auto sourceSample =
+            sourceRow;
+
+        foreach (sourceX; 0 .. width)
+        {
+            const sourceAddress =
+                cast(size_t) sourceSample;
+
+            auto destinationRow =
+                destinationBase;
+
+            foreach (destinationY; 0 .. height)
+            {
+                auto destinationSample =
+                    destinationRow;
+
+                foreach (destinationX; 0 .. width)
+                {
+                    const destinationAddress =
+                        cast(size_t) destinationSample;
+
+                    const distance =
+                        sourceAddress <= destinationAddress
+                        ? destinationAddress - sourceAddress
+                        : sourceAddress - destinationAddress;
+
+                    if (distance < T.sizeof)
+                        return true;
+
+                    if (destinationX + 1 < width)
+                    {
+                        destinationSample +=
+                            destinationSampleStrideElements;
+                    }
+                }
+
+                if (destinationY + 1 < height)
+                {
+                    destinationRow +=
+                        destinationRowStrideElements;
+                }
+            }
+
+            if (sourceX + 1 < width)
+            {
+                sourceSample +=
+                    sourceSampleStrideElements;
+            }
+        }
+
+        if (sourceY + 1 < height)
+        {
+            sourceRow +=
+                sourceRowStrideElements;
+        }
+    }
+
+    return false;
+}
+
+
+/++
+    Executes the stable same-type raster-plane copy semantic.
+
+    The operation performs all semantic relation checks before the first
+    destination write.
+
+    Fast-path selection is internal:
+
+    - flat contiguous source + flat contiguous destination use the existing
+      checked memcpy path;
+    - every other validated layout uses exact affine relation classification
+      plus scalar semantic execution;
+    - a defensive checked-wide arithmetic failure falls back to exact
+      allocation-free pairwise byte-range classification.
+
+    This function therefore never exposes `unsupportedExecution` or
+    `addressRangeUnrepresentable`.
+
+    The returned enum contains only semantic request failures.
++/
+package(imagery.raster)
+SameTypeRasterCopyError copySameTypeRasterPlane(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!T destination,
+    size_t destinationPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    ptrdiff_t sourceRowStrideElements;
+    ptrdiff_t sourceSampleStrideElements;
+
+    if (
+        !source.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            sourceRowStrideElements,
+            sourceSampleStrideElements
+        )
+    )
+    {
+        return
+            SameTypeRasterCopyError.invalidSourcePlane;
+    }
+
+
+    ptrdiff_t destinationRowStrideElements;
+    ptrdiff_t destinationSampleStrideElements;
+
+    if (
+        !destination.tryExecutionPlaneStrides(
+            destinationPlaneIndex,
+            destinationRowStrideElements,
+            destinationSampleStrideElements
+        )
+    )
+    {
+        return
+            SameTypeRasterCopyError.invalidDestinationPlane;
+    }
+
+
+    if (
+        source.width != destination.width
+        || source.height != destination.height
+    )
+    {
+        return
+            SameTypeRasterCopyError.shapeMismatch;
+    }
+
+
+    if (source.empty)
+    {
+        return
+            SameTypeRasterCopyError.none;
+    }
+
+
+    if (
+        !affine2DMappingIsInjective(
+            destination.width,
+            destination.height,
+            destinationRowStrideElements,
+            destinationSampleStrideElements
+        )
+    )
+    {
+        return
+            SameTypeRasterCopyError.nonInjectiveDestination;
+    }
+
+
+    bool destinationContiguous;
+
+    scope auto contiguousDestination =
+        tryBorrowContiguousTarget(
+            destination,
+            destinationPlaneIndex,
+            destinationContiguous
+        );
+
+
+    if (destinationContiguous)
+    {
+        PlaneExecutionTraits sourceTraits;
+
+        const sourceTraitsOk =
+            source.tryPlaneExecutionTraits(
+                sourcePlaneIndex,
+                sourceTraits
+            );
+
+        assert(sourceTraitsOk);
+
+        if (sourceTraits.linearContiguous1D)
+        {
+            assert(
+                sourceTraits.flatElementCount
+                == contiguousDestination.elementCount
+            );
+
+            const sourceBase =
+                source.executionRegionBase(
+                    sourcePlaneIndex
+                );
+
+            auto destinationBase =
+                contiguousDestination.executionBase();
+
+            assert(sourceBase !is null);
+            assert(destinationBase !is null);
+
+            final switch (
+                copyIfPhysicalRangesNonOverlapping(
+                    sourceBase,
+                    destinationBase,
+                    sourceTraits.flatElementCount
+                )
+            )
+            {
+                case CheckedPhysicalCopyOutcome.overlapDetected:
+                    return
+                        SameTypeRasterCopyError.sourceDestinationOverlap;
+
+                case CheckedPhysicalCopyOutcome.copied:
+                    return
+                        SameTypeRasterCopyError.none;
+
+                case CheckedPhysicalCopyOutcome.unrepresentable:
+                    break;
+            }
+        }
+    }
+
+
+    const sourceBase =
+        source.executionRegionBase(
+            sourcePlaneIndex
+        );
+
+    auto destinationBase =
+        destination.executionRegionBase(
+            destinationPlaneIndex
+        );
+
+    assert(sourceBase !is null);
+    assert(destinationBase !is null);
+
+
+    final switch (
+        classifySameTypeAffinePhysicalRelation(
+            sourceBase,
+            sourceRowStrideElements,
+            sourceSampleStrideElements,
+
+            destinationBase,
+            destinationRowStrideElements,
+            destinationSampleStrideElements,
+
+            source.width,
+            source.height
+        )
+    )
+    {
+        case AffineByteOverlapRelation.overlap:
+            return
+                SameTypeRasterCopyError.sourceDestinationOverlap;
+
+        case AffineByteOverlapRelation.disjoint:
+        {
+            copyApprovedAffine2D(
+                source,
+                sourcePlaneIndex,
+                destination,
+                destinationPlaneIndex
+            );
+
+            return
+                SameTypeRasterCopyError.none;
+        }
+
+        case AffineByteOverlapRelation.arithmeticFailure:
+        {
+            if (
+                sameTypeAffineSampleBytesOverlapFallback(
+                    sourceBase,
+                    sourceRowStrideElements,
+                    sourceSampleStrideElements,
+
+                    destinationBase,
+                    destinationRowStrideElements,
+                    destinationSampleStrideElements,
+
+                    source.width,
+                    source.height
+                )
+            )
+            {
+                return
+                    SameTypeRasterCopyError.sourceDestinationOverlap;
+            }
+
+            copyApprovedAffine2D(
+                source,
+                sourcePlaneIndex,
+                destination,
+                destinationPlaneIndex
+            );
+
+            return
+                SameTypeRasterCopyError.none;
+        }
     }
 }
 

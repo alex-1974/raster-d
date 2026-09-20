@@ -38,6 +38,13 @@ float-to-double reduction semantic. A valid empty plane succeeds with `0.0`;
 an invalid plane is the only recoverable public failure. Fixed-lane semantics
 and execution-layout failures remain internal.
 
+E5.4g.3 exposes `tryCopyRasterPlane()` with the operation-specific
+`RasterCopyError`. The public contract rejects invalid source/destination
+planes, shape mismatch, non-injective destinations and actual reachable
+sample-byte overlap before the first write. Shared backing remains permitted
+when the represented sample bytes are disjoint. Contiguous memcpy, affine
+classification and arithmetic fallback remain internal execution choices.
+
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.
 

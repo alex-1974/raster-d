@@ -209,6 +209,13 @@ The public callable represents only strict row-major reduction semantics;
 execution-layout classification, Mir adaptation and the fixed-lane graph remain
 internal.
 
+E5.4g.3 exposes `tryCopyRasterPlane()` plus the operation-specific
+`RasterCopyError`. The public copy contract is layout-independent: matching
+empty operands succeed, destination mapping must be injective, actual reachable
+source/destination sample-byte overlap is rejected before the first write, and
+shared backing is otherwise permitted. Contiguous memcpy and affine scalar
+execution remain replaceable internal paths.
+
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text

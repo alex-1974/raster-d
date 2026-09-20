@@ -300,10 +300,51 @@ module raster_execution_negative_copy_dispatch_external_surface;
 import imagery.raster.internal.copy_dispatch :
     NonOverlappingCopyError,
     NonOverlappingCopyResult,
+    SameTypeRasterCopyError,
+    copySameTypeRasterPlane,
     tryCopyNonOverlappingContiguous1D;
 
 alias escapedCopyDispatch =
     tryCopyNonOverlappingContiguous1D;
+D
+
+
+cat > "$tmp_dir/public_copy_surface.d" <<'D'
+module raster_execution_public_copy_surface;
+
+import imagery.raster :
+    RasterCopyError,
+    RasterView,
+    WritableRasterView,
+    tryCopyRasterPlane;
+
+
+/*
+ * MUST PASS.
+ *
+ * E5.4g.3 exposes the semantic same-type plane copy.
+ *
+ * Named arguments deliberately lock the stable public parameter names.
+ */
+@safe
+bool exercisePublicRasterCopy(
+    scope RasterView!ubyte source,
+    scope ref WritableRasterView!ubyte destination
+)
+{
+    RasterCopyError error;
+
+    return
+        tryCopyRasterPlane(
+            source: source,
+            sourcePlaneIndex: 0,
+            destination: destination,
+            destinationPlaneIndex: 0,
+            error: error
+        )
+        || error
+            != RasterCopyError.none;
+}
 D
 
 
@@ -472,6 +513,7 @@ echo "compiler=$compiler"
 
 compile_probe positive pass
 compile_probe public_reduction_surface pass
+compile_probe public_copy_surface pass
 compile_probe copy_dispatch_positive pass
 compile_probe conversion_dispatch_positive pass
 compile_probe physical_range_positive pass
