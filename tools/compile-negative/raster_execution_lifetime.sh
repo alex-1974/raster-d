@@ -200,10 +200,40 @@ import imagery.raster.internal.reduction_dispatch :
     FloatToDoubleSumDispatchError,
     FloatToDoubleSumResult,
     SumReductionSemantics,
-    dispatchFloatToDoubleSum;
+    dispatchFloatToDoubleSum,
+    tryStrictFloatToDoubleSum;
 
 alias escapedReductionDispatch =
     dispatchFloatToDoubleSum;
+
+alias escapedStrictSemanticBridge =
+    tryStrictFloatToDoubleSum;
+D
+
+
+cat > "$tmp_dir/public_reduction_surface.d" <<'D'
+module raster_execution_public_reduction_surface;
+
+import imagery.raster :
+    RasterView,
+    trySumFloatToDouble;
+
+/* MUST PASS: stable public strict reduction and named arguments. */
+@safe
+bool exercisePublicStrictSum(
+    scope RasterView!float source
+)
+{
+    double sum;
+
+    return
+        trySumFloatToDouble(
+            source: source,
+            planeIndex: 0,
+            sum: sum
+        )
+        || sum == 0.0;
+}
 D
 
 
@@ -441,6 +471,7 @@ compile_probe()
 echo "compiler=$compiler"
 
 compile_probe positive pass
+compile_probe public_reduction_surface pass
 compile_probe copy_dispatch_positive pass
 compile_probe conversion_dispatch_positive pass
 compile_probe physical_range_positive pass

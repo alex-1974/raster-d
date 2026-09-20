@@ -5603,6 +5603,69 @@ reduction semantic and defines its public result/error vocabulary independently
 of the package-internal reduction dispatcher.
 
 
+
+##### E5.4g.2 public strict float-to-double reduction
+
+The first public operation callable is:
+
+```d
+bool trySumFloatToDouble(
+    scope RasterView!float source,
+    size_t planeIndex,
+    out double sum
+)
+@safe
+nothrow
+@nogc;
+```
+
+This shape is intentionally smaller than the package-internal dispatch result.
+
+The reviewed public semantic has only one recoverable failure category:
+`planeIndex` does not select a logical source plane. A new public error enum or
+result struct would therefore add compatibility surface without carrying more
+semantic information than the `try` result.
+
+`sum` is an `out` parameter because it is a fresh plain numeric result.
+It is reset to `0.0` on entry and remains `0.0` when the plane index is invalid.
+
+The operation guarantees:
+
+```text
+valid non-empty plane
+    -> true + strict row-major float-to-double sum
+
+valid empty plane
+    -> true + 0.0
+
+invalid plane index
+    -> false + 0.0
+```
+
+Every validated resident layout is semantically supported. The public operation
+therefore has no `unsupportedExecution` state.
+
+The package-internal reduction layer provides a strict-only semantic bridge
+shared by the public wrapper and the existing multi-semantic dispatcher. This
+avoids copying dispatcher-specific error states into the public API while
+preserving the established execution paths.
+
+`SumReductionSemantics`, `FloatToDoubleSumDispatchError`,
+`FloatToDoubleSumResult`, `dispatchFloatToDoubleSum`,
+`tryStrictFloatToDoubleSum`, Mir adapters and the `fixedLane4` graph remain
+non-public.
+
+The public parameter names `source`, `planeIndex` and `sum` are covered by an
+external named-argument compile probe.
+
+Public-consumer compile probes that import the `imagery.raster` umbrella module
+resolve dependency import paths through `dub describe`. This mirrors the DUB
+consumer environment now required by public operations whose replaceable
+internal implementation uses Mir; it does not make Mir part of the public API.
+
+E5.4g.3 may now expose the reviewed same-type copy semantic independently.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains

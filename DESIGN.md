@@ -202,7 +202,12 @@ Certification factories, execution-layout metadata, mutable execution pointers,
 
 Integration with the existing checked copy and exact conversion consumers is
 verified, and the E5.4f public-operation contract review remains the authority
-for later E5.4g operation exposure.
+for E5.4g operation exposure.
+
+E5.4g.2 exposes `trySumFloatToDouble()` as the first stable public operation.
+The public callable represents only strict row-major reduction semantics;
+execution-layout classification, Mir adaptation and the fixed-lane graph remain
+internal.
 
 Detailed evidence and implementation sequencing are maintained in:
 

@@ -27,14 +27,16 @@ The retained raster foundation now includes:
 - a public semantic `WritableRasterView`;
 - a lease-bound public writable borrow from `RasterLease`.
 
-E5.4g is now in progress. E5.4g.1 exposes only the semantic writable borrow:
+E5.4g is now in progress. E5.4g.1 exposes the semantic writable borrow:
 retained writable backing may be borrowed as `WritableRasterView`, while
 writable certification, execution classification, raw execution pointers,
 `RasterTargetPlane`, Mir adapters and alias-relation machinery remain internal.
 
-E5.4f remains complete. The first public operation callables are deliberately
-deferred to later E5.4g slices so their result/error surfaces can be frozen
-independently of writable-capability exposure.
+E5.4g.2 adds the first stable public raster operation:
+`trySumFloatToDouble()`. It exposes only the reviewed strict row-major
+float-to-double reduction semantic. A valid empty plane succeeds with `0.0`;
+an invalid plane is the only recoverable public failure. Fixed-lane semantics
+and execution-layout failures remain internal.
 
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.

@@ -14,6 +14,51 @@ mkdir -p "$tmp_dir"
 failures=0
 
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required"
+    exit 1
+fi
+
+
+# Compile external/public-surface probes with the same package import paths
+# that a real DUB consumer sees.  This matters once the public umbrella module
+# re-exports operations whose implementation depends on internal Mir modules.
+if ! (
+    cd "$repo_root" &&
+    dub describe --compiler="$compiler"
+) >"$tmp_dir/describe.json"
+then
+    echo "ERROR: dub describe failed"
+    exit 1
+fi
+
+
+import_args=()
+
+while IFS= read -r path
+do
+    if [ -n "$path" ]; then
+        import_args+=("-I$path")
+    fi
+done < <(
+    jq -r '
+        .packages[]
+        | .path as $base
+        | (.importPaths // [])[]
+        | if startswith("/")
+          then .
+          else ($base + "/" + .)
+          end
+    ' "$tmp_dir/describe.json"
+)
+
+
+if [ "${#import_args[@]}" -eq 0 ]; then
+    echo "ERROR: dub describe produced no import paths"
+    exit 1
+fi
+
+
 cat > "$tmp_dir/positive_safe.d" <<'D'
 module raster_import_public_positive_safe;
 
@@ -158,7 +203,7 @@ compile_probe()
             -c \
             -preview=dip1000 \
             -unittest \
-            -Isource \
+            "${import_args[@]}" \
             -of="$object_file" \
             "$source_file"
     ) >"$log_file" 2>&1

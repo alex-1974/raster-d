@@ -63,7 +63,7 @@ E5.4f.5c.2   affine relation + concrete consumer mapping   complete
 E5.4g        stable public operation exposure              in progress
 E5.4g.0      public exposure sequencing                    complete
 E5.4g.1      semantic writable-borrow exposure             complete
-E5.4g.2      strict float-to-double sum exposure           not started
+E5.4g.2      strict float-to-double sum exposure           complete
 E5.4g.3      same-type raster copy exposure                not started
 E5.4g.4      exact ubyte-to-float conversion exposure      not started
 E5.4g.5      public-surface/lifetime closeout              not started
@@ -91,8 +91,9 @@ token, general writable-target hierarchy, or public operation API has been
 introduced.
 
 The explicit E5.4f closeout review is complete. E5.4g stable public operation
-exposure is now in progress. E5.4g.1 exposes the semantic writable borrow only;
-the first public operation callable is E5.4g.2.
+exposure is now in progress. E5.4g.1 exposes the semantic writable borrow and
+E5.4g.2 exposes the strict float-to-double sum. E5.4g.3 same-type raster copy
+is the next slice.
 
 M2 has partial internal implementation used to validate the engine
 architecture; copy, reduction and conversion machinery are not yet exposed as

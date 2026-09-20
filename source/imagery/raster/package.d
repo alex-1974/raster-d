@@ -34,5 +34,8 @@ public import imagery.raster.view :
 public import imagery.raster.writable_view :
     WritableRasterView;
 
+public import imagery.raster.reduction :
+    trySumFloatToDouble;
+
 public import imagery.raster.backing :
     RasterLease;

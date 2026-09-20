@@ -2,6 +2,12 @@
 
 compiler="${1:-dmd}"
 
+
+repo_root="$(
+    cd "$(dirname "$0")/../.." >/dev/null 2>&1
+    pwd
+)"
+
 tmp_dir="$(
     mktemp -d \
         "/tmp/imagery-d-raster-writable-view-XXXXXX"
@@ -17,6 +23,51 @@ trap cleanup EXIT
 failures=0
 
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required"
+    exit 1
+fi
+
+
+# Compile external/public-surface probes with the same package import paths
+# that a real DUB consumer sees.  This matters once the public umbrella module
+# re-exports operations whose implementation depends on internal Mir modules.
+if ! (
+    cd "$repo_root" &&
+    dub describe --compiler="$compiler"
+) >"$tmp_dir/describe.json"
+then
+    echo "ERROR: dub describe failed"
+    exit 1
+fi
+
+
+import_args=()
+
+while IFS= read -r path
+do
+    if [ -n "$path" ]; then
+        import_args+=("-I$path")
+    fi
+done < <(
+    jq -r '
+        .packages[]
+        | .path as $base
+        | (.importPaths // [])[]
+        | if startswith("/")
+          then .
+          else ($base + "/" + .)
+          end
+    ' "$tmp_dir/describe.json"
+)
+
+
+if [ "${#import_args[@]}" -eq 0 ]; then
+    echo "ERROR: dub describe produced no import paths"
+    exit 1
+fi
+
+
 compile_probe()
 {
     name="$1"
@@ -28,7 +79,7 @@ compile_probe()
 
     if "$compiler" \
         -preview=dip1000 \
-        -Isource \
+        "${import_args[@]}" \
         -c "$source" \
         -of="$object" \
         2>"$stderr"
