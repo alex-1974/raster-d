@@ -153,7 +153,7 @@ RasterLease
 
 `RasterView` remains a cheap non-owning semantic read view.
 
-`WritableRasterView` is its package-internal writable semantic peer. It
+`WritableRasterView` is its public lease-bound writable semantic peer. It
 certifies permission to write represented samples but does not imply:
 
 ```text
@@ -195,10 +195,14 @@ The lease-bound writable borrow, writable execution primitives and first
 flat-contiguous `WritableRasterView -> RasterTargetPlane` execution bridge are
 now implemented.
 
-`WritableRasterView` remains package-internal. Integration with the existing
-checked copy and exact conversion consumers is verified, and the E5.4f
-public-operation contract review is complete. E5.4g may expose only the
-reviewed semantic surface without exposing the current execution machinery.
+E5.4g.1 exposes `WritableRasterView` and the mutable
+`RasterLease.tryWritableView()` borrow as semantic public capabilities.
+Certification factories, execution-layout metadata, mutable execution pointers,
+`RasterTargetPlane` and current operation dispatchers remain internal.
+
+Integration with the existing checked copy and exact conversion consumers is
+verified, and the E5.4f public-operation contract review remains the authority
+for later E5.4g operation exposure.
 
 Detailed evidence and implementation sequencing are maintained in:
 

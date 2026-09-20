@@ -31,5 +31,8 @@ public import imagery.raster.region :
 public import imagery.raster.view :
     RasterView;
 
+public import imagery.raster.writable_view :
+    WritableRasterView;
+
 public import imagery.raster.backing :
     RasterLease;

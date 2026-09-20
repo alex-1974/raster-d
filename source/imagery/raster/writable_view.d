@@ -1,5 +1,5 @@
 /++
-    Package-internal semantic writable raster view.
+    Semantic writable raster view.
 
     WritableRasterView is deliberately separate from ownership and retained
     resource metadata.
@@ -24,7 +24,10 @@
     const(void)*. Mutable typed access is formed only inside the narrow trusted
     sample-write boundary below.
 
-    This module remains package-internal during E5.4d.1.
+    The semantic view is public from E5.4g.1 onward.
+
+    Construction/certification and execution-oriented members remain
+    package-internal.
 +/
 module imagery.raster.writable_view;
 
@@ -65,7 +68,6 @@ import imagery.raster.view :
 
     The view owns neither descriptors nor pixel storage.
 +/
-package(imagery.raster)
 struct WritableRasterView(T)
 {
     static assert(

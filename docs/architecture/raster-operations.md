@@ -5504,6 +5504,105 @@ E5.4g is therefore unblocked and may begin the stable public-operation exposure
 work from this reviewed contract.
 
 
+
+#### E5.4g stable public operation exposure checkpoint — 2026-09-20
+
+E5.4g proceeds in narrow additive slices. Public semantic capability is exposed
+before public operation result/error types are frozen.
+
+The sequence is:
+
+```text
+E5.4g.0  public exposure sequencing
+E5.4g.1  semantic writable-borrow exposure
+E5.4g.2  strict float-to-double sum exposure
+E5.4g.3  same-type raster copy exposure
+E5.4g.4  exact ubyte-to-float conversion exposure
+E5.4g.5  public-surface/lifetime closeout
+```
+
+This sequence keeps lifetime/API review separate from operation-specific error
+mapping and kernel selection.
+
+##### E5.4g.0 exposure decision
+
+Source-to-target operations consume two distinct semantic capabilities:
+
+```text
+read source
+    RasterView!T
+
+write destination
+    WritableRasterView!T
+```
+
+They do not consume ownership itself.
+
+Therefore E5.4g does not make `RasterLease` the destination operand of copy or
+conversion merely to avoid exposing a writable view. Doing so would couple
+operations to retained ownership and would make writable ROI composition
+awkward.
+
+The existing `WritableRasterView` is already the evidence-backed semantic
+capability required by the reviewed E5.4f contract.
+
+##### E5.4g.1 public semantic writable borrow
+
+E5.4g.1 exposes:
+
+```text
+WritableRasterView!T
+RasterLease!T.tryWritableView(out bool success)
+```
+
+The public view exposes semantic geometry, ROI, checked sample read and checked
+sample write behavior.
+
+The following remain non-public:
+
+```text
+tryMakeWritableRasterView
+makeWritableRasterViewAssumeCertified
+tryPlaneExecutionTraits
+tryExecutionPlaneStrides
+executionRegionBase
+RasterTargetPlane
+Mir adapters
+physical-range / affine relation machinery
+```
+
+The capability means only:
+
+```text
+writes through this borrow are permitted
+```
+
+It does not mean:
+
+```text
+unique
+exclusive
+noalias
+contiguous
+source/target disjoint
+thread-exclusive
+```
+
+The writable borrow remains lifetime-related to the mutable RasterLease.
+A const lease cannot recover write capability. Raw certification cannot be
+performed by external callers.
+
+Compile-negative coverage continues to reject raw construction/certification,
+execution-pointer access and lifetime escape while positive external probes now
+require the semantic type and lease-bound borrow to compile.
+
+No public raster operation callable is introduced by E5.4g.1.
+
+The next slice, E5.4g.2, exposes only the reviewed strict float-to-double
+reduction semantic and defines its public result/error vocabulary independently
+of the package-internal reduction dispatcher.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains

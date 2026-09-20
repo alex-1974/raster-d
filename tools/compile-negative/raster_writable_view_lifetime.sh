@@ -367,19 +367,71 @@ D
 
 
 cat > "$tmp_dir/external_surface.d" <<'D'
-module raster_writable_view_negative_external_surface;
+module raster_writable_view_public_external_surface;
+
+import imagery.raster :
+    WritableRasterView;
+
+
+/*
+ * MUST PASS.
+ *
+ * E5.4g.1 deliberately exposes the semantic writable-view type through the
+ * public raster package.
+ *
+ * Default construction is safe and inert; raw certification remains hidden.
+ */
+@safe
+bool inspectPublicWritableView(
+    scope ref WritableRasterView!ubyte view
+)
+{
+    return
+        view.planeCount == 0
+        || !view.empty;
+}
+D
+
+
+cat > "$tmp_dir/external_factory_surface.d" <<'D'
+module raster_writable_view_negative_external_factory_surface;
 
 /*
  * MUST FAIL.
  *
- * WritableRasterView and its certifying factory remain package-internal during
- * E5.4d.1.
+ * Publishing WritableRasterView does not publish its raw certification
+ * boundary.
  */
 import imagery.raster.writable_view :
-    WritableRasterView,
     tryMakeWritableRasterView;
 
-WritableRasterView!ubyte escaped;
+alias escapedWritableFactory =
+    tryMakeWritableRasterView;
+D
+
+
+cat > "$tmp_dir/external_execution_surface.d" <<'D'
+module raster_writable_view_negative_external_execution_surface;
+
+import imagery.raster :
+    WritableRasterView;
+
+
+/*
+ * MUST FAIL.
+ *
+ * The public semantic writable view must not expose mutable execution pointers.
+ */
+@safe
+void consumeInternalExecutionBase(
+    scope ref WritableRasterView!ubyte view
+)
+{
+    auto base =
+        view.executionRegionBase(0);
+
+    cast(void) base;
+}
 D
 
 
@@ -515,17 +567,20 @@ D
 
 
 cat > "$tmp_dir/external_lease_surface.d" <<'D'
-module raster_writable_view_negative_external_lease_surface;
+module raster_writable_view_public_external_lease_surface;
 
 import imagery.raster :
-    RasterLease;
+    RasterLease,
+    WritableRasterView;
 
 
 /*
- * MUST FAIL.
+ * MUST PASS.
  *
- * Lease-bound writable borrowing remains package-internal while
- * WritableRasterView is package-internal.
+ * E5.4g.1 exposes the lease-bound semantic writable borrow.
+ *
+ * The borrow remains lifetime-related to the mutable lease and carries no
+ * uniqueness/noalias guarantee.
  */
 @safe
 bool externalWritableBorrow(
@@ -534,12 +589,89 @@ bool externalWritableBorrow(
 {
     bool success;
 
-    auto view =
+    scope WritableRasterView!ubyte view =
         lease.tryWritableView(
             success
         );
 
-    return success && !view.empty;
+    return
+        !success
+        || view.planeCount != 0;
+}
+D
+
+
+
+cat > "$tmp_dir/external_named_arguments.d" <<'D'
+module raster_writable_view_public_named_arguments;
+
+import imagery.raster :
+    RasterLease,
+    Region2D,
+    WritableRasterView;
+
+
+/*
+ * MUST PASS.
+ *
+ * Public D parameter names may be used as named arguments and therefore belong
+ * to the stabilized source-compatibility surface.
+ *
+ * This probe deliberately locks the E5.4g.1 names:
+ *
+ * RasterLease.tryWritableView:
+ *     success
+ *
+ * WritableRasterView.tryRoi:
+ *     relative, success
+ *
+ * WritableRasterView.trySample:
+ *     band, x, y, value
+ *
+ * WritableRasterView.trySetSample:
+ *     band, x, y, value
+ */
+@safe
+bool exercisePublicNamedArguments(
+    ref RasterLease!ubyte lease
+)
+{
+    bool borrowSuccess;
+
+    scope WritableRasterView!ubyte view =
+        lease.tryWritableView(
+            success: borrowSuccess
+        );
+
+    if (!borrowSuccess)
+        return true;
+
+
+    bool roiSuccess;
+
+    scope WritableRasterView!ubyte roi =
+        view.tryRoi(
+            relative: Region2D.init,
+            success: roiSuccess
+        );
+
+    ubyte value;
+
+    cast(void) roi.trySample(
+        band: 0,
+        x: 0,
+        y: 0,
+        value: value
+    );
+
+    cast(void) roi.trySetSample(
+        band: 0,
+        x: 0,
+        y: 0,
+        value: ubyte.init
+    );
+
+    return roiSuccess || !roiSuccess;
 }
 D
 
@@ -556,8 +688,11 @@ compile_probe local_escape reject
 compile_probe global_escape reject
 compile_probe const_roi reject
 compile_probe raw_constructor_surface reject
-compile_probe external_surface reject
-compile_probe external_lease_surface reject
+compile_probe external_surface pass
+compile_probe external_factory_surface reject
+compile_probe external_execution_surface reject
+compile_probe external_lease_surface pass
+compile_probe external_named_arguments pass
 
 echo "FAILURES=$failures"
 
