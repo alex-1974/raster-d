@@ -365,8 +365,11 @@ Therefore the initial R0.3 dependency rule is:
 
 regardless of the configured dependency margins.
 
-The returned empty input should preserve a deterministic anchor derived from
-the valid output request rather than use failure sentinel semantics.
+The returned empty input is anchored at the output-request origin:
+
+    Region2D(output.x, output.y, 0, 0)
+
+This remains a successful empty result rather than a failure sentinel.
 
 This rule may be revisited only if a concrete future operation demonstrates
 that producing no output can semantically require input work.

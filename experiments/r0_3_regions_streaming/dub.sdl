@@ -11,4 +11,4 @@ dflags "-preview=dip1000"
 dependency "imagery-d" path="../.."
 
 importPaths "."
-sourceFiles "region_algebra.d"
+sourceFiles "region_algebra.d" "dependency.d"
