@@ -4,8 +4,8 @@
 
 E5.0 architecture definition.
 
-Current implementation checkpoint: E5.4f public operation contract redesign is
-complete. E5.4g stable public operation exposure is not started.
+Current implementation checkpoint: E5.4f public operation contract redesign and
+E5.4g stable public operation exposure are complete.
 
 This document defines the conceptual operation layer above the resident raster
 semantics and execution machinery established by E1-E4.

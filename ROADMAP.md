@@ -1,110 +1,79 @@
 # imagery-d Roadmap
 
-## Current implementation checkpoint — 2026-09-19
+## Current implementation checkpoint — 2026-09-20
 
 The repository has progressed beyond the initial architecture-only stage while
 the long-term milestone structure below remains valid.
 
-Current core status:
+The resident raster foundation now includes:
 
-- retained resource ownership and raster backing are implemented;
-- `RasterView` provides the read-only semantic resident view;
-- signed-stride and multi-plane backing validation are implemented;
-- execution layouts and Mir adapters remain internal;
-- scalar reduction/copy kernels and measured specializations exist internally;
-- `ubyte -> float` conversion has a checked internal dispatch path;
-- per-resource `readOnly` / `readWrite` provenance is retained;
-- writable backing certification is implemented;
-- package-internal `WritableRasterView` with writable ROI, sample read and
-  sample write semantics is implemented and DIP1000-tested with DMD and LDC;
-- `RasterLease` can derive a package-internal lease-bound writable borrow from
-  retained `readWrite` resources, while const leases and escaping borrows are
-  rejected by the DIP1000 lifetime model;
-- `WritableRasterView` now exposes the minimal package-internal execution
-  primitives required by the existing contiguous writable-target consumers:
-  shared plane-layout classification and a lifetime-bound mutable region-origin
-  execution pointer;
-- flat-contiguous planes of a certified `WritableRasterView` can now derive the
-  existing package-internal `RasterTargetPlane` capability while preserving
-  DIP1000 lifetime provenance through the target and existing Mir adapters;
-- the existing checked copy and exact `ubyte -> float` conversion consumers are
-  verified end-to-end through retained `RasterLease -> WritableRasterView ->
-  RasterTargetPlane` destinations without changing their operation-local
-  physical non-overlap checks.
+- retained raster-resource ownership;
+- validated multi-plane raster backing;
+- signed row and sample strides;
+- zero-copy resident ROIs;
+- read-only `RasterView!T`;
+- public lease-bound `WritableRasterView!T`;
+- retained read/write provenance and writable-backing certification;
+- internal execution-layout classification and Mir adapters;
+- checked affine alias/overlap analysis;
+- strict row-major `float -> double` reduction;
+- checked same-type raster-plane copy;
+- exact `ubyte -> float` raster-plane conversion.
 
 The current raster-operations sequence is:
 
 ```text
-E5.4a    public-surface audit                         complete
-E5.4b    writable prerequisites audit                 complete
-E5.4c    retained write-access provenance design      complete
-E5.4c.1  retained ResourceAccess implementation       complete
-E5.4d    semantic writable-view contract              complete
-E5.4d.1a writable backing certification               complete
-E5.4d.1b semantic WritableRasterView implementation   complete
-E5.4d.1c RasterLease -> writable borrow                complete
-E5.4e        writable execution capabilities              complete
-E5.4e.1      writable execution primitives                complete
-E5.4e.2      WritableRasterView -> RasterTargetPlane       complete
-E5.4e.3      existing consumer integration                complete
-E5.4f        public operation contract redesign            complete
-E5.4f.0      initial contract audit                        complete
-E5.4f.1      public contract matrix audit                  complete
-E5.4f.2      writable affine execution-gap audit           complete
-E5.4f.3      bulk-write alias contract                     complete
-E5.4f.4      exact affine overlap research                 complete
-E5.4f.5a     checked-arithmetic carrier audit              complete
-E5.4f.5b.1   sign+magnitude wide arithmetic                complete
-E5.4f.5b.2a  bounded wide Diophantine solver               complete
-E5.4f.5b.2b  affine-overlap equivalence                    complete
-E5.4f.5c     production mapping audit                      complete
-E5.4f.5c.1   writable execution stride query               complete
-E5.4f.5c.2   affine relation + concrete consumer mapping   complete
-E5.4g        stable public operation exposure              in progress
-E5.4g.0      public exposure sequencing                    complete
-E5.4g.1      semantic writable-borrow exposure             complete
-E5.4g.2      strict float-to-double sum exposure           complete
-E5.4g.3      same-type raster copy exposure                complete
-E5.4g.4      exact ubyte-to-float conversion exposure      complete
-E5.4g.5      public-surface/lifetime closeout              complete
+E5.4a       public-surface audit                         complete
+E5.4b       writable prerequisites audit                complete
+E5.4c       retained write-access provenance design     complete
+E5.4c.1     retained ResourceAccess implementation      complete
+E5.4d       semantic writable-view contract             complete
+E5.4d.1a    writable backing certification              complete
+E5.4d.1b    semantic WritableRasterView implementation  complete
+E5.4d.1c    RasterLease -> writable borrow              complete
+E5.4e       writable execution capabilities             complete
+E5.4e.1     writable execution primitives               complete
+E5.4e.2     WritableRasterView -> RasterTargetPlane     complete
+E5.4e.3     existing consumer integration               complete
+E5.4f       public operation contract redesign          complete
+E5.4f.0     initial contract audit                      complete
+E5.4f.1     public contract matrix audit                complete
+E5.4f.2     writable affine execution-gap audit         complete
+E5.4f.3     bulk-write alias contract                   complete
+E5.4f.4     exact affine overlap research               complete
+E5.4f.5a    checked-arithmetic carrier audit            complete
+E5.4f.5b.1  sign+magnitude wide arithmetic              complete
+E5.4f.5b.2a bounded wide Diophantine solver             complete
+E5.4f.5b.2b affine-overlap equivalence                  complete
+E5.4f.5c    production mapping audit                    complete
+E5.4f.5c.1  writable execution stride query             complete
+E5.4f.5c.2  affine relation + concrete consumer mapping complete
+E5.4g       stable public operation exposure            complete
+E5.4g.0     public exposure sequencing                  complete
+E5.4g.1     semantic writable-borrow exposure           complete
+E5.4g.2     strict float-to-double sum exposure         complete
+E5.4g.3     same-type raster copy exposure              complete
+E5.4g.4     exact ubyte-to-float conversion exposure    complete
+E5.4g.5     public-surface/lifetime closeout            complete
 ```
 
-`WritableRasterView` is public from E5.4g.1 as the lease-bound semantic write
-capability. It establishes write permission but does not imply uniqueness,
-non-aliasing, contiguity or thread exclusivity. Writable certification and
-execution machinery remain package-internal.
+The stable public raster-operation surface now consists of:
 
-The resident raster/view core now includes both read-only and writable
-lease-bound lifetime integration, the first contiguous writable execution
-bridge, and verified integration of that bridge with the existing checked copy
-and exact conversion consumers.
+- the semantic lease-bound writable borrow;
+- strict `trySumFloatToDouble()`;
+- checked `tryCopyRasterPlane()`;
+- exact `tryConvertUbyteToFloatPlane()`.
 
-The public operation-contract redesign is complete. E5.4f.5c production
-mapping remains complete: the accepted alias, affine-layout, exact-overlap, and
-checked-wide-arithmetic research is represented by the smallest production
-machinery required by the concrete same-type copy and ubyte-to-float conversion
-consumers.
+Execution layouts, Mir adapters, mutable execution pointers,
+`RasterTargetPlane`, physical-range classification, affine relation machinery,
+checked-wide arithmetic and operation dispatch internals remain non-public.
 
-The affine relation and checked-wide machinery remains package-internal, and
-the wide/Diophantine implementation remains private. No persistent alias-proof
-token, general writable-target hierarchy, or public operation API has been
-introduced.
+The next research milestone is R0.3: define the region, dependency and streaming
+model above the resident raster core without collapsing provider tiles, cache
+blocks, logical regions or future processing tasks into one tile abstraction.
 
-The explicit E5.4f closeout review is complete. E5.4g stable public operation
-exposure is now in progress. E5.4g.1 exposes the semantic writable borrow and
-E5.4g.2 exposes the strict float-to-double sum, E5.4g.3 exposes the checked
-same-type raster-plane copy, and E5.4g.4 exposes exact ubyte-to-float
-conversion. E5.4g.5 closes the public-surface and lifetime boundary. E5.4g is
-complete; no further raster-operation surface is added by this phase.
-
-M2 has partial internal implementation used to validate the engine
-architecture; copy, reduction and conversion machinery are not yet exposed as
-stable public raster operations.
-
-At this checkpoint, the coordinated repository/worktree rename had not yet been
-performed: the repository and DUB package still used the historical `d-imagery`
-name. The reorganization on 2026-09-18 subsequently renamed the project and DUB
-package to `imagery-d`.
+R0.3 begins as research under `experiments/r0_3_regions_streaming/`. No new
+stable production API is implied by starting this phase.
 
 ## R0 — Constraints, Research and Architecture
 
