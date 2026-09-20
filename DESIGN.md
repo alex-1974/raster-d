@@ -224,6 +224,14 @@ actual reachable source/destination sample-byte overlap is rejected before the
 first write. Mir adapters, contiguous targets, affine relation machinery and
 defensive wide-arithmetic fallback remain replaceable internals.
 
+
+E5.4g.5 closes the public-operation boundary without adding another execution
+abstraction. External consumers see semantic raster views, lease-bound writable
+views and the three reviewed operations only. Lifetime probes require writable
+capabilities to remain tied to their leases; public operation probes compile
+through the umbrella package with named arguments; compile-negative probes keep
+raw certification and all execution/relation machinery inaccessible.
+
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text

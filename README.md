@@ -53,6 +53,15 @@ mismatch, non-injective destinations and actual reachable sample-byte overlap
 are semantic failures. Contiguous Mir/scalar execution, affine classification
 and defensive arithmetic fallback remain internal.
 
+
+E5.4g is complete. The stable operation surface now consists of the semantic
+writable borrow plus strict float-to-double sum, checked same-type plane copy
+and exact ubyte-to-float conversion. Public-source compatibility includes the
+reviewed parameter names. Raw writable certification, execution traits,
+execution pointers, `RasterTargetPlane`, Mir adapters, physical-range and affine
+relation machinery, checked-wide arithmetic and internal dispatcher result
+types remain non-public.
+
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.
 

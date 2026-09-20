@@ -5863,6 +5863,66 @@ E5.4g.5 may now perform the final public-surface/lifetime closeout without
 adding another operation.
 
 
+
+##### E5.4g.5 public-surface and lifetime closeout
+
+E5.4g closes without adding another production operation.
+
+The stable semantic surface established by E5.4g is:
+
+```text
+WritableRasterView!T
+RasterLease!T.tryWritableView(out bool success)
+
+trySumFloatToDouble(...)
+RasterCopyError
+tryCopyRasterPlane(...)
+
+UbyteToFloatConversionError
+tryConvertUbyteToFloatPlane(...)
+```
+
+The public umbrella package continues to expose the pre-existing raster
+construction/import/view types plus only these reviewed semantic additions.
+
+The following remain deliberately non-public:
+
+```text
+raw writable certification
+PlaneExecutionTraits and execution layout classifications
+executionRegionBase / execution strides
+RasterTargetPlane
+Mir adapters and Mir execution view types
+fixed-lane reduction semantics
+internal dispatcher result/error types
+physical-range classifiers
+affine relation types
+checked-wide and Diophantine machinery
+operation-local alias/injectivity proof machinery
+```
+
+The writable capability remains a permission-to-write borrow only. It does not
+imply uniqueness, exclusivity, noalias, contiguity or thread exclusivity.
+
+The closeout compile probe verifies from an external consumer module that:
+
+- the umbrella imports all three stable operations and their semantic error
+  types;
+- named arguments compile for every public operation and writable borrow;
+- internal execution/relation symbols are absent from the umbrella surface;
+- a writable lease borrow cannot escape by return;
+- a writable lease borrow cannot be stored globally.
+
+The complete DMD and LDC unittest suites and compile-negative suites pass with
+the closeout probe included.
+
+Therefore E5.4g is complete.
+
+Further public raster functionality requires a new concrete consumer or a new
+research result; E5.4g itself is not extended merely to generalize the current
+operation set.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains
