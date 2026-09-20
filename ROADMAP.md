@@ -47,7 +47,7 @@ E5.4e        writable execution capabilities              complete
 E5.4e.1      writable execution primitives                complete
 E5.4e.2      WritableRasterView -> RasterTargetPlane       complete
 E5.4e.3      existing consumer integration                complete
-E5.4f        public operation contract redesign            in progress
+E5.4f        public operation contract redesign            complete
 E5.4f.0      initial contract audit                        complete
 E5.4f.1      public contract matrix audit                  complete
 E5.4f.2      writable affine execution-gap audit           complete
@@ -72,9 +72,9 @@ lease-bound lifetime integration, the first contiguous writable execution
 bridge, and verified integration of that bridge with the existing checked copy
 and exact conversion consumers.
 
-The public operation-contract redesign remains in progress. E5.4f.5c production
-mapping is complete: the accepted alias, affine-layout, exact-overlap, and
-checked-wide-arithmetic research is now represented by the smallest production
+The public operation-contract redesign is complete. E5.4f.5c production
+mapping remains complete: the accepted alias, affine-layout, exact-overlap, and
+checked-wide-arithmetic research is represented by the smallest production
 machinery required by the concrete same-type copy and ubyte-to-float conversion
 consumers.
 
@@ -83,8 +83,9 @@ the wide/Diophantine implementation remains private. No persistent alias-proof
 token, general writable-target hierarchy, or public operation API has been
 introduced.
 
-The next E5.4f step is the explicit closeout review of the intended public
-operation contract before E5.4g stable public operation exposure begins.
+The explicit E5.4f closeout review is complete. E5.4g stable public operation
+exposure is now the next stage and remains not started until its implementation
+work begins.
 
 M2 has partial internal implementation used to validate the engine
 architecture; copy, reduction and conversion machinery are not yet exposed as

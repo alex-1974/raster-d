@@ -5,7 +5,7 @@
 E5.0 architecture definition.
 
 Current implementation checkpoint: E5.4f public operation contract redesign is
-in progress.
+complete. E5.4g stable public operation exposure is not started.
 
 This document defines the conceptual operation layer above the resident raster
 semantics and execution machinery established by E1-E4.
@@ -5322,16 +5322,186 @@ contracts, or a general affine-operation framework.
 Those abstractions remain intentionally absent unless a future concrete
 consumer and supporting evidence justify them.
 
-E5.4g remains blocked until the intended public operation surface has an
-explicitly reviewed contract for:
+The explicit E5.4f closeout review below resolves the contract gate for E5.4g.
+E5.4g remains not started until its implementation work begins.
 
-```text
-observable semantics
-errors
-lifetime
-alias behavior
-source compatibility
-```
+
+
+##### E5.4f closeout — reviewed public operation contract — 2026-09-20
+
+E5.4f is complete.
+
+The closeout review fixes the semantic boundary that E5.4g may expose. It does
+not select final public symbol names merely by copying current internal
+dispatcher names.
+
+The common public-operation rules are:
+
+- semantic behavior is independent of the selected execution path;
+- execution layouts, Mir adapters, `RasterTargetPlane`, affine-relation
+  machinery and wide/Diophantine arithmetic remain implementation details;
+- valid semantic requests must not fail only because one optimized execution
+  path is unavailable;
+- `unsupportedExecution`, `addressRangeUnrepresentable`, internal relation
+  states and kernel-selection details are not stable public errors;
+- operation failures remain operation-specific rather than being forced into a
+  generic result hierarchy;
+- source-to-target operations complete all semantic relation checks before the
+  first destination write;
+- operations borrow their operands synchronously and do not retain views,
+  execution pointers or target capabilities beyond the call;
+- no public alias-proof token, generic operation hierarchy, generic conversion
+  policy, global `fast`/`strict` policy or public execution-layout selector is
+  introduced.
+
+###### Strict float-to-double sum
+
+The first reviewed public reduction semantic is the existing strict
+float-to-double sum semantic.
+
+Its observable contract is:
+
+- one logical `float` source plane is selected from a valid read-only raster
+  view;
+- every logical sample participates in the existing strict row-major reduction
+  order;
+- a valid empty plane returns the additive identity `0.0`;
+- every validated resident layout is semantically supported;
+- an invalid source plane is a semantic request failure;
+- execution-layout selection is internal.
+
+The current `fixedLane4` graph remains an internal alternative semantic. Its
+lane-count-shaped name and `unsupportedExecution` behavior are not promoted to
+the public contract. A later public alternate reduction semantic requires a
+concrete consumer and separately reviewed numeric vocabulary.
+
+###### Same-type raster copy
+
+The reviewed copy semantic is a checked same-type source-to-destination plane
+copy.
+
+Its observable contract is:
+
+- source and destination logical width and height must match;
+- matching empty operands succeed as a no-op;
+- the destination mapping must be injective over the represented finite
+  rectangle;
+- source self-aliasing is permitted;
+- source and destination may share retained backing when their actually
+  reachable sample bytes are disjoint;
+- actual physical source/destination sample-byte overlap is rejected before the
+  first destination write;
+- successful execution copies each logical source sample to the corresponding
+  logical destination sample;
+- invalid source plane, invalid destination plane, shape mismatch,
+  non-injective destination and actual physical overlap are semantic request
+  failures.
+
+The contract deliberately does not provide snapshot or `memmove` semantics for
+overlapping source and destination samples.
+
+Contiguous `memcpy` specialization, scalar affine execution, physical-address
+classification and checked relation arithmetic remain internal choices.
+
+###### Exact ubyte-to-float raster conversion
+
+The reviewed conversion semantic is the concrete `ubyte` to `float`
+source-to-destination plane conversion already justified by a consumer and
+retained evidence.
+
+Its observable contract is:
+
+- source and destination logical width and height must match;
+- matching empty operands succeed as a no-op;
+- each destination sample is the exact IEEE-754 binary32 value of
+  `cast(float)` applied to the corresponding source `ubyte`;
+- the destination mapping must be injective;
+- source self-aliasing is permitted;
+- source and destination may share retained backing only when their actually
+  reachable sample bytes are disjoint;
+- actual physical source/destination sample-byte overlap is rejected before the
+  first destination write;
+- invalid source plane, invalid destination plane, shape mismatch,
+  non-injective destination and actual physical overlap are semantic request
+  failures.
+
+No generic public conversion framework or conversion-policy hierarchy is
+justified by this one concrete conversion.
+
+###### Writable destination and lifetime contract
+
+Source-to-target public operations require a semantic writable destination
+borrow. E5.4f fixes that role without exposing execution machinery.
+
+The existing `WritableRasterView` semantics are the accepted model:
+
+- write permission derives from retained `readWrite` provenance;
+- the borrow is lifetime-bound to retained raster storage;
+- a const lease cannot recover write capability;
+- writable does not mean unique, exclusive, non-aliasing, contiguous or
+  thread-exclusive;
+- operation-local destination injectivity and source/destination overlap checks
+  remain separate requirements.
+
+E5.4g may expose the semantic writable-borrow role, but package-internal
+execution members and raw construction boundaries must remain hidden.
+
+###### Public error boundary
+
+Stable public errors describe semantic request failures, not implementation
+coverage.
+
+For the reviewed operations this means that public error vocabulary may cover
+the operation-specific semantic cases listed above.
+
+It must not expose the current internal dispatcher values
+`unsupportedExecution` or `addressRangeUnrepresentable` merely because those
+values exist internally. A valid semantic request must instead reach a correct
+general path when a specialization is unavailable.
+
+The exact public enum/result names and representation are an E5.4g API-design
+choice. They must remain operation-specific unless later evidence demonstrates
+a genuinely shared semantic type.
+
+###### Source compatibility boundary
+
+E5.4g is constrained to an additive public-surface change relative to the
+current raster package.
+
+Existing public raster types and their observable semantics are not renamed or
+repurposed merely to expose operations.
+
+Internal dispatcher result enums, their ordinal values and internal execution
+types are not promoted as compatibility commitments.
+
+New public imports must expose only semantic operation types and callable
+operation entry points. Mir types, execution traits, `RasterTargetPlane`,
+physical-range classifiers, affine relation types, wide arithmetic and
+Diophantine machinery remain non-public.
+
+The current compile-negative public-surface and lifetime probes remain boundary
+tests during E5.4g and must be extended only for the deliberately exposed
+semantic surface.
+
+###### E5.4f decision
+
+The five required closeout dimensions are now explicit:
+
+- observable semantics: reviewed for strict reduction, same-type copy and exact
+  `ubyte` to `float` conversion;
+- errors: operation-specific semantic failures only; execution coverage remains
+  internal;
+- lifetime: synchronous lease-bound read/write borrows with no retained
+  execution capability;
+- alias behavior: source self-aliasing permitted, destination injective, actual
+  source/destination sample-byte overlap rejected before first write;
+- source compatibility: E5.4g must be additive and must not expose current
+  internal execution machinery.
+
+No further production implementation is required to close E5.4f.
+
+E5.4g is therefore unblocked and may begin the stable public-operation exposure
+work from this reviewed contract.
 
 
 ## E5.0 decision
