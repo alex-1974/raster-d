@@ -38,7 +38,8 @@ import imagery.raster.internal.scalar_conversion :
     scalarConvertUbyteToFloatContiguous1D;
 
 import imagery.raster.internal.target :
-    RasterTargetPlane;
+    RasterTargetPlane,
+    tryBorrowContiguousTarget;
 
 import imagery.raster.view :
     RasterView;
@@ -566,6 +567,393 @@ nothrow
             assert(converted);
 
             return conversionSuccess();
+        }
+    }
+}
+
+
+/++
+    Semantic failure categories for the stable exact ubyte-to-float
+    raster-plane conversion.
+
+    Execution availability and arithmetic-carrier states are deliberately not
+    represented here.
++/
+package(imagery.raster)
+enum ExactUbyteToFloatRasterError : ubyte
+{
+    none,
+
+    invalidSourcePlane,
+
+    invalidDestinationPlane,
+
+    shapeMismatch,
+
+    nonInjectiveDestination,
+
+    sourceDestinationOverlap
+}
+
+
+/++
+    Exact allocation-free fallback for ubyte-source / float-destination
+    sample-byte overlap.
+
+    This path is reached only if the checked-wide affine classifier reports its
+    defensive arithmetic-failure state.
+
+    All represented pointers come from already validated RasterView and
+    WritableRasterView execution metadata.
+
+    A one-byte ubyte source sample overlaps a four-byte float destination sample
+    exactly when the source byte address lies inside the destination interval.
+
+    Classification completes before any destination write.
++/
+private
+bool ubyteToFloatSampleBytesOverlapFallback(
+    scope const(ubyte)* sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    scope float* destinationBase,
+    ptrdiff_t destinationRowStrideElements,
+    ptrdiff_t destinationSampleStrideElements,
+
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(destinationBase !is null);
+    assert(width != 0);
+    assert(height != 0);
+
+    auto sourceRow =
+        sourceBase;
+
+    foreach (sourceY; 0 .. height)
+    {
+        auto sourceSample =
+            sourceRow;
+
+        foreach (sourceX; 0 .. width)
+        {
+            const sourceAddress =
+                cast(size_t) sourceSample;
+
+            auto destinationRow =
+                destinationBase;
+
+            foreach (destinationY; 0 .. height)
+            {
+                auto destinationSample =
+                    destinationRow;
+
+                foreach (destinationX; 0 .. width)
+                {
+                    const destinationAddress =
+                        cast(size_t) destinationSample;
+
+                    if (
+                        sourceAddress >= destinationAddress
+                        && sourceAddress - destinationAddress
+                            < float.sizeof
+                    )
+                    {
+                        return true;
+                    }
+
+                    if (destinationX + 1 < width)
+                    {
+                        destinationSample +=
+                            destinationSampleStrideElements;
+                    }
+                }
+
+                if (destinationY + 1 < height)
+                {
+                    destinationRow +=
+                        destinationRowStrideElements;
+                }
+            }
+
+            if (sourceX + 1 < width)
+            {
+                sourceSample +=
+                    sourceSampleStrideElements;
+            }
+        }
+
+        if (sourceY + 1 < height)
+        {
+            sourceRow +=
+                sourceRowStrideElements;
+        }
+    }
+
+    return false;
+}
+
+
+/++
+    Executes the stable exact ubyte-to-float raster-plane semantic.
+
+    All semantic relation checks complete before the first destination write.
+
+    Fast-path selection is internal:
+
+    - flat contiguous source + destination use the established Mir-backed
+      scalar contiguous reference kernel after exact physical range
+      classification;
+    - every other validated layout uses exact affine relation classification
+      plus semantic scalar conversion;
+    - a defensive checked-wide arithmetic failure falls back to exact
+      allocation-free pairwise byte classification.
+
+    This function exposes neither `unsupportedExecution` nor
+    `addressRangeUnrepresentable`.
++/
+package(imagery.raster)
+ExactUbyteToFloatRasterError convertUbyteToFloatRasterPlane(
+    scope RasterView!ubyte source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!float destination,
+    size_t destinationPlaneIndex
+)
+@safe
+nothrow
+@nogc
+{
+    ptrdiff_t sourceRowStrideElements;
+    ptrdiff_t sourceSampleStrideElements;
+
+    if (
+        !source.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            sourceRowStrideElements,
+            sourceSampleStrideElements
+        )
+    )
+    {
+        return
+            ExactUbyteToFloatRasterError.invalidSourcePlane;
+    }
+
+
+    ptrdiff_t destinationRowStrideElements;
+    ptrdiff_t destinationSampleStrideElements;
+
+    if (
+        !destination.tryExecutionPlaneStrides(
+            destinationPlaneIndex,
+            destinationRowStrideElements,
+            destinationSampleStrideElements
+        )
+    )
+    {
+        return
+            ExactUbyteToFloatRasterError.invalidDestinationPlane;
+    }
+
+
+    if (
+        source.width != destination.width
+        || source.height != destination.height
+    )
+    {
+        return
+            ExactUbyteToFloatRasterError.shapeMismatch;
+    }
+
+
+    if (source.empty)
+    {
+        return
+            ExactUbyteToFloatRasterError.none;
+    }
+
+
+    if (
+        !affine2DMappingIsInjective(
+            destination.width,
+            destination.height,
+            destinationRowStrideElements,
+            destinationSampleStrideElements
+        )
+    )
+    {
+        return
+            ExactUbyteToFloatRasterError.nonInjectiveDestination;
+    }
+
+
+    bool destinationContiguous;
+
+    scope auto contiguousDestination =
+        tryBorrowContiguousTarget(
+            destination,
+            destinationPlaneIndex,
+            destinationContiguous
+        );
+
+
+    if (destinationContiguous)
+    {
+        PlaneExecutionTraits sourceTraits;
+
+        const sourceTraitsOk =
+            source.tryPlaneExecutionTraits(
+                sourcePlaneIndex,
+                sourceTraits
+            );
+
+        assert(sourceTraitsOk);
+
+        if (sourceTraits.linearContiguous1D)
+        {
+            assert(
+                sourceTraits.flatElementCount
+                == contiguousDestination.elementCount
+            );
+
+            const sourceBase =
+                source.executionRegionBase(
+                    sourcePlaneIndex
+                );
+
+            auto destinationBase =
+                contiguousDestination.executionBase();
+
+            assert(sourceBase !is null);
+            assert(destinationBase !is null);
+
+            final switch (
+                classifyConversionPhysicalRanges(
+                    sourceBase,
+                    destinationBase,
+                    sourceTraits.flatElementCount
+                )
+            )
+            {
+                case PhysicalByteRangeRelation.overlapping:
+                    return
+                        ExactUbyteToFloatRasterError
+                            .sourceDestinationOverlap;
+
+                case PhysicalByteRangeRelation.nonOverlapping:
+                {
+                    const converted =
+                        scalarConvertUbyteToFloatContiguous1D(
+                            asMirContiguousFlat(
+                                source,
+                                sourcePlaneIndex
+                            ),
+                            asMirTargetContiguousFlat(
+                                contiguousDestination
+                            )
+                        );
+
+                    assert(converted);
+
+                    return
+                        ExactUbyteToFloatRasterError.none;
+                }
+
+                case PhysicalByteRangeRelation.unrepresentable:
+                    /*
+                     * Continue to exact affine classification instead of
+                     * exposing arithmetic representation as a semantic error.
+                     */
+                    break;
+            }
+        }
+    }
+
+
+    const sourceBase =
+        source.executionRegionBase(
+            sourcePlaneIndex
+        );
+
+    auto destinationBase =
+        destination.executionRegionBase(
+            destinationPlaneIndex
+        );
+
+    assert(sourceBase !is null);
+    assert(destinationBase !is null);
+
+
+    final switch (
+        classifyUbyteToFloatAffinePhysicalRelation(
+            sourceBase,
+            sourceRowStrideElements,
+            sourceSampleStrideElements,
+
+            destinationBase,
+            destinationRowStrideElements,
+            destinationSampleStrideElements,
+
+            source.width,
+            source.height
+        )
+    )
+    {
+        case AffineByteOverlapRelation.overlap:
+            return
+                ExactUbyteToFloatRasterError
+                    .sourceDestinationOverlap;
+
+        case AffineByteOverlapRelation.disjoint:
+        {
+            convertApprovedUbyteToFloatAffine2D(
+                source,
+                sourcePlaneIndex,
+                destination,
+                destinationPlaneIndex
+            );
+
+            return
+                ExactUbyteToFloatRasterError.none;
+        }
+
+        case AffineByteOverlapRelation.arithmeticFailure:
+        {
+            if (
+                ubyteToFloatSampleBytesOverlapFallback(
+                    sourceBase,
+                    sourceRowStrideElements,
+                    sourceSampleStrideElements,
+
+                    destinationBase,
+                    destinationRowStrideElements,
+                    destinationSampleStrideElements,
+
+                    source.width,
+                    source.height
+                )
+            )
+            {
+                return
+                    ExactUbyteToFloatRasterError
+                        .sourceDestinationOverlap;
+            }
+
+            convertApprovedUbyteToFloatAffine2D(
+                source,
+                sourcePlaneIndex,
+                destination,
+                destinationPlaneIndex
+            );
+
+            return
+                ExactUbyteToFloatRasterError.none;
         }
     }
 }

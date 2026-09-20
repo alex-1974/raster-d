@@ -45,6 +45,14 @@ sample-byte overlap before the first write. Shared backing remains permitted
 when the represented sample bytes are disjoint. Contiguous memcpy, affine
 classification and arithmetic fallback remain internal execution choices.
 
+E5.4g.4 exposes `tryConvertUbyteToFloatPlane()` with the operation-specific
+`UbyteToFloatConversionError`. Every successful sample is exactly
+`cast(float)` of the source ubyte; all 256 input values are exactly
+representable. Matching empty shapes succeed, while invalid planes, shape
+mismatch, non-injective destinations and actual reachable sample-byte overlap
+are semantic failures. Contiguous Mir/scalar execution, affine classification
+and defensive arithmetic fallback remain internal.
+
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.
 

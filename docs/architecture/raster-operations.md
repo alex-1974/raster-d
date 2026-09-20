@@ -5762,6 +5762,107 @@ E5.4g.4 may now expose the reviewed exact `ubyte -> float` conversion semantic
 independently.
 
 
+
+##### E5.4g.4 public exact ubyte-to-float conversion
+
+The stable public conversion surface is:
+
+```d
+enum UbyteToFloatConversionError : ubyte
+{
+    none,
+    invalidSourcePlane,
+    invalidDestinationPlane,
+    shapeMismatch,
+    nonInjectiveDestination,
+    sourceDestinationOverlap
+}
+
+bool tryConvertUbyteToFloatPlane(
+    scope RasterView!ubyte source,
+    size_t sourcePlaneIndex,
+    scope ref WritableRasterView!float destination,
+    size_t destinationPlaneIndex,
+    out UbyteToFloatConversionError error
+)
+@safe
+nothrow
+@nogc;
+```
+
+The result vocabulary is operation-specific even though its current semantic
+failure categories parallel same-type copy. E5.4f explicitly avoids a generic
+operation-error hierarchy without evidence that the abstraction is stable
+across future operations.
+
+Every successful logical sample is exactly:
+
+```d
+cast(float) sourceSample
+```
+
+All values in the complete ubyte domain `0 .. 255` are exactly representable
+in IEEE binary32. Therefore the operation exposes no rounding, clamping,
+overflow, NaN, infinity or conversion-policy setting.
+
+The public semantic failures are exactly:
+
+```text
+invalid source plane
+invalid destination plane
+shape mismatch
+non-injective destination
+actual source/destination sample-byte overlap
+```
+
+Matching empty source/destination shapes succeed as a no-op.
+
+Source self-aliasing is permitted. Shared retained backing is permitted when
+the actually reachable source-byte and destination-float sample-byte sets are
+disjoint.
+
+Actual physical overlap is rejected before the first destination write.
+
+Execution remains replaceable and non-public:
+
+```text
+flat contiguous source + destination
+    -> established exact Mir/scalar contiguous kernel
+
+other validated layouts
+    -> exact affine byte-relation classifier
+       + semantic scalar conversion
+
+defensive checked-wide arithmetic failure
+    -> exact allocation-free pairwise ubyte-vs-float byte-overlap fallback
+       before any destination write
+```
+
+The public operation therefore has no `unsupportedExecution` or
+`addressRangeUnrepresentable` failure.
+
+Public wrapper verification covers:
+
+- the complete ubyte domain `0 .. 255`;
+- invalid source plane;
+- invalid destination plane;
+- shape mismatch with unchanged destination;
+- non-injective destination with no write;
+- actual byte overlap with unchanged destination;
+- matching empty no-op;
+- shared backing with disjoint reachable bytes;
+- valid negative destination strides through the affine path;
+- named-argument compilation of `source`, `sourcePlaneIndex`, `destination`,
+  `destinationPlaneIndex` and `error`.
+
+Internal conversion result types, contiguous-target capability, Mir adapters,
+physical-range classification, affine relation and checked-wide arithmetic
+remain inaccessible from external modules.
+
+E5.4g.5 may now perform the final public-surface/lifetime closeout without
+adding another operation.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains

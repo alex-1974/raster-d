@@ -41,5 +41,9 @@ public import imagery.raster.copy :
     RasterCopyError,
     tryCopyRasterPlane;
 
+public import imagery.raster.conversion :
+    UbyteToFloatConversionError,
+    tryConvertUbyteToFloatPlane;
+
 public import imagery.raster.backing :
     RasterLease;

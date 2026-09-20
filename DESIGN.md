@@ -216,6 +216,14 @@ source/destination sample-byte overlap is rejected before the first write, and
 shared backing is otherwise permitted. Contiguous memcpy and affine scalar
 execution remain replaceable internal paths.
 
+E5.4g.4 exposes `tryConvertUbyteToFloatPlane()` plus the operation-specific
+`UbyteToFloatConversionError`. The public conversion contract is exact and
+layout-independent: each ubyte maps to exactly representable binary32,
+matching empty operands succeed, destination injectivity is required, and
+actual reachable source/destination sample-byte overlap is rejected before the
+first write. Mir adapters, contiguous targets, affine relation machinery and
+defensive wide-arithmetic fallback remain replaceable internals.
+
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text

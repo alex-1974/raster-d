@@ -348,6 +348,45 @@ bool exercisePublicRasterCopy(
 D
 
 
+cat > "$tmp_dir/public_conversion_surface.d" <<'D'
+module raster_execution_public_conversion_surface;
+
+import imagery.raster :
+    RasterView,
+    UbyteToFloatConversionError,
+    WritableRasterView,
+    tryConvertUbyteToFloatPlane;
+
+
+/*
+ * MUST PASS.
+ *
+ * E5.4g.4 exposes only the exact semantic ubyte-to-float plane conversion.
+ *
+ * Named arguments deliberately lock the public parameter names.
+ */
+@safe
+bool exercisePublicUbyteToFloatConversion(
+    scope RasterView!ubyte source,
+    scope ref WritableRasterView!float destination
+)
+{
+    UbyteToFloatConversionError error;
+
+    return
+        tryConvertUbyteToFloatPlane(
+            source: source,
+            sourcePlaneIndex: 0,
+            destination: destination,
+            destinationPlaneIndex: 0,
+            error: error
+        )
+        || error
+            != UbyteToFloatConversionError.none;
+}
+D
+
+
 cat > "$tmp_dir/conversion_dispatch_positive.d" <<'D'
 module imagery.raster.conversion_dispatch_positive;
 
@@ -435,8 +474,10 @@ module raster_execution_negative_conversion_dispatch_external_surface;
  * machinery until a public raster-operation API is deliberately designed.
  */
 import imagery.raster.internal.conversion_dispatch :
+    ExactUbyteToFloatRasterError,
     UbyteToFloatConversionError,
     UbyteToFloatConversionResult,
+    convertUbyteToFloatRasterPlane,
     tryConvertUbyteToFloatContiguous1D;
 
 alias escapedConversionDispatch =
@@ -514,6 +555,7 @@ echo "compiler=$compiler"
 compile_probe positive pass
 compile_probe public_reduction_surface pass
 compile_probe public_copy_surface pass
+compile_probe public_conversion_surface pass
 compile_probe copy_dispatch_positive pass
 compile_probe conversion_dispatch_positive pass
 compile_probe physical_range_positive pass
