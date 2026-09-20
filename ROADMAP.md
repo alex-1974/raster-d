@@ -60,12 +60,19 @@ E5.4f.5b.2b  affine-overlap equivalence                    complete
 E5.4f.5c     production mapping audit                      complete
 E5.4f.5c.1   writable execution stride query               complete
 E5.4f.5c.2   affine relation + concrete consumer mapping   complete
-E5.4g        stable public operation exposure              not started
+E5.4g        stable public operation exposure              in progress
+E5.4g.0      public exposure sequencing                    complete
+E5.4g.1      semantic writable-borrow exposure             complete
+E5.4g.2      strict float-to-double sum exposure           complete
+E5.4g.3      same-type raster copy exposure                complete
+E5.4g.4      exact ubyte-to-float conversion exposure      complete
+E5.4g.5      public-surface/lifetime closeout              complete
 ```
 
-`WritableRasterView` is intentionally still package-internal. It establishes
-write permission but does not imply uniqueness, non-aliasing, contiguity or
-thread exclusivity.
+`WritableRasterView` is public from E5.4g.1 as the lease-bound semantic write
+capability. It establishes write permission but does not imply uniqueness,
+non-aliasing, contiguity or thread exclusivity. Writable certification and
+execution machinery remain package-internal.
 
 The resident raster/view core now includes both read-only and writable
 lease-bound lifetime integration, the first contiguous writable execution
@@ -84,8 +91,11 @@ token, general writable-target hierarchy, or public operation API has been
 introduced.
 
 The explicit E5.4f closeout review is complete. E5.4g stable public operation
-exposure is now the next stage and remains not started until its implementation
-work begins.
+exposure is now in progress. E5.4g.1 exposes the semantic writable borrow and
+E5.4g.2 exposes the strict float-to-double sum, E5.4g.3 exposes the checked
+same-type raster-plane copy, and E5.4g.4 exposes exact ubyte-to-float
+conversion. E5.4g.5 closes the public-surface and lifetime boundary. E5.4g is
+complete; no further raster-operation surface is added by this phase.
 
 M2 has partial internal implementation used to validate the engine
 architecture; copy, reduction and conversion machinery are not yet exposed as

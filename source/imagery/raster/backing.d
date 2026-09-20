@@ -334,8 +334,10 @@ public:
         Attempts to return a non-owning writable semantic view borrowing from
         this lease.
 
-        This operation is deliberately package-internal while
-        WritableRasterView itself remains package-internal.
+        This is the public lease-bound writable-borrow operation.
+
+        It exposes only the semantic WritableRasterView capability.
+        Writable certification and execution machinery remain package-internal.
 
         A mutable RasterLease receiver is required. A const lease must not be
         usable to recover write capability.
@@ -355,7 +357,6 @@ public:
         Writable capability does not imply uniqueness, exclusivity, noalias,
         contiguity, non-overlap, or thread exclusivity.
     +/
-    package(imagery.raster)
     WritableRasterView!T tryWritableView(
         out bool success
     )

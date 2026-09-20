@@ -24,18 +24,43 @@ The retained raster foundation now includes:
 - checked `ubyte -> float` conversion;
 - per-resource read/write provenance;
 - writable-backing certification;
-- a package-internal semantic `WritableRasterView`;
-- a lease-bound package-internal writable borrow from `RasterLease`.
+- a public semantic `WritableRasterView`;
+- a lease-bound public writable borrow from `RasterLease`.
 
-The writable semantic and execution layers are not public yet. E5.4e is
-complete: retained writable backing can flow through the package-internal
-`WritableRasterView` into the existing `RasterTargetPlane` execution boundary
-used by checked copy and exact conversion consumers.
+E5.4g is now in progress. E5.4g.1 exposes the semantic writable borrow:
+retained writable backing may be borrowed as `WritableRasterView`, while
+writable certification, execution classification, raw execution pointers,
+`RasterTargetPlane`, Mir adapters and alias-relation machinery remain internal.
 
-E5.4f is complete. The public operation contracts have been reviewed from
-their required observable semantics rather than copied from the existing
-internal dispatchers. E5.4g stable public operation exposure is the next stage
-and remains not started.
+E5.4g.2 adds the first stable public raster operation:
+`trySumFloatToDouble()`. It exposes only the reviewed strict row-major
+float-to-double reduction semantic. A valid empty plane succeeds with `0.0`;
+an invalid plane is the only recoverable public failure. Fixed-lane semantics
+and execution-layout failures remain internal.
+
+E5.4g.3 exposes `tryCopyRasterPlane()` with the operation-specific
+`RasterCopyError`. The public contract rejects invalid source/destination
+planes, shape mismatch, non-injective destinations and actual reachable
+sample-byte overlap before the first write. Shared backing remains permitted
+when the represented sample bytes are disjoint. Contiguous memcpy, affine
+classification and arithmetic fallback remain internal execution choices.
+
+E5.4g.4 exposes `tryConvertUbyteToFloatPlane()` with the operation-specific
+`UbyteToFloatConversionError`. Every successful sample is exactly
+`cast(float)` of the source ubyte; all 256 input values are exactly
+representable. Matching empty shapes succeed, while invalid planes, shape
+mismatch, non-injective destinations and actual reachable sample-byte overlap
+are semantic failures. Contiguous Mir/scalar execution, affine classification
+and defensive arithmetic fallback remain internal.
+
+
+E5.4g is complete. The stable operation surface now consists of the semantic
+writable borrow plus strict float-to-double sum, checked same-type plane copy
+and exact ubyte-to-float conversion. Public-source compatibility includes the
+reviewed parameter names. Raw writable certification, execution traits,
+execution pointers, `RasterTargetPlane`, Mir adapters, physical-range and affine
+relation machinery, checked-wide arithmetic and internal dispatcher result
+types remain non-public.
 
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.

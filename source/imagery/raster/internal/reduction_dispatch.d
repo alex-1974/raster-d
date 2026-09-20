@@ -137,17 +137,83 @@ nothrow
 
 
 /++
+    Executes the strict row-major float-to-double sum after plane execution
+    traits have already been established.
+
+    This is the single strict semantic implementation shared by the internal
+    multi-semantic dispatcher and the public strict-only wrapper.
++/
+private
+double strictFloatToDoubleSumWithTraits(
+    scope RasterView!float view,
+    size_t planeIndex,
+    PlaneExecutionTraits traits
+)
+@safe
+nothrow
+@nogc
+{
+    if (view.empty)
+        return 0.0;
+
+    final switch (traits.layout2D)
+    {
+        case PlaneExecutionLayout2D.universal:
+            return scalarSumUniversal2D!double(
+                asMirUniversal(view, planeIndex)
+            );
+
+        case PlaneExecutionLayout2D.canonical:
+            return scalarSumCanonical2D!double(
+                asMirCanonical(view, planeIndex)
+            );
+
+        case PlaneExecutionLayout2D.contiguous:
+            if (traits.linearContiguous1D)
+            {
+                return scalarSumContiguous1D!double(
+                    asMirContiguousFlat(view, planeIndex)
+                );
+            }
+
+            return scalarSumContiguous2D!double(
+                asMirContiguous(view, planeIndex)
+            );
+    }
+}
+
+/++
+    Strict-only semantic bridge used by the stable public operation.
+
+    `value` is reset to `0.0` on entry. False means only invalid source plane;
+    every validated resident execution layout is otherwise supported.
++/
+package(imagery.raster)
+bool tryStrictFloatToDoubleSum(
+    scope RasterView!float view,
+    size_t planeIndex,
+    out double value
+)
+@safe
+nothrow
+@nogc
+{
+    value = 0.0;
+
+    PlaneExecutionTraits traits;
+    if (!view.tryPlaneExecutionTraits(planeIndex, traits))
+        return false;
+
+    value = strictFloatToDoubleSumWithTraits(view, planeIndex, traits);
+    return true;
+}
+
+/++
     Dispatch one logical float plane to the execution kernel implementing the
     requested float-to-double reduction semantics.
 
     Strict semantics are available for every validated execution layout.
-
     Fixed-lane4 currently requires a flat contiguous execution capability.
-    Lack of that capability is reported as unsupportedExecution; dispatch does
-    not silently substitute strict semantics.
-
-    Empty valid planes return the additive identity for either supported
-    semantic before any execution adapter forms a reachable sample pointer.
 +/
 package(imagery.raster)
 FloatToDoubleSumResult dispatchFloatToDoubleSum(
@@ -161,12 +227,7 @@ nothrow
 {
     PlaneExecutionTraits traits;
 
-    if (
-        !view.tryPlaneExecutionTraits(
-            planeIndex,
-            traits
-        )
-    )
+    if (!view.tryPlaneExecutionTraits(planeIndex, traits))
     {
         return failedSum(
             FloatToDoubleSumDispatchError.invalidPlaneIndex
@@ -176,64 +237,14 @@ nothrow
     switch (semantics)
     {
         case SumReductionSemantics.strict:
-        {
-            if (view.empty)
-            {
-                return successfulSum(0.0);
-            }
-
-            final switch (traits.layout2D)
-            {
-                case PlaneExecutionLayout2D.universal:
-                    return successfulSum(
-                        scalarSumUniversal2D!double(
-                            asMirUniversal(
-                                view,
-                                planeIndex
-                            )
-                        )
-                    );
-
-                case PlaneExecutionLayout2D.canonical:
-                    return successfulSum(
-                        scalarSumCanonical2D!double(
-                            asMirCanonical(
-                                view,
-                                planeIndex
-                            )
-                        )
-                    );
-
-                case PlaneExecutionLayout2D.contiguous:
-                    if (traits.linearContiguous1D)
-                    {
-                        return successfulSum(
-                            scalarSumContiguous1D!double(
-                                asMirContiguousFlat(
-                                    view,
-                                    planeIndex
-                                )
-                            )
-                        );
-                    }
-
-                    return successfulSum(
-                        scalarSumContiguous2D!double(
-                            asMirContiguous(
-                                view,
-                                planeIndex
-                            )
-                        )
-                    );
-            }
-        }
+            return successfulSum(
+                strictFloatToDoubleSumWithTraits(view, planeIndex, traits)
+            );
 
         case SumReductionSemantics.fixedLane4:
         {
             if (view.empty)
-            {
                 return successfulSum(0.0);
-            }
 
             if (!traits.linearContiguous1D)
             {
@@ -244,10 +255,7 @@ nothrow
 
             return successfulSum(
                 fixedLane4SumFloatToDoubleContiguous1D(
-                    asMirContiguousFlat(
-                        view,
-                        planeIndex
-                    )
+                    asMirContiguousFlat(view, planeIndex)
                 )
             );
         }

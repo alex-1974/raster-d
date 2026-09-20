@@ -5504,6 +5504,425 @@ E5.4g is therefore unblocked and may begin the stable public-operation exposure
 work from this reviewed contract.
 
 
+
+#### E5.4g stable public operation exposure checkpoint — 2026-09-20
+
+E5.4g proceeds in narrow additive slices. Public semantic capability is exposed
+before public operation result/error types are frozen.
+
+The sequence is:
+
+```text
+E5.4g.0  public exposure sequencing
+E5.4g.1  semantic writable-borrow exposure
+E5.4g.2  strict float-to-double sum exposure
+E5.4g.3  same-type raster copy exposure
+E5.4g.4  exact ubyte-to-float conversion exposure
+E5.4g.5  public-surface/lifetime closeout
+```
+
+This sequence keeps lifetime/API review separate from operation-specific error
+mapping and kernel selection.
+
+##### E5.4g.0 exposure decision
+
+Source-to-target operations consume two distinct semantic capabilities:
+
+```text
+read source
+    RasterView!T
+
+write destination
+    WritableRasterView!T
+```
+
+They do not consume ownership itself.
+
+Therefore E5.4g does not make `RasterLease` the destination operand of copy or
+conversion merely to avoid exposing a writable view. Doing so would couple
+operations to retained ownership and would make writable ROI composition
+awkward.
+
+The existing `WritableRasterView` is already the evidence-backed semantic
+capability required by the reviewed E5.4f contract.
+
+##### E5.4g.1 public semantic writable borrow
+
+E5.4g.1 exposes:
+
+```text
+WritableRasterView!T
+RasterLease!T.tryWritableView(out bool success)
+```
+
+The public view exposes semantic geometry, ROI, checked sample read and checked
+sample write behavior.
+
+The following remain non-public:
+
+```text
+tryMakeWritableRasterView
+makeWritableRasterViewAssumeCertified
+tryPlaneExecutionTraits
+tryExecutionPlaneStrides
+executionRegionBase
+RasterTargetPlane
+Mir adapters
+physical-range / affine relation machinery
+```
+
+The capability means only:
+
+```text
+writes through this borrow are permitted
+```
+
+It does not mean:
+
+```text
+unique
+exclusive
+noalias
+contiguous
+source/target disjoint
+thread-exclusive
+```
+
+The writable borrow remains lifetime-related to the mutable RasterLease.
+A const lease cannot recover write capability. Raw certification cannot be
+performed by external callers.
+
+Compile-negative coverage continues to reject raw construction/certification,
+execution-pointer access and lifetime escape while positive external probes now
+require the semantic type and lease-bound borrow to compile.
+
+No public raster operation callable is introduced by E5.4g.1.
+
+The next slice, E5.4g.2, exposes only the reviewed strict float-to-double
+reduction semantic and defines its public result/error vocabulary independently
+of the package-internal reduction dispatcher.
+
+
+
+##### E5.4g.2 public strict float-to-double reduction
+
+The first public operation callable is:
+
+```d
+bool trySumFloatToDouble(
+    scope RasterView!float source,
+    size_t planeIndex,
+    out double sum
+)
+@safe
+nothrow
+@nogc;
+```
+
+This shape is intentionally smaller than the package-internal dispatch result.
+
+The reviewed public semantic has only one recoverable failure category:
+`planeIndex` does not select a logical source plane. A new public error enum or
+result struct would therefore add compatibility surface without carrying more
+semantic information than the `try` result.
+
+`sum` is an `out` parameter because it is a fresh plain numeric result.
+It is reset to `0.0` on entry and remains `0.0` when the plane index is invalid.
+
+The operation guarantees:
+
+```text
+valid non-empty plane
+    -> true + strict row-major float-to-double sum
+
+valid empty plane
+    -> true + 0.0
+
+invalid plane index
+    -> false + 0.0
+```
+
+Every validated resident layout is semantically supported. The public operation
+therefore has no `unsupportedExecution` state.
+
+The package-internal reduction layer provides a strict-only semantic bridge
+shared by the public wrapper and the existing multi-semantic dispatcher. This
+avoids copying dispatcher-specific error states into the public API while
+preserving the established execution paths.
+
+`SumReductionSemantics`, `FloatToDoubleSumDispatchError`,
+`FloatToDoubleSumResult`, `dispatchFloatToDoubleSum`,
+`tryStrictFloatToDoubleSum`, Mir adapters and the `fixedLane4` graph remain
+non-public.
+
+The public parameter names `source`, `planeIndex` and `sum` are covered by an
+external named-argument compile probe.
+
+Public-consumer compile probes that import the `imagery.raster` umbrella module
+resolve dependency import paths through `dub describe`. This mirrors the DUB
+consumer environment now required by public operations whose replaceable
+internal implementation uses Mir; it does not make Mir part of the public API.
+
+E5.4g.3 may now expose the reviewed same-type copy semantic independently.
+
+
+
+##### E5.4g.3 public same-type raster copy
+
+The stable public same-type copy surface is:
+
+```d
+enum RasterCopyError : ubyte
+{
+    none,
+    invalidSourcePlane,
+    invalidDestinationPlane,
+    shapeMismatch,
+    nonInjectiveDestination,
+    sourceDestinationOverlap
+}
+
+bool tryCopyRasterPlane(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+    scope ref WritableRasterView!T destination,
+    size_t destinationPlaneIndex,
+    out RasterCopyError error
+)
+@safe
+nothrow
+@nogc;
+```
+
+A boolean alone is insufficient because the reviewed contract contains several
+actionable semantic request failures. A second result aggregate is unnecessary:
+the operation produces no successful value other than the destination mutation,
+so `bool + out RasterCopyError` carries the complete public failure information.
+
+The public error vocabulary contains exactly the E5.4f semantic failures:
+
+```text
+invalid source plane
+invalid destination plane
+shape mismatch
+non-injective destination
+actual source/destination sample-byte overlap
+```
+
+The following remain internal and are not public errors:
+
+```text
+unsupportedExecution
+addressRangeUnrepresentable
+contiguous target availability
+physical range classification
+checked-wide / Diophantine relation states
+```
+
+Matching empty operands succeed as a no-op.
+
+Source self-aliasing is permitted. Shared retained backing is also permitted
+when the actually reachable source and destination sample bytes are disjoint.
+
+Actual reachable sample-byte overlap is rejected before the first destination
+write. The operation does not provide snapshot or memmove semantics.
+
+Execution selection is replaceable:
+
+```text
+flat contiguous source + destination
+    -> existing checked memcpy specialization
+
+other validated layouts
+    -> exact affine relation + scalar semantic copy
+
+defensive checked-wide arithmetic failure
+    -> exact allocation-free pairwise byte-overlap fallback
+       before any destination write
+```
+
+Public wrapper verification covers:
+
+- successful contiguous copy;
+- invalid source plane;
+- invalid destination plane;
+- shape mismatch with unchanged destination;
+- non-injective destination with no write;
+- actual overlap with unchanged destination;
+- matching empty no-op;
+- shared backing with disjoint reachable bytes;
+- a valid negative-stride destination through the general affine path;
+- named-argument compilation of `source`, `sourcePlaneIndex`, `destination`,
+  `destinationPlaneIndex` and `error`.
+
+Internal copy dispatcher types and relation machinery remain inaccessible from
+external modules.
+
+E5.4g.4 may now expose the reviewed exact `ubyte -> float` conversion semantic
+independently.
+
+
+
+##### E5.4g.4 public exact ubyte-to-float conversion
+
+The stable public conversion surface is:
+
+```d
+enum UbyteToFloatConversionError : ubyte
+{
+    none,
+    invalidSourcePlane,
+    invalidDestinationPlane,
+    shapeMismatch,
+    nonInjectiveDestination,
+    sourceDestinationOverlap
+}
+
+bool tryConvertUbyteToFloatPlane(
+    scope RasterView!ubyte source,
+    size_t sourcePlaneIndex,
+    scope ref WritableRasterView!float destination,
+    size_t destinationPlaneIndex,
+    out UbyteToFloatConversionError error
+)
+@safe
+nothrow
+@nogc;
+```
+
+The result vocabulary is operation-specific even though its current semantic
+failure categories parallel same-type copy. E5.4f explicitly avoids a generic
+operation-error hierarchy without evidence that the abstraction is stable
+across future operations.
+
+Every successful logical sample is exactly:
+
+```d
+cast(float) sourceSample
+```
+
+All values in the complete ubyte domain `0 .. 255` are exactly representable
+in IEEE binary32. Therefore the operation exposes no rounding, clamping,
+overflow, NaN, infinity or conversion-policy setting.
+
+The public semantic failures are exactly:
+
+```text
+invalid source plane
+invalid destination plane
+shape mismatch
+non-injective destination
+actual source/destination sample-byte overlap
+```
+
+Matching empty source/destination shapes succeed as a no-op.
+
+Source self-aliasing is permitted. Shared retained backing is permitted when
+the actually reachable source-byte and destination-float sample-byte sets are
+disjoint.
+
+Actual physical overlap is rejected before the first destination write.
+
+Execution remains replaceable and non-public:
+
+```text
+flat contiguous source + destination
+    -> established exact Mir/scalar contiguous kernel
+
+other validated layouts
+    -> exact affine byte-relation classifier
+       + semantic scalar conversion
+
+defensive checked-wide arithmetic failure
+    -> exact allocation-free pairwise ubyte-vs-float byte-overlap fallback
+       before any destination write
+```
+
+The public operation therefore has no `unsupportedExecution` or
+`addressRangeUnrepresentable` failure.
+
+Public wrapper verification covers:
+
+- the complete ubyte domain `0 .. 255`;
+- invalid source plane;
+- invalid destination plane;
+- shape mismatch with unchanged destination;
+- non-injective destination with no write;
+- actual byte overlap with unchanged destination;
+- matching empty no-op;
+- shared backing with disjoint reachable bytes;
+- valid negative destination strides through the affine path;
+- named-argument compilation of `source`, `sourcePlaneIndex`, `destination`,
+  `destinationPlaneIndex` and `error`.
+
+Internal conversion result types, contiguous-target capability, Mir adapters,
+physical-range classification, affine relation and checked-wide arithmetic
+remain inaccessible from external modules.
+
+E5.4g.5 may now perform the final public-surface/lifetime closeout without
+adding another operation.
+
+
+
+##### E5.4g.5 public-surface and lifetime closeout
+
+E5.4g closes without adding another production operation.
+
+The stable semantic surface established by E5.4g is:
+
+```text
+WritableRasterView!T
+RasterLease!T.tryWritableView(out bool success)
+
+trySumFloatToDouble(...)
+RasterCopyError
+tryCopyRasterPlane(...)
+
+UbyteToFloatConversionError
+tryConvertUbyteToFloatPlane(...)
+```
+
+The public umbrella package continues to expose the pre-existing raster
+construction/import/view types plus only these reviewed semantic additions.
+
+The following remain deliberately non-public:
+
+```text
+raw writable certification
+PlaneExecutionTraits and execution layout classifications
+executionRegionBase / execution strides
+RasterTargetPlane
+Mir adapters and Mir execution view types
+fixed-lane reduction semantics
+internal dispatcher result/error types
+physical-range classifiers
+affine relation types
+checked-wide and Diophantine machinery
+operation-local alias/injectivity proof machinery
+```
+
+The writable capability remains a permission-to-write borrow only. It does not
+imply uniqueness, exclusivity, noalias, contiguity or thread exclusivity.
+
+The closeout compile probe verifies from an external consumer module that:
+
+- the umbrella imports all three stable operations and their semantic error
+  types;
+- named arguments compile for every public operation and writable borrow;
+- internal execution/relation symbols are absent from the umbrella surface;
+- a writable lease borrow cannot escape by return;
+- a writable lease borrow cannot be stored globally.
+
+The complete DMD and LDC unittest suites and compile-negative suites pass with
+the closeout probe included.
+
+Therefore E5.4g is complete.
+
+Further public raster functionality requires a new concrete consumer or a new
+research result; E5.4g itself is not extended merely to generalize the current
+operation set.
+
+
 ## E5.0 decision
 
 The raster engine uses a common conceptual operation pipeline but retains

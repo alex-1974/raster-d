@@ -153,7 +153,7 @@ RasterLease
 
 `RasterView` remains a cheap non-owning semantic read view.
 
-`WritableRasterView` is its package-internal writable semantic peer. It
+`WritableRasterView` is its public lease-bound writable semantic peer. It
 certifies permission to write represented samples but does not imply:
 
 ```text
@@ -195,10 +195,42 @@ The lease-bound writable borrow, writable execution primitives and first
 flat-contiguous `WritableRasterView -> RasterTargetPlane` execution bridge are
 now implemented.
 
-`WritableRasterView` remains package-internal. Integration with the existing
-checked copy and exact conversion consumers is verified, and the E5.4f
-public-operation contract review is complete. E5.4g may expose only the
-reviewed semantic surface without exposing the current execution machinery.
+E5.4g.1 exposes `WritableRasterView` and the mutable
+`RasterLease.tryWritableView()` borrow as semantic public capabilities.
+Certification factories, execution-layout metadata, mutable execution pointers,
+`RasterTargetPlane` and current operation dispatchers remain internal.
+
+Integration with the existing checked copy and exact conversion consumers is
+verified, and the E5.4f public-operation contract review remains the authority
+for E5.4g operation exposure.
+
+E5.4g.2 exposes `trySumFloatToDouble()` as the first stable public operation.
+The public callable represents only strict row-major reduction semantics;
+execution-layout classification, Mir adaptation and the fixed-lane graph remain
+internal.
+
+E5.4g.3 exposes `tryCopyRasterPlane()` plus the operation-specific
+`RasterCopyError`. The public copy contract is layout-independent: matching
+empty operands succeed, destination mapping must be injective, actual reachable
+source/destination sample-byte overlap is rejected before the first write, and
+shared backing is otherwise permitted. Contiguous memcpy and affine scalar
+execution remain replaceable internal paths.
+
+E5.4g.4 exposes `tryConvertUbyteToFloatPlane()` plus the operation-specific
+`UbyteToFloatConversionError`. The public conversion contract is exact and
+layout-independent: each ubyte maps to exactly representable binary32,
+matching empty operands succeed, destination injectivity is required, and
+actual reachable source/destination sample-byte overlap is rejected before the
+first write. Mir adapters, contiguous targets, affine relation machinery and
+defensive wide-arithmetic fallback remain replaceable internals.
+
+
+E5.4g.5 closes the public-operation boundary without adding another execution
+abstraction. External consumers see semantic raster views, lease-bound writable
+views and the three reviewed operations only. Lifetime probes require writable
+capabilities to remain tied to their leases; public operation probes compile
+through the umbrella package with named arguments; compile-negative probes keep
+raw certification and all execution/relation machinery inaccessible.
 
 Detailed evidence and implementation sequencing are maintained in:
 

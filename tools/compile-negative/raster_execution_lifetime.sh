@@ -200,10 +200,44 @@ import imagery.raster.internal.reduction_dispatch :
     FloatToDoubleSumDispatchError,
     FloatToDoubleSumResult,
     SumReductionSemantics,
-    dispatchFloatToDoubleSum;
+    dispatchFloatToDoubleSum,
+    tryStrictFloatToDoubleSum;
 
 alias escapedReductionDispatch =
     dispatchFloatToDoubleSum;
+
+alias escapedStrictSemanticBridge =
+    tryStrictFloatToDoubleSum;
+D
+
+
+cat > "$tmp_dir/public_reduction_surface.d" <<'D'
+module raster_execution_public_reduction_surface;
+
+import imagery.raster :
+    RasterView,
+    trySumFloatToDouble;
+
+/*
+ * MUST PASS: stable public strict reduction on the full compiler floor.
+ *
+ * Named-argument compatibility is covered by capability-aware public probes.
+ */
+@safe
+bool exercisePublicStrictSum(
+    scope RasterView!float source
+)
+{
+    double sum;
+
+    return
+        trySumFloatToDouble(
+            source,
+            0,
+            sum
+        )
+        || sum == 0.0;
+}
 D
 
 
@@ -270,10 +304,92 @@ module raster_execution_negative_copy_dispatch_external_surface;
 import imagery.raster.internal.copy_dispatch :
     NonOverlappingCopyError,
     NonOverlappingCopyResult,
+    SameTypeRasterCopyError,
+    copySameTypeRasterPlane,
     tryCopyNonOverlappingContiguous1D;
 
 alias escapedCopyDispatch =
     tryCopyNonOverlappingContiguous1D;
+D
+
+
+cat > "$tmp_dir/public_copy_surface.d" <<'D'
+module raster_execution_public_copy_surface;
+
+import imagery.raster :
+    RasterCopyError,
+    RasterView,
+    WritableRasterView,
+    tryCopyRasterPlane;
+
+
+/*
+ * MUST PASS.
+ *
+ * E5.4g.3 exposes the semantic same-type plane copy.
+ *
+ * Parameter-name compatibility is covered by capability-aware public
+ * named-argument probes.
+ */
+@safe
+bool exercisePublicRasterCopy(
+    scope RasterView!ubyte source,
+    scope ref WritableRasterView!ubyte destination
+)
+{
+    RasterCopyError error;
+
+    return
+        tryCopyRasterPlane(
+            source,
+            0,
+            destination,
+            0,
+            error
+        )
+        || error
+            != RasterCopyError.none;
+}
+D
+
+
+cat > "$tmp_dir/public_conversion_surface.d" <<'D'
+module raster_execution_public_conversion_surface;
+
+import imagery.raster :
+    RasterView,
+    UbyteToFloatConversionError,
+    WritableRasterView,
+    tryConvertUbyteToFloatPlane;
+
+
+/*
+ * MUST PASS.
+ *
+ * E5.4g.4 exposes only the exact semantic ubyte-to-float plane conversion.
+ *
+ * Parameter-name compatibility is covered by capability-aware public
+ * named-argument probes.
+ */
+@safe
+bool exercisePublicUbyteToFloatConversion(
+    scope RasterView!ubyte source,
+    scope ref WritableRasterView!float destination
+)
+{
+    UbyteToFloatConversionError error;
+
+    return
+        tryConvertUbyteToFloatPlane(
+            source,
+            0,
+            destination,
+            0,
+            error
+        )
+        || error
+            != UbyteToFloatConversionError.none;
+}
 D
 
 
@@ -364,8 +480,10 @@ module raster_execution_negative_conversion_dispatch_external_surface;
  * machinery until a public raster-operation API is deliberately designed.
  */
 import imagery.raster.internal.conversion_dispatch :
+    ExactUbyteToFloatRasterError,
     UbyteToFloatConversionError,
     UbyteToFloatConversionResult,
+    convertUbyteToFloatRasterPlane,
     tryConvertUbyteToFloatContiguous1D;
 
 alias escapedConversionDispatch =
@@ -441,6 +559,9 @@ compile_probe()
 echo "compiler=$compiler"
 
 compile_probe positive pass
+compile_probe public_reduction_surface pass
+compile_probe public_copy_surface pass
+compile_probe public_conversion_surface pass
 compile_probe copy_dispatch_positive pass
 compile_probe conversion_dispatch_positive pass
 compile_probe physical_range_positive pass

@@ -31,5 +31,19 @@ public import imagery.raster.region :
 public import imagery.raster.view :
     RasterView;
 
+public import imagery.raster.writable_view :
+    WritableRasterView;
+
+public import imagery.raster.reduction :
+    trySumFloatToDouble;
+
+public import imagery.raster.copy :
+    RasterCopyError,
+    tryCopyRasterPlane;
+
+public import imagery.raster.conversion :
+    UbyteToFloatConversionError,
+    tryConvertUbyteToFloatPlane;
+
 public import imagery.raster.backing :
     RasterLease;
