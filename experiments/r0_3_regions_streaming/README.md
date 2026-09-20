@@ -449,6 +449,15 @@ sweep-line API whose production consumer is not yet known.
 Large-coordinate arithmetic continues to be tested independently by E3.1.1
 and E3.1.2.
 
+The initial oracle uses an explicitly bounded coverage bitmap.
+
+If a geometrically valid target exceeds that research-only bitmap capacity,
+the oracle reports an oracle-capacity condition rather than invalid geometry.
+
+Empty decomposition members produce no pixels. They are therefore ignored for
+coverage and containment after their own geometry has been verified as
+representable.
+
 ## 15. Initial module split
 
 If the semantics above survive review, the intended experiment structure is:
