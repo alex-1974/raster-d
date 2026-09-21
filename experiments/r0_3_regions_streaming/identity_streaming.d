@@ -2281,3 +2281,340 @@ unittest
         == IdentityExecutionError.invalidRequest
     );
 }
+
+
+
+/*
+ * E3.2.6 irregular-rectangle streamed equivalence.
+ *
+ * This decomposition is deliberately handwritten rather than generated.
+ *
+ * The requested output is partitioned into four horizontal bands:
+ *
+ *     y =  911, h = 137: 173 + 311 + 537
+ *     y = 1048, h = 211: 401 +  97 + 523
+ *     y = 1259, h = 173: 211 + 503 + 307
+ *     y = 1432, h = 248:  89 + 233 + 317 + 382
+ *
+ * Every row therefore covers exactly 1021 pixels, but the vertical split
+ * positions differ between bands.
+ *
+ * The task array is intentionally not in spatial or row-major order. Exact
+ * reassembly must depend only on logical coordinates.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+
+    const Region2D[13] tasks =
+    [
+        /*
+         * Band 3, middle.
+         */
+        Region2D(
+            1944,
+            1259,
+            503,
+            173
+        ),
+
+        /*
+         * Band 1, left.
+         */
+        Region2D(
+            1733,
+            911,
+            173,
+            137
+        ),
+
+        /*
+         * Band 4, right.
+         */
+        Region2D(
+            2372,
+            1432,
+            382,
+            248
+        ),
+
+        /*
+         * Band 2, middle.
+         */
+        Region2D(
+            2134,
+            1048,
+            97,
+            211
+        ),
+
+        /*
+         * Band 1, right.
+         */
+        Region2D(
+            2217,
+            911,
+            537,
+            137
+        ),
+
+        /*
+         * Band 3, left.
+         */
+        Region2D(
+            1733,
+            1259,
+            211,
+            173
+        ),
+
+        /*
+         * Band 4, far left.
+         */
+        Region2D(
+            1733,
+            1432,
+            89,
+            248
+        ),
+
+        /*
+         * Band 2, right.
+         */
+        Region2D(
+            2231,
+            1048,
+            523,
+            211
+        ),
+
+        /*
+         * Band 1, middle.
+         */
+        Region2D(
+            1906,
+            911,
+            311,
+            137
+        ),
+
+        /*
+         * Band 4, middle-right.
+         */
+        Region2D(
+            2055,
+            1432,
+            317,
+            248
+        ),
+
+        /*
+         * Band 2, left.
+         */
+        Region2D(
+            1733,
+            1048,
+            401,
+            211
+        ),
+
+        /*
+         * Band 3, right.
+         */
+        Region2D(
+            2447,
+            1259,
+            307,
+            173
+        ),
+
+        /*
+         * Band 4, middle-left.
+         */
+        Region2D(
+            1822,
+            1432,
+            233,
+            248
+        )
+    ];
+
+
+    /*
+     * This is intentionally not row-major input.
+     */
+    assert(
+        tasks[0].y
+        != requestedOutput.y
+    );
+
+    assert(
+        tasks[0].x
+        != requestedOutput.x
+    );
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks[],
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto irregular =
+        executeIdentityDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+    assert(irregular.ok);
+
+    assert(
+        irregular.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        irregular.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    assert(
+        irregular.output.length
+        == reference.output.length
+    );
+
+
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                irregular.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    const requestedPixels =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    /*
+     * The largest handwritten member is:
+     *
+     *     523 * 211 = 110353
+     */
+    enum size_t largestTaskPixels =
+        523 * 211;
+
+
+    assert(
+        irregular.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        irregular.accounting.oracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        irregular.accounting.sourceMaterializations
+        == tasks.length
+    );
+
+    assert(
+        irregular.accounting.totalMaterializedSourcePixels
+        == requestedPixels
+    );
+
+
+    assert(
+        irregular.accounting.sourceResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        irregular.accounting.destinationResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        irregular.accounting.peakResidentRasterBytes
+        == largestTaskPixels * 2
+    );
+
+    assert(
+        irregular.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        irregular.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+
+    assert(
+        irregular.accounting.peakResidentRasterBytes
+        <
+        requestedPixels
+    );
+}
