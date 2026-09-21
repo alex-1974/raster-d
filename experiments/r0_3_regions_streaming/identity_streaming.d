@@ -33,6 +33,9 @@ import procedural_source :
 import std.algorithm.mutation :
     move;
 
+import std.format :
+    format;
+
 
 /++
     E3.2.2 identity-execution failure category.
@@ -133,6 +136,326 @@ struct IdentityExecutionResult
         return error
             == IdentityExecutionError.none;
     }
+}
+
+
+/++
+    Result category for exact whole/reference versus decomposed-output
+    comparison.
+
+    This remains research diagnostics rather than production API.
++/
+enum IdentityComparisonIssue : ubyte
+{
+    none,
+    invalidRequest,
+    lengthMismatch,
+    reassemblyMismatch
+}
+
+
+/++
+    First exact pixel mismatch found by the E3.2 comparison oracle.
++/
+struct IdentityMismatch
+{
+    size_t relativeX;
+    size_t relativeY;
+
+    size_t logicalX;
+    size_t logicalY;
+
+    ubyte expected;
+    ubyte actual;
+}
+
+
+/++
+    Result of one exact identity-output comparison.
++/
+struct IdentityComparisonResult
+{
+    IdentityComparisonIssue issue =
+        IdentityComparisonIssue.invalidRequest;
+
+    size_t requiredLength;
+    size_t expectedLength;
+    size_t actualLength;
+
+    IdentityMismatch mismatch;
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return issue
+            == IdentityComparisonIssue.none;
+    }
+}
+
+
+/++
+    Compares two complete requested-output buffers exactly.
+
+    On the first pixel mismatch, diagnostics identify:
+
+    - output-relative x/y;
+    - logical x/y;
+    - expected byte;
+    - actual byte.
+
+    No tolerance is permitted for identity on ubyte data.
++/
+IdentityComparisonResult compareIdentityOutputs(
+    Region2D requestedOutput,
+    scope const(ubyte)[] expected,
+    scope const(ubyte)[] actual
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    IdentityComparisonResult result;
+
+    result.expectedLength =
+        expected.length;
+
+    result.actualLength =
+        actual.length;
+
+
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        result.issue =
+            IdentityComparisonIssue.invalidRequest;
+
+        return result;
+    }
+
+
+    if (
+        requestedOutput.width != 0
+        && requestedOutput.height
+            > size_t.max / requestedOutput.width
+    )
+    {
+        result.issue =
+            IdentityComparisonIssue.invalidRequest;
+
+        return result;
+    }
+
+
+    const requiredLength =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    result.requiredLength =
+        requiredLength;
+
+
+    if (
+        expected.length != requiredLength
+        || actual.length != requiredLength
+    )
+    {
+        result.issue =
+            IdentityComparisonIssue.lengthMismatch;
+
+        return result;
+    }
+
+
+    foreach (index; 0 .. requiredLength)
+    {
+        if (expected[index] == actual[index])
+        {
+            continue;
+        }
+
+
+        const relativeY =
+            index / requestedOutput.width;
+
+        const relativeX =
+            index % requestedOutput.width;
+
+
+        /*
+         * Requested-output representability proves both additions safe.
+         */
+        result.mismatch.relativeX =
+            relativeX;
+
+        result.mismatch.relativeY =
+            relativeY;
+
+        result.mismatch.logicalX =
+            requestedOutput.x + relativeX;
+
+        result.mismatch.logicalY =
+            requestedOutput.y + relativeY;
+
+        result.mismatch.expected =
+            expected[index];
+
+        result.mismatch.actual =
+            actual[index];
+
+
+        result.issue =
+            IdentityComparisonIssue.reassemblyMismatch;
+
+        return result;
+    }
+
+
+    result.issue =
+        IdentityComparisonIssue.none;
+
+    return result;
+}
+
+
+/++
+    Formats an E3.2 comparison failure for unittest diagnostics.
++/
+string formatIdentityComparisonFailure(
+    IdentityComparisonResult result
+)
+{
+    final switch (result.issue)
+    {
+        case IdentityComparisonIssue.none:
+            return "identity comparison succeeded";
+
+        case IdentityComparisonIssue.invalidRequest:
+            return "identity comparison failed: invalid requested output";
+
+        case IdentityComparisonIssue.lengthMismatch:
+            return format(
+                "identity comparison length mismatch: "
+                ~ "required=%s expected=%s actual=%s",
+                result.requiredLength,
+                result.expectedLength,
+                result.actualLength
+            );
+
+        case IdentityComparisonIssue.reassemblyMismatch:
+            return format(
+                "identity reassembly mismatch: "
+                ~ "relative=(%s,%s) "
+                ~ "logical=(%s,%s) "
+                ~ "expected=%s actual=%s",
+                result.mismatch.relativeX,
+                result.mismatch.relativeY,
+                result.mismatch.logicalX,
+                result.mismatch.logicalY,
+                result.mismatch.expected,
+                result.mismatch.actual
+            );
+    }
+}
+
+
+/*
+ * E3.2 comparison oracle diagnostics.
+ */
+unittest
+{
+    const requestedOutput =
+        Region2D(
+            37,
+            29,
+            3,
+            2
+        );
+
+    const ubyte[6] expected =
+    [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60
+    ];
+
+    ubyte[6] actual =
+        expected;
+
+    actual[4] = 99;
+
+
+    const mismatch =
+        compareIdentityOutputs(
+            requestedOutput,
+            expected[],
+            actual[]
+        );
+
+    assert(!mismatch.ok);
+
+    assert(
+        mismatch.issue
+        == IdentityComparisonIssue.reassemblyMismatch
+    );
+
+    assert(mismatch.mismatch.relativeX == 1);
+    assert(mismatch.mismatch.relativeY == 1);
+
+    assert(mismatch.mismatch.logicalX == 38);
+    assert(mismatch.mismatch.logicalY == 30);
+
+    assert(mismatch.mismatch.expected == 50);
+    assert(mismatch.mismatch.actual == 99);
+
+    assert(
+        formatIdentityComparisonFailure(
+            mismatch
+        )
+        ==
+        "identity reassembly mismatch: "
+        ~ "relative=(1,1) "
+        ~ "logical=(38,30) "
+        ~ "expected=50 actual=99"
+    );
+
+
+    const ubyte[5] shortActual =
+    [
+        10,
+        20,
+        30,
+        40,
+        50
+    ];
+
+    const lengthMismatch =
+        compareIdentityOutputs(
+            requestedOutput,
+            expected[],
+            shortActual[]
+        );
+
+    assert(!lengthMismatch.ok);
+
+    assert(
+        lengthMismatch.issue
+        == IdentityComparisonIssue.lengthMismatch
+    );
+
+    assert(lengthMismatch.requiredLength == 6);
+    assert(lengthMismatch.expectedLength == 6);
+    assert(lengthMismatch.actualLength == 5);
 }
 
 
@@ -1311,6 +1634,21 @@ unittest
         == reference.output.length
     );
 
+
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
+    );
+
     /*
      * Identity on ubyte pixels is exact. No tolerance is permitted.
      *
@@ -1678,6 +2016,21 @@ unittest
     assert(
         streamed.output.length
         == reference.output.length
+    );
+
+
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
     );
 
     foreach (relativeY; 0 .. requestedOutput.height)
@@ -2191,6 +2544,21 @@ unittest
     );
 
 
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
+    );
+
+
     /*
      * Exact byte identity across both reassembly axes.
      */
@@ -2565,6 +2933,21 @@ unittest
     );
 
 
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            irregular.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
+    );
+
+
     foreach (relativeY; 0 .. requestedOutput.height)
     {
         foreach (relativeX; 0 .. requestedOutput.width)
@@ -2800,6 +3183,21 @@ unittest
     assert(
         pixelStream.output.length
         == reference.output.length
+    );
+
+
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            pixelStream.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
     );
 
     assert(
@@ -3049,6 +3447,21 @@ unittest
     assert(
         streamed.output.length
         == reference.output.length
+    );
+
+
+    const comparison =
+        compareIdentityOutputs(
+            requestedOutput,
+            reference.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatIdentityComparisonFailure(
+            comparison
+        )
     );
 
 
