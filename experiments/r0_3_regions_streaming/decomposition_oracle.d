@@ -50,7 +50,7 @@ enum size_t MAX_ORACLE_PIXELS =
 +/
 bool tryValidateDecomposition(
     Region2D target,
-    const(Region2D)[] members,
+    scope const(Region2D)[] members,
     out DecompositionIssue issue
 )
 @safe
@@ -192,6 +192,45 @@ bool tryValidateDecomposition(
     }
 
     return true;
+}
+
+
+/*
+ * A caller may validate a borrowed slice of stack-resident decomposition
+ * metadata.
+ *
+ * tryValidateDecomposition does not retain the members slice. Its public
+ * lifetime contract therefore accepts scope-borrowed input under DIP1000.
+ */
+unittest
+{
+    const target =
+        Region2D(
+            100,
+            200,
+            4,
+            3
+        );
+
+    const Region2D[1] members =
+    [
+        target
+    ];
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            target,
+            members[],
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
 }
 
 
