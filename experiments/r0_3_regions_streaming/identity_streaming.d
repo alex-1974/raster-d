@@ -2618,3 +2618,236 @@ unittest
         requestedPixels
     );
 }
+
+
+
+/*
+ * E3.2.7 pixel-task streamed equivalence.
+ *
+ * Pixel tasks are deliberately exercised only on a small fixture. Every
+ * decomposition member is exactly one logical pixel and therefore produces
+ * one 1x1 source raster plus one distinct 1x1 destination raster.
+ *
+ * This is the maximal decomposition case for the current sequential identity
+ * execution model.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            100,
+            100
+        );
+
+    const requestedOutput =
+        Region2D(
+            37,
+            29,
+            7,
+            5
+        );
+
+    enum size_t pixelCount =
+        7 * 5;
+
+    static assert(pixelCount == 35);
+
+
+    Region2D[pixelCount] tasks;
+
+    size_t taskIndex = 0;
+
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            assert(taskIndex < tasks.length);
+
+            tasks[taskIndex] =
+                Region2D(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY,
+                    1,
+                    1
+                );
+
+            ++taskIndex;
+        }
+    }
+
+    assert(taskIndex == tasks.length);
+
+    assert(
+        tasks[0]
+        == Region2D(
+            37,
+            29,
+            1,
+            1
+        )
+    );
+
+    assert(
+        tasks[$ - 1]
+        == Region2D(
+            43,
+            33,
+            1,
+            1
+        )
+    );
+
+    foreach (const task; tasks)
+    {
+        assert(task.width == 1);
+        assert(task.height == 1);
+        assert(!task.empty());
+    }
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks[],
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto pixelStream =
+        executeIdentityDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+    assert(pixelStream.ok);
+
+    assert(
+        pixelStream.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        pixelStream.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    assert(
+        pixelStream.output.length
+        == reference.output.length
+    );
+
+    assert(
+        pixelStream.output.length
+        == pixelCount
+    );
+
+
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                pixelStream.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    assert(
+        pixelStream.accounting.requestedOutputBytes
+        == pixelCount
+    );
+
+    assert(
+        pixelStream.accounting.oracleBytes
+        == pixelCount
+    );
+
+    assert(
+        pixelStream.accounting.sourceMaterializations
+        == pixelCount
+    );
+
+    assert(
+        pixelStream.accounting.totalMaterializedSourcePixels
+        == pixelCount
+    );
+
+
+    /*
+     * Every task materializes exactly one source byte and one destination
+     * byte. No larger task raster is ever resident.
+     */
+    assert(
+        pixelStream.accounting.sourceResidentBytes
+        == 1
+    );
+
+    assert(
+        pixelStream.accounting.destinationResidentBytes
+        == 1
+    );
+
+    assert(
+        pixelStream.accounting.peakResidentRasterBytes
+        == 2
+    );
+
+    assert(
+        pixelStream.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        reference.accounting.peakResidentRasterBytes
+        == pixelCount * 2
+    );
+
+    assert(
+        pixelStream.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+}
