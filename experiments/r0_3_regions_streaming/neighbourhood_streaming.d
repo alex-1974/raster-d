@@ -1871,3 +1871,671 @@ unittest
         }
     }
 }
+
+
+
+/*
+ * E3.3.9 irregular-rectangle streamed equivalence.
+ *
+ * The decomposition is deliberately not a regular Cartesian tile grid.
+ *
+ * Three horizontal bands use different vertical split positions:
+ *
+ *     band 1, height 137:
+ *         211 | 83 | 307 | 420
+ *
+ *     band 2, height 251:
+ *          97 | 401 | 163 | 360
+ *
+ *     band 3, height 381:
+ *         503 | 149 | 369
+ *
+ * Band heights:
+ *
+ *     137 + 251 + 381 = 769
+ *
+ * Every row covers:
+ *
+ *     1021 output columns
+ *
+ * The vertical seams do not continue through the horizontal band boundaries.
+ * This creates deliberate T-junctions and proves that the streamed
+ * neighbourhood result does not depend on a regular tile lattice.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+
+    auto whole =
+        executeWholeNeighbourhood(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(whole.ok);
+
+
+    Region2D[11] tasks = [
+        /*
+         * Band 1:
+         *
+         * relative y = 0
+         * height     = 137
+         *
+         * widths:
+         *
+         *     211 + 83 + 307 + 420 = 1021
+         */
+        Region2D(
+            1733,
+            911,
+            211,
+            137
+        ),
+
+        Region2D(
+            1944,
+            911,
+            83,
+            137
+        ),
+
+        Region2D(
+            2027,
+            911,
+            307,
+            137
+        ),
+
+        Region2D(
+            2334,
+            911,
+            420,
+            137
+        ),
+
+
+        /*
+         * Band 2:
+         *
+         * relative y = 137
+         * height     = 251
+         *
+         * widths:
+         *
+         *     97 + 401 + 163 + 360 = 1021
+         */
+        Region2D(
+            1733,
+            1048,
+            97,
+            251
+        ),
+
+        Region2D(
+            1830,
+            1048,
+            401,
+            251
+        ),
+
+        Region2D(
+            2231,
+            1048,
+            163,
+            251
+        ),
+
+        Region2D(
+            2394,
+            1048,
+            360,
+            251
+        ),
+
+
+        /*
+         * Band 3:
+         *
+         * relative y = 388
+         * height     = 381
+         *
+         * widths:
+         *
+         *     503 + 149 + 369 = 1021
+         */
+        Region2D(
+            1733,
+            1299,
+            503,
+            381
+        ),
+
+        Region2D(
+            2236,
+            1299,
+            149,
+            381
+        ),
+
+        Region2D(
+            2385,
+            1299,
+            369,
+            381
+        )
+    ];
+
+
+    auto streamed =
+        executeNeighbourhoodDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+    assert(streamed.ok);
+
+
+    const comparison =
+        compareNeighbourhoodOutputs(
+            requestedOutput,
+            whole.execution.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatNeighbourhoodComparisonFailure(
+            comparison
+        )
+    );
+
+
+    /*
+     * Requested output remains invariant.
+     */
+    enum size_t expectedOutputPixels =
+        785_149;
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.totalOutputPixels
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.outputOracleBytes
+        == expectedOutputPixels
+    );
+
+
+    /*
+     * Source dependency for every irregular task is:
+     *
+     *     (task.width + 2)
+     *   x (task.height + 2)
+     *
+     * because all tasks are fully interior to the logical image.
+     */
+    enum size_t source0 =
+        (211 + 2) * (137 + 2);
+
+    enum size_t source1 =
+        (83 + 2) * (137 + 2);
+
+    enum size_t source2 =
+        (307 + 2) * (137 + 2);
+
+    enum size_t source3 =
+        (420 + 2) * (137 + 2);
+
+    enum size_t source4 =
+        (97 + 2) * (251 + 2);
+
+    enum size_t source5 =
+        (401 + 2) * (251 + 2);
+
+    enum size_t source6 =
+        (163 + 2) * (251 + 2);
+
+    enum size_t source7 =
+        (360 + 2) * (251 + 2);
+
+    enum size_t source8 =
+        (503 + 2) * (381 + 2);
+
+    enum size_t source9 =
+        (149 + 2) * (381 + 2);
+
+    enum size_t source10 =
+        (369 + 2) * (381 + 2);
+
+
+    assert(source0 == 29_607);
+    assert(source1 == 11_815);
+    assert(source2 == 42_951);
+    assert(source3 == 58_658);
+
+    assert(source4 == 25_047);
+    assert(source5 == 101_959);
+    assert(source6 == 41_745);
+    assert(source7 == 91_586);
+
+    assert(source8 == 193_415);
+    assert(source9 == 57_833);
+    assert(source10 == 142_093);
+
+
+    enum size_t expectedMaterializedSourcePixels =
+          source0
+        + source1
+        + source2
+        + source3
+        + source4
+        + source5
+        + source6
+        + source7
+        + source8
+        + source9
+        + source10;
+
+
+    assert(
+        expectedMaterializedSourcePixels
+        == 796_709
+    );
+
+
+    /*
+     * Largest task:
+     *
+     *     503 x 381 output
+     *     505 x 383 source
+     */
+    enum size_t largestSourcePixels =
+        505 * 383;
+
+    assert(
+        largestSourcePixels
+        == 193_415
+    );
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestSourcePixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestSourcePixels
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == 11
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == expectedMaterializedSourcePixels
+    );
+
+
+    /*
+     * Oracle and decomposition metadata remain separate from raster residency.
+     */
+    assert(
+        streamed.accounting
+            .peakDecompositionCoverageOracleBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting
+            .decompositionMetadataPayloadBytes
+        == tasks.length * Region2D.sizeof
+    );
+
+
+    /*
+     * Halo duplication relative to one whole source materialization.
+     */
+    enum size_t wholeSourcePixels =
+        1023 * 771;
+
+    enum size_t expectedHaloDuplication =
+        expectedMaterializedSourcePixels
+        - wholeSourcePixels;
+
+
+    assert(
+        wholeSourcePixels
+        == 788_733
+    );
+
+    assert(
+        expectedHaloDuplication
+        == 7_976
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+            - wholeSourcePixels
+        == expectedHaloDuplication
+    );
+
+
+    /*
+     * The irregular decomposition still bounds raster residency compared with
+     * whole-request execution.
+     */
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        < whole.accounting.peakResidentRasterBytes
+    );
+
+
+    /*
+     * First horizontal band boundary:
+     *
+     *     relative y = 137
+     *
+     * Upper-band vertical seams:
+     *
+     *     211, 294, 601
+     *
+     * Lower-band vertical seams:
+     *
+     *      97, 498, 661
+     *
+     * No seam continues through the band boundary.
+     *
+     * The points around those terminating/starting seams exercise deliberate
+     * T-junctions in the output decomposition.
+     */
+    immutable size_t[3] upperBoundaryOneSeams = [
+        211,
+        294,
+        601
+    ];
+
+    immutable size_t[3] lowerBoundaryOneSeams = [
+        97,
+        498,
+        661
+    ];
+
+    enum size_t boundaryOneY = 137;
+
+    foreach (seamX; upperBoundaryOneSeams)
+    {
+        assert(seamX != 0);
+        assert(seamX < requestedOutput.width);
+
+        const leftX =
+            seamX - 1;
+
+        const rightX =
+            seamX;
+
+        const aboveY =
+            boundaryOneY - 1;
+
+        const belowY =
+            boundaryOneY;
+
+        const aboveLeft =
+            aboveY * requestedOutput.width
+            + leftX;
+
+        const aboveRight =
+            aboveY * requestedOutput.width
+            + rightX;
+
+        const belowLeft =
+            belowY * requestedOutput.width
+            + leftX;
+
+        const belowRight =
+            belowY * requestedOutput.width
+            + rightX;
+
+        assert(
+            streamed.output[aboveLeft]
+            == whole.execution.output[aboveLeft]
+        );
+
+        assert(
+            streamed.output[aboveRight]
+            == whole.execution.output[aboveRight]
+        );
+
+        assert(
+            streamed.output[belowLeft]
+            == whole.execution.output[belowLeft]
+        );
+
+        assert(
+            streamed.output[belowRight]
+            == whole.execution.output[belowRight]
+        );
+    }
+
+
+    foreach (seamX; lowerBoundaryOneSeams)
+    {
+        assert(seamX != 0);
+        assert(seamX < requestedOutput.width);
+
+        const leftX =
+            seamX - 1;
+
+        const rightX =
+            seamX;
+
+        const aboveY =
+            boundaryOneY - 1;
+
+        const belowY =
+            boundaryOneY;
+
+        const aboveLeft =
+            aboveY * requestedOutput.width
+            + leftX;
+
+        const aboveRight =
+            aboveY * requestedOutput.width
+            + rightX;
+
+        const belowLeft =
+            belowY * requestedOutput.width
+            + leftX;
+
+        const belowRight =
+            belowY * requestedOutput.width
+            + rightX;
+
+        assert(
+            streamed.output[aboveLeft]
+            == whole.execution.output[aboveLeft]
+        );
+
+        assert(
+            streamed.output[aboveRight]
+            == whole.execution.output[aboveRight]
+        );
+
+        assert(
+            streamed.output[belowLeft]
+            == whole.execution.output[belowLeft]
+        );
+
+        assert(
+            streamed.output[belowRight]
+            == whole.execution.output[belowRight]
+        );
+    }
+
+
+    /*
+     * Second horizontal band boundary:
+     *
+     *     relative y = 388
+     *
+     * Upper seams:
+     *
+     *      97, 498, 661
+     *
+     * Lower seams:
+     *
+     *     503, 652
+     *
+     * Again there is no shared vertical split.
+     */
+    immutable size_t[3] upperBoundaryTwoSeams = [
+        97,
+        498,
+        661
+    ];
+
+    immutable size_t[2] lowerBoundaryTwoSeams = [
+        503,
+        652
+    ];
+
+    enum size_t boundaryTwoY = 388;
+
+    foreach (seamX; upperBoundaryTwoSeams)
+    {
+        assert(seamX != 0);
+        assert(seamX < requestedOutput.width);
+
+        const leftX =
+            seamX - 1;
+
+        const rightX =
+            seamX;
+
+        const aboveY =
+            boundaryTwoY - 1;
+
+        const belowY =
+            boundaryTwoY;
+
+        const aboveLeft =
+            aboveY * requestedOutput.width
+            + leftX;
+
+        const aboveRight =
+            aboveY * requestedOutput.width
+            + rightX;
+
+        const belowLeft =
+            belowY * requestedOutput.width
+            + leftX;
+
+        const belowRight =
+            belowY * requestedOutput.width
+            + rightX;
+
+        assert(
+            streamed.output[aboveLeft]
+            == whole.execution.output[aboveLeft]
+        );
+
+        assert(
+            streamed.output[aboveRight]
+            == whole.execution.output[aboveRight]
+        );
+
+        assert(
+            streamed.output[belowLeft]
+            == whole.execution.output[belowLeft]
+        );
+
+        assert(
+            streamed.output[belowRight]
+            == whole.execution.output[belowRight]
+        );
+    }
+
+
+    foreach (seamX; lowerBoundaryTwoSeams)
+    {
+        assert(seamX != 0);
+        assert(seamX < requestedOutput.width);
+
+        const leftX =
+            seamX - 1;
+
+        const rightX =
+            seamX;
+
+        const aboveY =
+            boundaryTwoY - 1;
+
+        const belowY =
+            boundaryTwoY;
+
+        const aboveLeft =
+            aboveY * requestedOutput.width
+            + leftX;
+
+        const aboveRight =
+            aboveY * requestedOutput.width
+            + rightX;
+
+        const belowLeft =
+            belowY * requestedOutput.width
+            + leftX;
+
+        const belowRight =
+            belowY * requestedOutput.width
+            + rightX;
+
+        assert(
+            streamed.output[aboveLeft]
+            == whole.execution.output[aboveLeft]
+        );
+
+        assert(
+            streamed.output[aboveRight]
+            == whole.execution.output[aboveRight]
+        );
+
+        assert(
+            streamed.output[belowLeft]
+            == whole.execution.output[belowLeft]
+        );
+
+        assert(
+            streamed.output[belowRight]
+            == whole.execution.output[belowRight]
+        );
+    }
+}
