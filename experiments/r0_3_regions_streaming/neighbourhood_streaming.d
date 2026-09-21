@@ -912,3 +912,358 @@ unittest
         }
     }
 }
+
+
+
+/++
+    Constructs a vertical-strip decomposition.
+
+    Every strip spans the complete requested height.
+
+    The final strip may be narrower than `nominalStripWidth`.
++/
+private Region2D[] makeVerticalStrips(
+    Region2D requestedOutput,
+    size_t nominalStripWidth
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalStripWidth == 0
+    )
+    {
+        return null;
+    }
+
+    const completeStripCount =
+        requestedOutput.width
+        / nominalStripWidth;
+
+    const remainder =
+        requestedOutput.width
+        % nominalStripWidth;
+
+    const stripCount =
+        completeStripCount
+        + (remainder == 0 ? 0 : 1);
+
+    assert(stripCount != 0);
+
+    auto tasks =
+        new Region2D[stripCount];
+
+    size_t currentX =
+        requestedOutput.x;
+
+    size_t remainingWidth =
+        requestedOutput.width;
+
+    foreach (ref task; tasks)
+    {
+        const width =
+            remainingWidth < nominalStripWidth
+            ? remainingWidth
+            : nominalStripWidth;
+
+        assert(width != 0);
+
+        task =
+            Region2D(
+                currentX,
+                requestedOutput.y,
+                width,
+                requestedOutput.height
+            );
+
+        currentX +=
+            width;
+
+        remainingWidth -=
+            width;
+    }
+
+    assert(remainingWidth == 0);
+
+    assert(
+        currentX
+        == requestedOutput.x
+            + requestedOutput.width
+    );
+
+    return tasks;
+}
+
+
+/*
+ * E3.3.7 vertical-strip streamed equivalence.
+ *
+ * This exercises seams orthogonal to E3.3.6 while reusing the same
+ * decomposition, task execution, reassembly and comparison paths.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+
+    auto whole =
+        executeWholeNeighbourhood(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(whole.ok);
+
+
+    auto tasks =
+        makeVerticalStrips(
+            requestedOutput,
+            128
+        );
+
+    assert(tasks.length == 8);
+
+    foreach (index; 0 .. 7)
+    {
+        assert(tasks[index].width == 128);
+        assert(tasks[index].height == 769);
+    }
+
+    assert(tasks[7].width == 125);
+    assert(tasks[7].height == 769);
+
+
+    auto streamed =
+        executeNeighbourhoodDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks
+        );
+
+    assert(streamed.ok);
+
+
+    const comparison =
+        compareNeighbourhoodOutputs(
+            requestedOutput,
+            whole.execution.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatNeighbourhoodComparisonFailure(
+            comparison
+        )
+    );
+
+
+    /*
+     * Requested output is unchanged by decomposition.
+     */
+    enum size_t expectedOutputPixels =
+        785_149;
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.totalOutputPixels
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.outputOracleBytes
+        == expectedOutputPixels
+    );
+
+
+    /*
+     * Seven complete 128-column strips each require:
+     *
+     *     130 x 771
+     *
+     * source samples.
+     *
+     * The final 125-column strip requires:
+     *
+     *     127 x 771
+     */
+    enum size_t largestStripSourcePixels =
+        130 * 771;
+
+    enum size_t finalStripSourcePixels =
+        127 * 771;
+
+    enum size_t expectedMaterializedSourcePixels =
+        7 * largestStripSourcePixels
+        + finalStripSourcePixels;
+
+    assert(
+        largestStripSourcePixels
+        == 100_230
+    );
+
+    assert(
+        finalStripSourcePixels
+        == 97_917
+    );
+
+    assert(
+        expectedMaterializedSourcePixels
+        == 799_527
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestStripSourcePixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestStripSourcePixels
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == 8
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == expectedMaterializedSourcePixels
+    );
+
+
+    /*
+     * Oracle payloads remain separate from raster residency.
+     */
+    assert(
+        streamed.accounting
+            .peakDecompositionCoverageOracleBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting
+            .decompositionMetadataPayloadBytes
+        == tasks.length * Region2D.sizeof
+    );
+
+
+    /*
+     * Halo duplication overhead.
+     *
+     * Whole source:
+     *
+     *     1023 x 771 = 788,733
+     *
+     * Vertical streaming:
+     *
+     *     799,527
+     *
+     * Difference:
+     *
+     *     10,794
+     *
+     * This is exactly:
+     *
+     *     7 internal seams
+     *   x 2 overlapping halo columns
+     *   x 771 source rows
+     */
+    enum size_t wholeSourcePixels =
+        1023 * 771;
+
+    enum size_t expectedHaloDuplication =
+        7 * 2 * 771;
+
+    assert(
+        wholeSourcePixels
+        == 788_733
+    );
+
+    assert(
+        expectedHaloDuplication
+        == 10_794
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+            - wholeSourcePixels
+        == expectedHaloDuplication
+    );
+
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        < whole.accounting.peakResidentRasterBytes
+    );
+
+
+    /*
+     * Explicitly exercise both columns adjacent to every internal seam.
+     */
+    foreach (seamIndex; 1 .. 8)
+    {
+        const seamRelativeX =
+            seamIndex * 128;
+
+        if (seamRelativeX >= requestedOutput.width)
+        {
+            break;
+        }
+
+        assert(seamRelativeX != 0);
+
+        const leftX =
+            seamRelativeX - 1;
+
+        const rightX =
+            seamRelativeX;
+
+        foreach (y; 0 .. requestedOutput.height)
+        {
+            const leftIndex =
+                y * requestedOutput.width
+                + leftX;
+
+            const rightIndex =
+                y * requestedOutput.width
+                + rightX;
+
+            assert(
+                streamed.output[leftIndex]
+                == whole.execution.output[leftIndex]
+            );
+
+            assert(
+                streamed.output[rightIndex]
+                == whole.execution.output[rightIndex]
+            );
+        }
+    }
+}
