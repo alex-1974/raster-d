@@ -118,6 +118,13 @@ jobs:
         run: |
           tools/compile-negative/raster_import_public.sh "$DC"
 
+      - name: Raster retained-import external link probe
+        shell: bash
+        run: |
+          dub test \
+            --root=tests/external/raster_import_link \
+            --compiler="$DC"
+
       - name: Raster execution lifetime compile probes
         shell: bash
         run: |

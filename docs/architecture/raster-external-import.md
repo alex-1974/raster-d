@@ -1524,3 +1524,63 @@ geometry while sample access remains impossible.
 The public compile probes additionally verify that callers cannot fabricate a
 successful ownership disposition through the module-private
 OwnedRasterImportResult constructor.
+
+## C6.7 external retained-import link closure
+
+C6.7 closes a binary-link coverage gap discovered while integrating the R0.3
+region/streaming research with the public retained raster import API.
+
+The existing C6.5 public probes compile external consumer modules, but they do
+not perform a final link of an independently built DUB consumer. That distinction
+matters for retained ownership because RasterLease contains reference-counted
+state whose destructor path crosses Phobos template instantiations.
+
+A separate external `dub test` consumer exposed the gap. The public import
+itself compiled successfully, ordinary executable consumers linked, and the
+imagery-d root unittest suite passed. An independently compiled unittest
+consumer, however, referenced a required SafeRefCounted/object.destroy
+instantiation that the separately built imagery-d archive did not provide.
+
+Using compiler-wide all-instantiation flags made the reproducer link, which
+confirmed a template-emission/separate-compilation boundary. Such flags are not
+part of the imagery-d consumer contract and are not used as the fix.
+
+The retained representation is therefore split according to its actual
+semantics:
+
+- RasterBacking is an untyped retained storage object containing physical byte
+  resources, stable plane descriptors, metadata allocations, and resident
+  geometry;
+- RasterBackingOwner is one concrete SafeRefCounted!RasterBacking owner;
+- creation of that owner occurs through the non-templated
+  makeRasterBackingOwner() function inside imagery-d;
+- RasterLease!T, RasterView!T, construction, validation, and raster operations
+  remain sample-type aware.
+
+This gives the separately compiled imagery-d library one concrete code-generation
+anchor for the retained backing destruction path without changing the public
+sample-typed API.
+
+The permanent regression package is:
+
+    tests/external/raster_import_link
+
+It performs a real public ownership transition:
+
+    malloc allocation
+        -> OwnedByteResource
+        -> tryImportOwnedRaster!ubyte
+        -> RasterLease!ubyte
+        -> RasterView!ubyte
+        -> sample inspection
+        -> external RasterLease destruction
+
+The probe is executed with `dub test`, so success requires source compilation,
+dependency-library construction, final executable linking, unittest execution,
+and destruction of the retained lease.
+
+No `-allinst`/`--allinst` workaround is used.
+
+The probe runs in both the normal CI compiler matrix and the compiler-floor
+matrix. It complements rather than replaces the compile-only public-surface and
+DIP1000 lifetime probes.
