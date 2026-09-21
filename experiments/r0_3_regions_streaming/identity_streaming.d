@@ -1398,3 +1398,360 @@ unittest
         == 0
     );
 }
+
+
+
+/++
+    Constructs a vertical-strip decomposition.
+
+    Every strip spans the complete requested height. The final strip may be
+    narrower than `nominalStripWidth`.
+
+    Invalid or empty input, or a zero nominal strip width, produces no tasks.
++/
+private
+Region2D[] makeVerticalStrips(
+    Region2D requestedOutput,
+    size_t nominalStripWidth
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalStripWidth == 0
+    )
+    {
+        return null;
+    }
+
+    const completeStripCount =
+        requestedOutput.width
+        / nominalStripWidth;
+
+    const remainder =
+        requestedOutput.width
+        % nominalStripWidth;
+
+    const stripCount =
+        completeStripCount
+        + (remainder == 0 ? 0 : 1);
+
+    assert(stripCount != 0);
+
+    auto tasks =
+        new Region2D[stripCount];
+
+    size_t currentX =
+        requestedOutput.x;
+
+    size_t remainingWidth =
+        requestedOutput.width;
+
+    foreach (ref task; tasks)
+    {
+        const width =
+            remainingWidth < nominalStripWidth
+            ? remainingWidth
+            : nominalStripWidth;
+
+        assert(width != 0);
+
+        task =
+            Region2D(
+                currentX,
+                requestedOutput.y,
+                width,
+                requestedOutput.height
+            );
+
+        /*
+         * requestedOutput representability proves this addition safe.
+         */
+        currentX +=
+            width;
+
+        remainingWidth -=
+            width;
+    }
+
+    assert(remainingWidth == 0);
+
+    assert(
+        currentX
+        == requestedOutput.x
+            + requestedOutput.width
+    );
+
+    return tasks;
+}
+
+
+/++
+    Executes identity as sequential vertical strips.
++/
+IdentityExecutionResult executeVerticalStripIdentity(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    size_t nominalStripWidth
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalStripWidth == 0
+    )
+    {
+        IdentityExecutionResult result;
+
+        result.error =
+            IdentityExecutionError.invalidRequest;
+
+        return result;
+    }
+
+    const tasks =
+        makeVerticalStrips(
+            requestedOutput,
+            nominalStripWidth
+        );
+
+    assert(tasks.length != 0);
+
+    return executeIdentityDecomposition(
+        logicalExtent,
+        requestedOutput,
+        tasks
+    );
+}
+
+
+/*
+ * E3.2.4 vertical-strip streamed equivalence.
+ *
+ * The principal fixture width is 1021. A nominal strip width of 128 creates:
+ *
+ *     7 * 128 + 125
+ *
+ * so the final strip is deliberately narrower than the nominal task width.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+    enum size_t nominalStripWidth =
+        128;
+
+
+    const tasks =
+        makeVerticalStrips(
+            requestedOutput,
+            nominalStripWidth
+        );
+
+    assert(tasks.length == 8);
+
+    foreach (const task; tasks)
+    {
+        assert(
+            task.height
+            == requestedOutput.height
+        );
+
+        assert(
+            task.width
+            <= nominalStripWidth
+        );
+    }
+
+    assert(
+        tasks[$ - 1].width
+        == 125
+    );
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks,
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto streamed =
+        executeVerticalStripIdentity(
+            logicalExtent,
+            requestedOutput,
+            nominalStripWidth
+        );
+
+    assert(streamed.ok);
+
+    assert(
+        streamed.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        streamed.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    assert(
+        streamed.output.length
+        == reference.output.length
+    );
+
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                streamed.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    const requestedPixels =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    const largestTaskPixels =
+        nominalStripWidth
+        * requestedOutput.height;
+
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.oracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == tasks.length
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == requestedPixels
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.destinationResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestTaskPixels * 2
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        requestedPixels
+    );
+}
+
+
+/*
+ * A zero strip width cannot define a streaming decomposition.
+ */
+unittest
+{
+    const result =
+        executeVerticalStripIdentity(
+            Region2D(0, 0, 100, 100),
+            Region2D(10, 20, 10, 10),
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == IdentityExecutionError.invalidRequest
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+}
