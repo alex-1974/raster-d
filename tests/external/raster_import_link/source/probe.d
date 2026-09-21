@@ -3,7 +3,7 @@ module raster_import_link_probe;
 /++
     External-consumer regression probe for retained RasterLease link closure.
 
-    This package deliberately depends on imagery-d as a separate DUB library
+    This package deliberately depends on raster-d as a separate DUB library
     and is itself compiled with `dub test`.
 
     The test must therefore prove not only that the public API compiles, but
@@ -17,7 +17,7 @@ import core.stdc.stdlib :
 import std.algorithm.mutation :
     move;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     OwnedRasterResourceDisposition,
     PlaneByteLayout,
@@ -137,6 +137,6 @@ unittest
      * Destruction of this externally compiled RasterLease is part of the
      * regression test. Before the backing-owner fix, final linking of this
      * unittest executable failed for both DMD and LDC because the required
-     * SafeRefCounted/object.destroy instantiation was absent from imagery-d.
+     * SafeRefCounted/object.destroy instantiation was absent from raster-d.
      */
 }

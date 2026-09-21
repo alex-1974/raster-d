@@ -87,7 +87,7 @@ done < "$ROOT/SHA256SUMS"
 
 RUN="$(
     mktemp -d \
-        "${TMPDIR:-/tmp}/imagery-d-e5_3-replay.XXXXXX"
+        "${TMPDIR:-/tmp}/raster-d-e5_3-replay.XXXXXX"
 )"
 
 trap 'rm -rf "$RUN"' EXIT
@@ -157,7 +157,7 @@ EXE="$RUN/scalar-conversion-unittest"
         -main \
         -preview=dip1000 \
         "${IMPORT_ARGS[@]}" \
-        "$REPO/source/imagery/raster/internal/scalar_conversion.d" \
+        "$REPO/source/raster/internal/scalar_conversion.d" \
         "-of=$EXE"
 )
 
@@ -251,7 +251,7 @@ echo '=== LDC/LLVM STRUCTURAL REPLAY ==='
         -output-ll \
         -c \
         "${IMPORT_ARGS[@]}" \
-        "$REPO/source/imagery/raster/internal/scalar_conversion.d" \
+        "$REPO/source/raster/internal/scalar_conversion.d" \
         "-of=$RUN/production.ll"
 )
 

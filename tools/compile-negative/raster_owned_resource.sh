@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-owned-resource-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-owned-resource-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -68,7 +68,7 @@ import core.stdc.stdlib :
 import std.algorithm.mutation :
     move;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     tryAdoptMallocResource;
 
@@ -108,7 +108,7 @@ module raster_owned_resource_negative_copy;
 import core.stdc.stdlib :
     malloc;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     tryAdoptMallocResource;
 
@@ -143,7 +143,7 @@ D
 cat > "$tmp_dir/safe_adopt.d" <<'D'
 module raster_owned_resource_negative_safe_adopt;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     tryAdoptMallocResource;
 
@@ -175,9 +175,9 @@ module raster_owned_resource_negative_raw_surface;
 /*
  * MUST FAIL:
  *
- * Raw resource/callback types are not part of the public imagery.raster API.
+ * Raw resource/callback types are not part of the public raster API.
  */
-import imagery.raster :
+import raster :
     ResourceEntry,
     ReleaseFn;
 D
@@ -192,7 +192,7 @@ module raster_owned_resource_negative_resource_access_surface;
  * Raw retained-resource access provenance is package-internal storage
  * machinery. Public callers receive semantic raster capabilities instead.
  */
-import imagery.raster.resource :
+import raster.resource :
     ResourceAccess;
 
 ResourceAccess escapedAccess;

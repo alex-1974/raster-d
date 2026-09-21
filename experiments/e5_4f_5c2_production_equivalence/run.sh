@@ -14,7 +14,7 @@ REPO="$(
 
 PROBE="$ROOT/original/production_equivalence.d"
 
-RELATION="$REPO/source/imagery/raster/internal/affine_relation.d"
+RELATION="$REPO/source/raster/internal/affine_relation.d"
 
 
 if [ "$#" -ne 1 ]; then
@@ -111,7 +111,7 @@ done < "$ROOT/SHA256SUMS"
 
 RUN="$(
     mktemp -d \
-        "${TMPDIR:-/tmp}/imagery-d-e5_4f_5c2-prod-eq.XXXXXX"
+        "${TMPDIR:-/tmp}/raster-d-e5_4f_5c2-prod-eq.XXXXXX"
 )"
 
 cleanup()
@@ -120,6 +120,36 @@ cleanup()
 }
 
 trap cleanup EXIT
+
+
+REPLAY_PROBE="$RUN/production_equivalence.d"
+
+python3 - "$PROBE" "$REPLAY_PROBE" <<'PY_BRIDGE'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+
+text = source.read_text()
+
+if text.count("imagery.raster") != 2:
+    raise SystemExit(
+        "historical production-equivalence probe has unexpected namespace shape"
+    )
+
+translated = text.replace(
+    "imagery.raster",
+    "raster",
+)
+
+if "imagery.raster" in translated:
+    raise SystemExit(
+        "historical production-equivalence replay bridge incomplete"
+    )
+
+target.write_text(translated)
+PY_BRIDGE
 
 
 EXE="$RUN/production_equivalence"
@@ -143,7 +173,7 @@ echo '=== BUILD ==='
 "$COMPILER" \
     -preview=dip1000 \
     "-I$REPO/source" \
-    "$PROBE" \
+    "$REPLAY_PROBE" \
     "$RELATION" \
     "-of=$EXE"
 

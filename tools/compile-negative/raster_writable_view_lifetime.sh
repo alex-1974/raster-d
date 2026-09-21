@@ -10,7 +10,7 @@ repo_root="$(
 
 tmp_dir="$(
     mktemp -d \
-        "/tmp/imagery-d-raster-writable-view-XXXXXX"
+        "/tmp/raster-d-raster-writable-view-XXXXXX"
 )"
 
 cleanup()
@@ -142,22 +142,22 @@ D
 
 
 cat > "$tmp_dir/positive.d" <<'D'
-module imagery.raster.writable_view_positive;
+module raster.writable_view_positive;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
-import imagery.raster.validation :
+import raster.validation :
     BackingValidationResult,
     WritableBackingCertificationResult;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     tryMakeWritableRasterView;
 
 
@@ -250,22 +250,22 @@ D
 
 
 cat > "$tmp_dir/local_escape.d" <<'D'
-module imagery.raster.writable_view_negative_local_escape;
+module raster.writable_view_negative_local_escape;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
-import imagery.raster.validation :
+import raster.validation :
     BackingValidationResult,
     WritableBackingCertificationResult;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView,
     tryMakeWritableRasterView;
 
@@ -302,22 +302,22 @@ D
 
 
 cat > "$tmp_dir/global_escape.d" <<'D'
-module imagery.raster.writable_view_negative_global_escape;
+module raster.writable_view_negative_global_escape;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
-import imagery.raster.validation :
+import raster.validation :
     BackingValidationResult,
     WritableBackingCertificationResult;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView,
     tryMakeWritableRasterView;
 
@@ -361,22 +361,22 @@ D
 
 
 cat > "$tmp_dir/const_roi.d" <<'D'
-module imagery.raster.writable_view_negative_const_roi;
+module raster.writable_view_negative_const_roi;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
-import imagery.raster.validation :
+import raster.validation :
     BackingValidationResult,
     WritableBackingCertificationResult;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     tryMakeWritableRasterView;
 
 
@@ -429,15 +429,15 @@ D
 
 
 cat > "$tmp_dir/raw_constructor_surface.d" <<'D'
-module imagery.raster.writable_view_negative_raw_constructor_surface;
+module raster.writable_view_negative_raw_constructor_surface;
 
 /*
  * MUST FAIL.
  *
- * Even another module inside imagery.raster must not manufacture writable
+ * Even another module inside raster must not manufacture writable
  * capability directly from PlaneDescriptor[] + Region2D.
  */
-import imagery.raster.writable_view :
+import raster.writable_view :
     makeWritableRasterViewAssumeCertified;
 
 alias escapedRawConstructor =
@@ -448,7 +448,7 @@ D
 cat > "$tmp_dir/external_surface.d" <<'D'
 module raster_writable_view_public_external_surface;
 
-import imagery.raster :
+import raster :
     WritableRasterView;
 
 
@@ -481,7 +481,7 @@ module raster_writable_view_negative_external_factory_surface;
  * Publishing WritableRasterView does not publish its raw certification
  * boundary.
  */
-import imagery.raster.writable_view :
+import raster.writable_view :
     tryMakeWritableRasterView;
 
 alias escapedWritableFactory =
@@ -492,7 +492,7 @@ D
 cat > "$tmp_dir/external_execution_surface.d" <<'D'
 module raster_writable_view_negative_external_execution_surface;
 
-import imagery.raster :
+import raster :
     WritableRasterView;
 
 
@@ -515,12 +515,12 @@ D
 
 
 cat > "$tmp_dir/execution_traits_positive.d" <<'D'
-module imagery.raster.writable_view_execution_traits_positive;
+module raster.writable_view_execution_traits_positive;
 
-import imagery.raster.internal.execution_layout :
+import raster.internal.execution_layout :
     PlaneExecutionTraits;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -545,9 +545,9 @@ D
 
 
 cat > "$tmp_dir/execution_base_positive.d" <<'D'
-module imagery.raster.writable_view_execution_base_positive;
+module raster.writable_view_execution_base_positive;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -573,9 +573,9 @@ D
 
 
 cat > "$tmp_dir/execution_base_const.d" <<'D'
-module imagery.raster.writable_view_execution_base_negative_const;
+module raster.writable_view_execution_base_negative_const;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -598,9 +598,9 @@ D
 
 
 cat > "$tmp_dir/execution_base_return.d" <<'D'
-module imagery.raster.writable_view_execution_base_negative_return;
+module raster.writable_view_execution_base_negative_return;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -620,9 +620,9 @@ D
 
 
 cat > "$tmp_dir/execution_base_global.d" <<'D'
-module imagery.raster.writable_view_execution_base_negative_global;
+module raster.writable_view_execution_base_negative_global;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -648,7 +648,7 @@ D
 cat > "$tmp_dir/external_lease_surface.d" <<'D'
 module raster_writable_view_public_external_lease_surface;
 
-import imagery.raster :
+import raster :
     RasterLease,
     WritableRasterView;
 
@@ -684,7 +684,7 @@ D
 cat > "$tmp_dir/external_named_arguments.d" <<'D'
 module raster_writable_view_public_named_arguments;
 
-import imagery.raster :
+import raster :
     RasterLease,
     Region2D,
     WritableRasterView;

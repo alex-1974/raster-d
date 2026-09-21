@@ -95,10 +95,74 @@ done < "$ROOT/SHA256SUMS"
 
 RUN="$(
     mktemp -d \
-        "${TMPDIR:-/tmp}/imagery-d-e4-replay.XXXXXX"
+        "${TMPDIR:-/tmp}/raster-d-e4-replay.XXXXXX"
 )"
 
 trap 'rm -rf "$RUN"' EXIT
+
+
+bridge_historical_source()
+{
+    source="$1"
+    target="$2"
+
+    mkdir -p "$(dirname "$target")"
+
+    python3 - "$source" "$target" <<'PY_BRIDGE'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+
+text = source.read_text()
+
+if "imagery.raster" not in text:
+    raise SystemExit(
+        f"historical replay bridge source contains no old namespace: {source}"
+    )
+
+translated = text.replace(
+    "imagery.raster",
+    "raster",
+)
+
+if "imagery.raster" in translated:
+    raise SystemExit(
+        f"historical replay bridge incomplete: {source}"
+    )
+
+target.write_text(translated)
+PY_BRIDGE
+}
+
+
+POLICY_SOURCE="$RUN/historical/policy_codegen/policy_probe.d"
+LANE4_SOURCE="$RUN/historical/fixed_lane4/lane_probe.d"
+BASELINE_SOURCE="$RUN/historical/noalias/current_baseline.d"
+INITIAL_SOURCE="$RUN/historical/initial_codegen/codegen_probe.d"
+MIR_SOURCE="$RUN/historical/noalias/mir_probe.d"
+
+bridge_historical_source \
+    "$ROOT/original/policy_codegen/policy_probe.d" \
+    "$POLICY_SOURCE"
+
+bridge_historical_source \
+    "$ROOT/original/fixed_lane4/lane_probe.d" \
+    "$LANE4_SOURCE"
+
+bridge_historical_source \
+    "$ROOT/original/noalias/current_baseline.d" \
+    "$BASELINE_SOURCE"
+
+bridge_historical_source \
+    "$ROOT/original/initial_codegen/codegen_probe.d" \
+    "$INITIAL_SOURCE"
+
+bridge_historical_source \
+    "$ROOT/original/noalias/mir_probe.d" \
+    "$MIR_SOURCE"
+
 
 (
     cd "$REPO"
@@ -179,19 +243,19 @@ compile_ir \
 
 compile_ir \
     policy \
-    "$ROOT/original/policy_codegen/policy_probe.d"
+    "$POLICY_SOURCE"
 
 compile_ir \
     lane4 \
-    "$ROOT/original/fixed_lane4/lane_probe.d"
+    "$LANE4_SOURCE"
 
 compile_ir \
     current_baseline \
-    "$ROOT/original/noalias/current_baseline.d"
+    "$BASELINE_SOURCE"
 
 compile_ir \
     initial_codegen \
-    "$ROOT/original/initial_codegen/codegen_probe.d"
+    "$INITIAL_SOURCE"
 
 echo
 echo '=== STRUCTURAL LLVM IR CONTRACT ==='
@@ -428,7 +492,7 @@ expected_negative \
 
 expected_negative \
     mir_restrict \
-    "$ROOT/original/noalias/mir_probe.d" \
+    "$MIR_SOURCE" \
     "e43CopyMirRestrict"
 
 

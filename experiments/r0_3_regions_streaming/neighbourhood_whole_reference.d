@@ -1,6 +1,6 @@
 module neighbourhood_whole_reference;
 
-import imagery.raster.region : Region2D;
+import raster.region : Region2D;
 
 import neighbourhood_kernel :
     weightedNeighbourhood3x3;
