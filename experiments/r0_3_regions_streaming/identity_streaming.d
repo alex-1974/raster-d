@@ -85,7 +85,16 @@ struct IdentityExecutionAccounting
     size_t sourceMaterializations;
     size_t totalMaterializedSourcePixels;
 
-    size_t oracleBytes;
+    /*
+     * Experiment/oracle payload accounting.
+     *
+     * These values are deliberately separate from resident raster storage.
+     * They are structural payload sizes, not total allocator/process-memory
+     * measurements and not necessarily simultaneously live.
+     */
+    size_t outputOracleBytes;
+    size_t peakDecompositionCoverageOracleBytes;
+    size_t decompositionMetadataPayloadBytes;
 }
 
 
@@ -508,8 +517,17 @@ IdentityExecutionResult executeWholeIdentity(
     result.accounting.totalMaterializedSourcePixels =
         sampleCount;
 
-    result.accounting.oracleBytes =
+    result.accounting.outputOracleBytes =
         sampleCount;
+
+    /*
+     * tryValidateDecomposition() uses one ubyte per target pixel.
+     */
+    result.accounting.peakDecompositionCoverageOracleBytes =
+        sampleCount;
+
+    result.accounting.decompositionMetadataPayloadBytes =
+        wholeDecomposition.length * Region2D.sizeof;
 
 
     result.accounting.currentResidentRasterBytes =
@@ -766,7 +784,7 @@ unittest
     );
 
     assert(
-        result.accounting.oracleBytes
+        result.accounting.outputOracleBytes
         == sampleCount
     );
 
@@ -829,8 +847,17 @@ unittest
     `peakResidentRasterBytes` reports the largest simultaneously resident
     source-plus-destination task pair.
 
-    `oracleBytes` reports the returned reassembled output buffer only. It is
-    deliberately separate from resident raster accounting.
+    `outputOracleBytes` reports the returned reassembled output buffer only.
+
+    `peakDecompositionCoverageOracleBytes` reports the largest E3.1.3 ubyte
+    coverage-bitmap payload used during the execution. It is a peak payload,
+    not a sum across sequential validations.
+
+    `decompositionMetadataPayloadBytes` reports the Region2D task payload. It
+    does not claim allocator overhead or total process memory.
+
+    All oracle/metadata accounting is deliberately separate from resident
+    raster accounting.
 +/
 IdentityExecutionResult executeIdentityDecomposition(
     Region2D logicalExtent,
@@ -893,8 +920,26 @@ IdentityExecutionResult executeIdentityDecomposition(
     result.accounting.requestedOutputBytes =
         sampleCount;
 
-    result.accounting.oracleBytes =
+    result.accounting.outputOracleBytes =
         sampleCount;
+
+    /*
+     * The top-level E3.1.3 validation covers the complete requested output
+     * and therefore allocates one coverage byte per requested pixel.
+     *
+     * Task-local executeWholeIdentity() validations cover only individual
+     * decomposition members, so none can exceed this bitmap payload.
+     */
+    result.accounting.peakDecompositionCoverageOracleBytes =
+        sampleCount;
+
+    assert(
+        tasks.length
+        <= size_t.max / Region2D.sizeof
+    );
+
+    result.accounting.decompositionMetadataPayloadBytes =
+        tasks.length * Region2D.sizeof;
 
 
     foreach (const task; tasks)
@@ -1318,7 +1363,7 @@ unittest
     );
 
     assert(
-        streamed.accounting.oracleBytes
+        streamed.accounting.outputOracleBytes
         == requestedPixels
     );
 
@@ -1681,7 +1726,7 @@ unittest
     );
 
     assert(
-        streamed.accounting.oracleBytes
+        streamed.accounting.outputOracleBytes
         == requestedPixels
     );
 
@@ -2195,7 +2240,7 @@ unittest
     );
 
     assert(
-        streamed.accounting.oracleBytes
+        streamed.accounting.outputOracleBytes
         == requestedPixels
     );
 
@@ -2570,7 +2615,7 @@ unittest
     );
 
     assert(
-        irregular.accounting.oracleBytes
+        irregular.accounting.outputOracleBytes
         == requestedPixels
     );
 
@@ -2800,7 +2845,7 @@ unittest
     );
 
     assert(
-        pixelStream.accounting.oracleBytes
+        pixelStream.accounting.outputOracleBytes
         == pixelCount
     );
 
@@ -3079,7 +3124,7 @@ unittest
     );
 
     assert(
-        streamed.accounting.oracleBytes
+        streamed.accounting.outputOracleBytes
         == requestedPixels
     );
 
@@ -3150,5 +3195,136 @@ unittest
         streamed.accounting.peakResidentRasterBytes
         <
         reference.accounting.peakResidentRasterBytes
+    );
+}
+
+
+
+/*
+ * E3.2 accounting category contract.
+ *
+ * Raster residency, output-oracle payload, decomposition coverage-oracle
+ * payload and caller-supplied decomposition metadata remain distinct
+ * quantities.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            20,
+            20
+        );
+
+    const requestedOutput =
+        Region2D(
+            3,
+            4,
+            4,
+            2
+        );
+
+    enum size_t requestedPixels =
+        4 * 2;
+
+
+    auto whole =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(whole.ok);
+
+    assert(
+        whole.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        whole.accounting.outputOracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        whole.accounting.peakDecompositionCoverageOracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        whole.accounting.decompositionMetadataPayloadBytes
+        == Region2D.sizeof
+    );
+
+    assert(
+        whole.accounting.peakResidentRasterBytes
+        == requestedPixels * 2
+    );
+
+
+    const Region2D[2] tasks =
+    [
+        Region2D(
+            3,
+            4,
+            4,
+            1
+        ),
+
+        Region2D(
+            3,
+            5,
+            4,
+            1
+        )
+    ];
+
+
+    auto decomposed =
+        executeIdentityDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+    assert(decomposed.ok);
+
+    assert(
+        decomposed.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        decomposed.accounting.outputOracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        decomposed.accounting.peakDecompositionCoverageOracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        decomposed.accounting.decompositionMetadataPayloadBytes
+        == tasks.length * Region2D.sizeof
+    );
+
+    /*
+     * Each streamed task contains four pixels:
+     *
+     *     source      = 4 bytes
+     *     destination = 4 bytes
+     *
+     * giving eight simultaneously resident raster bytes.
+     */
+    assert(
+        decomposed.accounting.peakResidentRasterBytes
+        == 8
+    );
+
+    assert(
+        decomposed.accounting.currentResidentRasterBytes
+        == 0
     );
 }
