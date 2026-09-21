@@ -1755,3 +1755,529 @@ unittest
         == 0
     );
 }
+
+
+
+/++
+    Constructs a row-major regular rectangular tile decomposition.
+
+    Interior tiles use the requested nominal dimensions. Tiles on the right
+    and bottom edges may be smaller.
+
+    Invalid or empty input, zero nominal dimensions, or an unrepresentable
+    task-count product produces no tasks.
++/
+private
+Region2D[] makeRegularTiles(
+    Region2D requestedOutput,
+    size_t nominalTileWidth,
+    size_t nominalTileHeight
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalTileWidth == 0
+        || nominalTileHeight == 0
+    )
+    {
+        return null;
+    }
+
+
+    const completeColumnCount =
+        requestedOutput.width
+        / nominalTileWidth;
+
+    const remainderWidth =
+        requestedOutput.width
+        % nominalTileWidth;
+
+    const columnCount =
+        completeColumnCount
+        + (remainderWidth == 0 ? 0 : 1);
+
+
+    const completeRowCount =
+        requestedOutput.height
+        / nominalTileHeight;
+
+    const remainderHeight =
+        requestedOutput.height
+        % nominalTileHeight;
+
+    const rowCount =
+        completeRowCount
+        + (remainderHeight == 0 ? 0 : 1);
+
+
+    assert(columnCount != 0);
+    assert(rowCount != 0);
+
+    if (
+        rowCount
+        > size_t.max / columnCount
+    )
+    {
+        return null;
+    }
+
+    const tileCount =
+        columnCount * rowCount;
+
+    auto tasks =
+        new Region2D[tileCount];
+
+
+    size_t taskIndex = 0;
+
+    size_t currentY =
+        requestedOutput.y;
+
+    size_t remainingHeight =
+        requestedOutput.height;
+
+
+    foreach (row; 0 .. rowCount)
+    {
+        const height =
+            remainingHeight < nominalTileHeight
+            ? remainingHeight
+            : nominalTileHeight;
+
+        assert(height != 0);
+
+
+        size_t currentX =
+            requestedOutput.x;
+
+        size_t remainingWidth =
+            requestedOutput.width;
+
+
+        foreach (column; 0 .. columnCount)
+        {
+            const width =
+                remainingWidth < nominalTileWidth
+                ? remainingWidth
+                : nominalTileWidth;
+
+            assert(width != 0);
+
+            assert(taskIndex < tasks.length);
+
+            tasks[taskIndex] =
+                Region2D(
+                    currentX,
+                    currentY,
+                    width,
+                    height
+                );
+
+            ++taskIndex;
+
+            /*
+             * requestedOutput representability proves this addition safe.
+             */
+            currentX +=
+                width;
+
+            remainingWidth -=
+                width;
+        }
+
+
+        assert(remainingWidth == 0);
+
+        assert(
+            currentX
+            == requestedOutput.x
+                + requestedOutput.width
+        );
+
+
+        currentY +=
+            height;
+
+        remainingHeight -=
+            height;
+    }
+
+
+    assert(taskIndex == tasks.length);
+    assert(remainingHeight == 0);
+
+    assert(
+        currentY
+        == requestedOutput.y
+            + requestedOutput.height
+    );
+
+    return tasks;
+}
+
+
+/++
+    Executes identity as sequential regular rectangular tiles.
++/
+IdentityExecutionResult executeRegularTileIdentity(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    size_t nominalTileWidth,
+    size_t nominalTileHeight
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalTileWidth == 0
+        || nominalTileHeight == 0
+    )
+    {
+        IdentityExecutionResult result;
+
+        result.error =
+            IdentityExecutionError.invalidRequest;
+
+        return result;
+    }
+
+
+    const tasks =
+        makeRegularTiles(
+            requestedOutput,
+            nominalTileWidth,
+            nominalTileHeight
+        );
+
+    if (tasks.length == 0)
+    {
+        IdentityExecutionResult result;
+
+        result.error =
+            IdentityExecutionError.invalidDecomposition;
+
+        return result;
+    }
+
+
+    return executeIdentityDecomposition(
+        logicalExtent,
+        requestedOutput,
+        tasks
+    );
+}
+
+
+/*
+ * E3.2.5 regular rectangular tile equivalence.
+ *
+ * Principal fixture:
+ *
+ *     requested width  = 1021 = 7 * 128 + 125
+ *     requested height =  769 = 8 *  96 +   1
+ *
+ * Therefore:
+ *
+ *     columns = 8
+ *     rows    = 9
+ *     tasks   = 72
+ *
+ * The bottom-right task is deliberately reduced on both axes.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+    enum size_t nominalTileWidth =
+        128;
+
+    enum size_t nominalTileHeight =
+        96;
+
+
+    const tasks =
+        makeRegularTiles(
+            requestedOutput,
+            nominalTileWidth,
+            nominalTileHeight
+        );
+
+    assert(tasks.length == 72);
+
+
+    /*
+     * Top-left interior tile.
+     */
+    assert(
+        tasks[0]
+        == Region2D(
+            1733,
+            911,
+            128,
+            96
+        )
+    );
+
+
+    /*
+     * Top-right edge tile.
+     */
+    assert(
+        tasks[7]
+        == Region2D(
+            2629,
+            911,
+            125,
+            96
+        )
+    );
+
+
+    /*
+     * Bottom-left edge tile.
+     */
+    assert(
+        tasks[$ - 8]
+        == Region2D(
+            1733,
+            1679,
+            128,
+            1
+        )
+    );
+
+
+    /*
+     * Bottom-right corner tile is reduced on both axes.
+     */
+    assert(
+        tasks[$ - 1]
+        == Region2D(
+            2629,
+            1679,
+            125,
+            1
+        )
+    );
+
+
+    foreach (const task; tasks)
+    {
+        assert(
+            task.width
+            <= nominalTileWidth
+        );
+
+        assert(
+            task.height
+            <= nominalTileHeight
+        );
+
+        assert(!task.empty());
+    }
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks,
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto streamed =
+        executeRegularTileIdentity(
+            logicalExtent,
+            requestedOutput,
+            nominalTileWidth,
+            nominalTileHeight
+        );
+
+    assert(streamed.ok);
+
+    assert(
+        streamed.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        streamed.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    assert(
+        streamed.output.length
+        == reference.output.length
+    );
+
+
+    /*
+     * Exact byte identity across both reassembly axes.
+     */
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                streamed.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    const requestedPixels =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    const largestTaskPixels =
+        nominalTileWidth
+        * nominalTileHeight;
+
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.oracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == tasks.length
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == requestedPixels
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.destinationResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestTaskPixels * 2
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        requestedPixels
+    );
+}
+
+
+/*
+ * Zero-sized tile dimensions cannot define a regular decomposition.
+ */
+unittest
+{
+    auto result =
+        executeRegularTileIdentity(
+            Region2D(0, 0, 100, 100),
+            Region2D(10, 20, 10, 10),
+            0,
+            4
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == IdentityExecutionError.invalidRequest
+    );
+
+
+    result =
+        executeRegularTileIdentity(
+            Region2D(0, 0, 100, 100),
+            Region2D(10, 20, 10, 10),
+            4,
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == IdentityExecutionError.invalidRequest
+    );
+}
