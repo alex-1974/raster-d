@@ -14,3 +14,5 @@ importPaths "."
 sourceFiles "region_algebra.d" "dependency.d" "decomposition_oracle.d" "procedural_source.d" "identity_streaming.d"
 
 sourceFiles "neighbourhood_kernel.d"
+
+sourceFiles "neighbourhood_dependency_contract.d"
