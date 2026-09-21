@@ -1267,3 +1267,607 @@ unittest
         }
     }
 }
+
+
+
+/++
+    Constructs a regular rectangular output-tile decomposition.
+
+    Interior tiles have exactly:
+
+        nominalTileWidth x nominalTileHeight
+
+    The final column and final row may be smaller.
++/
+private Region2D[] makeRegularTiles(
+    Region2D requestedOutput,
+    size_t nominalTileWidth,
+    size_t nominalTileHeight
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalTileWidth == 0
+        || nominalTileHeight == 0
+    )
+    {
+        return null;
+    }
+
+
+    const completeColumnCount =
+        requestedOutput.width
+        / nominalTileWidth;
+
+    const columnRemainder =
+        requestedOutput.width
+        % nominalTileWidth;
+
+    const columnCount =
+        completeColumnCount
+        + (columnRemainder == 0 ? 0 : 1);
+
+
+    const completeRowCount =
+        requestedOutput.height
+        / nominalTileHeight;
+
+    const rowRemainder =
+        requestedOutput.height
+        % nominalTileHeight;
+
+    const rowCount =
+        completeRowCount
+        + (rowRemainder == 0 ? 0 : 1);
+
+
+    assert(columnCount != 0);
+    assert(rowCount != 0);
+
+
+    if (
+        rowCount != 0
+        && columnCount
+            > size_t.max / rowCount
+    )
+    {
+        return null;
+    }
+
+
+    auto tasks =
+        new Region2D[
+            columnCount * rowCount
+        ];
+
+    size_t taskIndex = 0;
+
+    size_t currentY =
+        requestedOutput.y;
+
+    size_t remainingHeight =
+        requestedOutput.height;
+
+
+    foreach (row; 0 .. rowCount)
+    {
+        const height =
+            remainingHeight < nominalTileHeight
+            ? remainingHeight
+            : nominalTileHeight;
+
+        assert(height != 0);
+
+
+        size_t currentX =
+            requestedOutput.x;
+
+        size_t remainingWidth =
+            requestedOutput.width;
+
+
+        foreach (column; 0 .. columnCount)
+        {
+            const width =
+                remainingWidth < nominalTileWidth
+                ? remainingWidth
+                : nominalTileWidth;
+
+            assert(width != 0);
+
+            tasks[taskIndex] =
+                Region2D(
+                    currentX,
+                    currentY,
+                    width,
+                    height
+                );
+
+            ++taskIndex;
+
+            currentX +=
+                width;
+
+            remainingWidth -=
+                width;
+        }
+
+
+        assert(remainingWidth == 0);
+
+        assert(
+            currentX
+            == requestedOutput.x
+                + requestedOutput.width
+        );
+
+
+        currentY +=
+            height;
+
+        remainingHeight -=
+            height;
+    }
+
+
+    assert(taskIndex == tasks.length);
+    assert(remainingHeight == 0);
+
+    assert(
+        currentY
+        == requestedOutput.y
+            + requestedOutput.height
+    );
+
+    return tasks;
+}
+
+
+/*
+ * E3.3.8 regular-tile streamed equivalence.
+ *
+ * This is the first E3.3 decomposition with simultaneous horizontal and
+ * vertical task boundaries.
+ *
+ * It therefore exercises:
+ *
+ *     vertical seams
+ *     horizontal seams
+ *     halo corners at seam intersections
+ *
+ * through the same common decomposed execution path.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+
+    auto whole =
+        executeWholeNeighbourhood(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(whole.ok);
+
+
+    auto tasks =
+        makeRegularTiles(
+            requestedOutput,
+            128,
+            96
+        );
+
+
+    /*
+     * 1021 pixels:
+     *
+     *     7 x 128 + 125
+     *
+     * 769 pixels:
+     *
+     *     8 x 96 + 1
+     */
+    enum size_t columnCount = 8;
+    enum size_t rowCount = 9;
+
+    assert(
+        tasks.length
+        == columnCount * rowCount
+    );
+
+    assert(tasks.length == 72);
+
+
+    /*
+     * First eight rows:
+     *
+     *     seven 128 x 96 tiles
+     *     one   125 x 96 tile
+     */
+    foreach (row; 0 .. 8)
+    {
+        foreach (column; 0 .. 8)
+        {
+            const index =
+                row * columnCount
+                + column;
+
+            const expectedWidth =
+                column < 7
+                ? 128
+                : 125;
+
+            assert(
+                tasks[index].width
+                == expectedWidth
+            );
+
+            assert(
+                tasks[index].height
+                == 96
+            );
+        }
+    }
+
+
+    /*
+     * Final row:
+     *
+     *     seven 128 x 1 tiles
+     *     one   125 x 1 tile
+     */
+    foreach (column; 0 .. 8)
+    {
+        const index =
+            8 * columnCount
+            + column;
+
+        const expectedWidth =
+            column < 7
+            ? 128
+            : 125;
+
+        assert(
+            tasks[index].width
+            == expectedWidth
+        );
+
+        assert(
+            tasks[index].height
+            == 1
+        );
+    }
+
+
+    auto streamed =
+        executeNeighbourhoodDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks
+        );
+
+    assert(streamed.ok);
+
+
+    const comparison =
+        compareNeighbourhoodOutputs(
+            requestedOutput,
+            whole.execution.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatNeighbourhoodComparisonFailure(
+            comparison
+        )
+    );
+
+
+    enum size_t expectedOutputPixels =
+        785_149;
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.totalOutputPixels
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.outputOracleBytes
+        == expectedOutputPixels
+    );
+
+
+    /*
+     * Source-dependency classes.
+     *
+     * Full tile:
+     *
+     *     128 x 96 output
+     *     130 x 98 source
+     *
+     * Final column:
+     *
+     *     125 x 96 output
+     *     127 x 98 source
+     *
+     * Final row:
+     *
+     *     128 x 1 output
+     *     130 x 3 source
+     *
+     * Final corner:
+     *
+     *     125 x 1 output
+     *     127 x 3 source
+     */
+    enum size_t fullTileSourcePixels =
+        130 * 98;
+
+    enum size_t finalColumnSourcePixels =
+        127 * 98;
+
+    enum size_t finalRowSourcePixels =
+        130 * 3;
+
+    enum size_t finalCornerSourcePixels =
+        127 * 3;
+
+
+    assert(
+        fullTileSourcePixels
+        == 12_740
+    );
+
+    assert(
+        finalColumnSourcePixels
+        == 12_446
+    );
+
+    assert(
+        finalRowSourcePixels
+        == 390
+    );
+
+    assert(
+        finalCornerSourcePixels
+        == 381
+    );
+
+
+    /*
+     * Tile classes:
+     *
+     *     56 full tiles
+     *      8 final-column tiles
+     *      7 final-row tiles
+     *      1 final-corner tile
+     */
+    enum size_t expectedMaterializedSourcePixels =
+          56 * fullTileSourcePixels
+        +  8 * finalColumnSourcePixels
+        +  7 * finalRowSourcePixels
+        +      finalCornerSourcePixels;
+
+    assert(
+        expectedMaterializedSourcePixels
+        == 816_119
+    );
+
+
+    /*
+     * Equivalent factorized form:
+     *
+     * Sum of source widths over tile columns:
+     *
+     *     output width + 2 halo columns per tile column
+     *     1021 + 2*8 = 1037
+     *
+     * Sum of source heights over tile rows:
+     *
+     *     output height + 2 halo rows per tile row
+     *     769 + 2*9 = 787
+     *
+     * Cartesian tile grid:
+     *
+     *     1037 * 787 = 816119
+     */
+    assert(
+        expectedMaterializedSourcePixels
+        == (1021 + 2 * columnCount)
+            * (769 + 2 * rowCount)
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == fullTileSourcePixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == fullTileSourcePixels
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == 72
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == expectedMaterializedSourcePixels
+    );
+
+
+    assert(
+        streamed.accounting
+            .peakDecompositionCoverageOracleBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting
+            .decompositionMetadataPayloadBytes
+        == tasks.length * Region2D.sizeof
+    );
+
+
+    /*
+     * Halo duplication relative to one whole materialization.
+     */
+    enum size_t wholeSourcePixels =
+        1023 * 771;
+
+    enum size_t expectedHaloDuplication =
+        expectedMaterializedSourcePixels
+        - wholeSourcePixels;
+
+    assert(
+        wholeSourcePixels
+        == 788_733
+    );
+
+    assert(
+        expectedHaloDuplication
+        == 27_386
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+            - wholeSourcePixels
+        == expectedHaloDuplication
+    );
+
+
+    /*
+     * Regular tiling sharply bounds source raster residency.
+     */
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == 12_740
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        < whole.accounting.peakResidentRasterBytes
+    );
+
+
+    /*
+     * Explicitly inspect all internal seam intersections.
+     *
+     * Seven vertical seams:
+     *
+     *     x = 128, 256, ... 896
+     *
+     * Eight horizontal seams:
+     *
+     *     y = 96, 192, ... 768
+     *
+     * At every crossing, verify the four output pixels surrounding the seam
+     * intersection against the whole reference.
+     *
+     * These are the output locations whose source neighbourhoods exercise the
+     * four adjacent tile halos around a task-grid corner.
+     */
+    foreach (verticalSeam; 1 .. columnCount)
+    {
+        const seamRelativeX =
+            verticalSeam * 128;
+
+        assert(
+            seamRelativeX
+            < requestedOutput.width
+        );
+
+        foreach (horizontalSeam; 1 .. rowCount)
+        {
+            const seamRelativeY =
+                horizontalSeam * 96;
+
+            assert(
+                seamRelativeY
+                < requestedOutput.height
+            );
+
+
+            const leftX =
+                seamRelativeX - 1;
+
+            const rightX =
+                seamRelativeX;
+
+            const aboveY =
+                seamRelativeY - 1;
+
+            const belowY =
+                seamRelativeY;
+
+
+            const aboveLeft =
+                aboveY * requestedOutput.width
+                + leftX;
+
+            const aboveRight =
+                aboveY * requestedOutput.width
+                + rightX;
+
+            const belowLeft =
+                belowY * requestedOutput.width
+                + leftX;
+
+            const belowRight =
+                belowY * requestedOutput.width
+                + rightX;
+
+
+            assert(
+                streamed.output[aboveLeft]
+                == whole.execution.output[aboveLeft]
+            );
+
+            assert(
+                streamed.output[aboveRight]
+                == whole.execution.output[aboveRight]
+            );
+
+            assert(
+                streamed.output[belowLeft]
+                == whole.execution.output[belowLeft]
+            );
+
+            assert(
+                streamed.output[belowRight]
+                == whole.execution.output[belowRight]
+            );
+        }
+    }
+}
