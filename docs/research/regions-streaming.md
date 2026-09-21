@@ -796,3 +796,123 @@ experiments/r0_3_regions_streaming/README.md
 
 No production scheduler, cache model, provider-tile model or border-policy API
 is implied by the experiment.
+
+## E3.3 completion — neighbourhood / halo streamed equivalence
+
+Status: **COMPLETE**
+
+Contract commit:
+
+```text
+ed2d05d docs: define E3.3 neighbourhood halo contract
+```
+
+Completion implementation HEAD:
+
+```text
+ed35a70 research: prove pixel-task halo equivalence
+```
+
+The E3.3 completion audit passed all 14 contract gates.
+
+The proved execution model is:
+
+```text
+output task
+    -> dependency expansion with margins (1,1,1,1)
+    -> valid logical input region
+    -> context-deficit check
+    -> materialize valid input as resident raster at (0,0)
+    -> derive output-to-resident mapping from logical regions
+    -> execute exact weighted 3x3 neighbourhood kernel
+    -> reassemble exact requested output
+```
+
+Logical-image boundaries do not silently select a border policy.
+
+A non-empty `ContextDeficit` is reported as unsatisfied context and prevents
+kernel execution. No implicit zero, constant, clamp, mirror, wrap or
+extrapolation policy was introduced.
+
+Internal task boundaries are different: they receive overlapping halo input
+and therefore have zero context deficit.
+
+### Exact-equivalence matrix
+
+The whole-request reference and decomposed execution are byte-identical for:
+
+- horizontal strips;
+- vertical strips;
+- regular 128 x 96 tiles;
+- deliberately irregular rectangles with T-junctions;
+- a small decomposition containing one output pixel per task.
+
+The principal fixture is:
+
+```text
+logical extent:       (0,0,8192,6144)
+requested output:     (1733,911,1021,769)
+whole dependency:     (1732,910,1023,771)
+requested pixels:     785149
+whole source pixels:  788733
+```
+
+Measured source-raster residency/materialization for the principal fixture:
+
+| decomposition | tasks | peak resident source | total source materialized | halo duplication vs whole |
+|---|---:|---:|---:|---:|
+| whole | 1 | 788733 | 788733 | 0 |
+| horizontal strips | 7 | 132990 | 801009 | 12276 |
+| vertical strips | 8 | 100230 | 799527 | 10794 |
+| regular 128 x 96 tiles | 72 | 12740 | 816119 | 27386 |
+| irregular / T-junction | 11 | 193415 | 796709 | 7976 |
+
+The separate 7 x 5 one-pixel-task fixture proves the limiting decomposition:
+
+```text
+output pixels / tasks:          35
+source pixels per task:          9
+whole source pixels:            63
+total source materialized:     315
+halo rematerialization:        252
+peak resident source:            9
+```
+
+The accounting deliberately distinguishes:
+
+- requested output payload;
+- resident source raster;
+- current and peak raster residency;
+- source-materialization count;
+- total materialized source pixels;
+- output oracle payload;
+- decomposition coverage oracle;
+- decomposition metadata.
+
+These values are experiment payload accounting, not process-RSS measurements.
+
+### Completion result
+
+All E3.3 research modules pass with both:
+
+```text
+DMD
+LDC
+```
+
+No production source under `source/` was changed or promoted by E3.3.
+
+E3.3 therefore closes the R0.3b neighbourhood/halo streamed-equivalence
+research slice.
+
+### Next architecture gate
+
+Before substantial new raster/image-engine functionality is added, perform the
+planned `raster-d` extraction gate.
+
+That gate must classify the working `imagery-d` implementation and determine
+whether the now-demonstrated generic raster domain is coherent and independently
+useful enough to extract into a standalone `raster-d`.
+
+Do not create a parallel raster implementation. Any `raster-d` must be an
+extraction from the validated implementation developed here.
