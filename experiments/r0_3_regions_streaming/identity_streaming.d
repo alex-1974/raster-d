@@ -2851,3 +2851,304 @@ unittest
         reference.accounting.peakResidentRasterBytes
     );
 }
+
+
+
+/*
+ * E3.2.8 huge logical extent with bounded resident raster storage.
+ *
+ * The logical image contains one trillion ubyte pixels:
+ *
+ *     1,000,000 * 1,000,000 = 1,000,000,000,000 bytes logically
+ *
+ * It is never materialized as one resident image.
+ *
+ * Only the requested non-zero-origin region is generated, and the streamed
+ * execution further bounds resident raster storage to one source/destination
+ * tile pair at a time.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            1_000_000,
+            1_000_000
+        );
+
+    const requestedOutput =
+        Region2D(
+            900_003,
+            800_007,
+            257,
+            193
+        );
+
+    enum size_t nominalTileWidth =
+        64;
+
+    enum size_t nominalTileHeight =
+        48;
+
+
+    const ulong logicalImageBytes =
+        cast(ulong) logicalExtent.width
+        * cast(ulong) logicalExtent.height;
+
+    assert(
+        logicalImageBytes
+        == 1_000_000_000_000UL
+    );
+
+
+    const tasks =
+        makeRegularTiles(
+            requestedOutput,
+            nominalTileWidth,
+            nominalTileHeight
+        );
+
+    /*
+     *     width  = 4 * 64 + 1
+     *     height = 4 * 48 + 1
+     */
+    assert(tasks.length == 25);
+
+    assert(
+        tasks[0]
+        == Region2D(
+            900_003,
+            800_007,
+            64,
+            48
+        )
+    );
+
+    assert(
+        tasks[$ - 1]
+        == Region2D(
+            900_259,
+            800_199,
+            1,
+            1
+        )
+    );
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks,
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    /*
+     * Whole-request execution is the semantic reference only. Even this path
+     * materializes the requested region rather than the trillion-pixel logical
+     * image.
+     */
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto streamed =
+        executeRegularTileIdentity(
+            logicalExtent,
+            requestedOutput,
+            nominalTileWidth,
+            nominalTileHeight
+        );
+
+    assert(streamed.ok);
+
+    assert(
+        streamed.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        streamed.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    const size_t requestedPixels =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    assert(
+        requestedPixels
+        == 49_601
+    );
+
+    assert(
+        streamed.output.length
+        == requestedPixels
+    );
+
+    assert(
+        streamed.output.length
+        == reference.output.length
+    );
+
+
+    /*
+     * Exact result comparison also verifies that the procedural source used
+     * global logical coordinates near the far end of the huge extent.
+     */
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                streamed.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    enum size_t largestTaskPixels =
+        nominalTileWidth
+        * nominalTileHeight;
+
+    static assert(
+        largestTaskPixels
+        == 3_072
+    );
+
+
+    assert(
+        reference.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        reference.accounting.sourceResidentBytes
+        == requestedPixels
+    );
+
+    assert(
+        reference.accounting.destinationResidentBytes
+        == requestedPixels
+    );
+
+    assert(
+        reference.accounting.peakResidentRasterBytes
+        == requestedPixels * 2
+    );
+
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.oracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == tasks.length
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == requestedPixels
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.destinationResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestTaskPixels * 2
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == 6_144
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    /*
+     * The logical image is vastly larger than the resident task pair.
+     *
+     * Because this experiment uses one-byte samples, logical pixel count and
+     * logical image bytes are numerically identical.
+     */
+    assert(
+        logicalImageBytes
+        >
+        cast(ulong)
+            streamed.accounting.peakResidentRasterBytes
+            * 100_000_000UL
+    );
+
+    assert(
+        cast(ulong)
+            streamed.accounting.totalMaterializedSourcePixels
+        <
+        logicalImageBytes
+    );
+
+
+    /*
+     * Streaming reduces raster residency even relative to the already bounded
+     * whole-request reference path.
+     */
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+}
