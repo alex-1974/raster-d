@@ -996,3 +996,69 @@ E3.2 is complete only when all of the following hold:
 
 Only after these gates pass should R0.3 proceed to the first neighbourhood /
 halo equivalence experiment.
+
+### E3.2 completion result — PASS
+
+E3.2 completed on 2026-09-21 on branch
+`research/r0_3-regions-streaming`.
+
+All 13 completion gates above pass.
+
+Implementation evidence includes:
+
+- deterministic procedural pixels derived from logical/global coordinates;
+- non-zero logical request origins with resident rasters rebased to `(0, 0)`;
+- zero-margin dependency derivation through E3.1.2;
+- exact decomposition validation through E3.1.3;
+- identity execution through public `tryCopyRasterPlane()`;
+- exact whole-request versus decomposed equivalence;
+- horizontal strips;
+- vertical strips;
+- regular rectangular tiles;
+- manually irregular rectangles in non-spatial task order;
+- a dedicated one-task-per-pixel fixture;
+- a `1,000,000 x 1,000,000` logical-image fixture without whole-image
+  allocation;
+- explicit separation of resident-raster, output-oracle,
+  decomposition-coverage-oracle and decomposition-metadata payloads;
+- first-mismatch diagnostics containing output-relative coordinates, logical
+  coordinates, expected value and actual value;
+- passing DMD and LDC experiment suites;
+- no production `source/` changes required by E3.2.
+
+Representative raster-residency results for the principal
+`1021 x 769` requested output are:
+
+```text
+whole request peak                 1,570,298 B
+horizontal strips, 128 high         261,376 B
+vertical strips, 128 wide           196,864 B
+regular 128 x 96 tiles               24,576 B
+irregular rectangles                220,706 B
+```
+
+The dedicated `7 x 5` one-pixel-task fixture has a peak resident-raster
+payload of `2 B`.
+
+The huge-logical fixture represents:
+
+```text
+logical image                     1,000,000 x 1,000,000
+logical ubyte payload             1,000,000,000,000 B
+requested output                  257 x 193 = 49,601 B
+nominal streamed tile             64 x 48
+peak resident raster payload      6,144 B
+```
+
+These figures describe raster payload residency, not total process memory.
+
+Output/reference buffers, decomposition coverage-oracle payload and
+decomposition metadata remain explicit experiment/oracle state and are
+accounted separately from resident source/destination raster storage.
+
+E3.2 therefore supports the narrower intended conclusion:
+
+> Raster residency is independent of complete logical-image size and can be
+> bounded by the currently processed materialization.
+
+The next R0.3 research slice is R0.3b: neighbourhood / halo equivalence.

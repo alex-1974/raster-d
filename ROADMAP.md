@@ -159,6 +159,23 @@ Deliverable:
 
 ### R0.3 — Region, tile and streaming model
 
+**Status (2026-09-21):** R0.3a / E3.2 identity streamed-equivalence complete.
+
+Validated:
+
+- whole/decomposed exact identity equivalence;
+- horizontal, vertical, regular-tile and irregular decompositions;
+- dedicated one-pixel-task decomposition;
+- logical/global versus resident-coordinate separation;
+- bounded sequential raster residency;
+- huge logical extent without whole-image allocation;
+- separate raster/oracle/metadata accounting;
+- DMD and LDC;
+- no E3.2-driven production API change.
+
+**Next:** R0.3b — neighbourhood / halo equivalence.
+
+
 Define and separate:
 
 - provider tiles;

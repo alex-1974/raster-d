@@ -699,13 +699,40 @@ Promotion into `source/imagery/` requires:
 
 Until then, R0.3 helpers and types remain disposable research code.
 
-## 20. Immediate next experiment
+## 20. Current status and immediate next experiment
 
-After review of this contract, the next implementation slice is:
+R0.3a has completed its initial region/streaming correctness sequence.
+
+E3.1 established the overflow-safe region, dependency-expansion and
+decomposition-validation foundations.
+
+E3.2 then demonstrated identity streamed equivalence across:
+
+- whole-request execution;
+- horizontal strips;
+- vertical strips;
+- regular rectangular tiles;
+- manually irregular rectangles;
+- one-pixel tasks on a small fixture;
+- a logical image much larger than any resident processing task.
+
+The experiments preserve logical/global placement outside resident
+`RasterView.region`, which remains rebased to `(0, 0)` for each materialized
+task.
+
+Resident-raster accounting is separated from output/reference oracle state,
+decomposition coverage-oracle payload and decomposition metadata.
+
+No production API change was required merely to support E3.2.
+
+DMD and LDC both pass the completed experiment suite.
+
+The next implementation slice is:
 
 ```text
-E3.1 — overflow-safe region/dependency algebra
+R0.3b — neighbourhood / halo equivalence
 ```
 
-Only after E3.1 passes its geometry and edge-case tests should E3.2 implement
-the identity streamed-equivalence harness.
+The first neighbourhood experiment should use a deliberately simple exact
+kernel, such as a 3 x 3 integer operation, and prove that sufficient context
+produces byte-identical whole and decomposed output with no task-boundary seam.
