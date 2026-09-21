@@ -506,3 +506,493 @@ E3.1 is complete only when:
 8. no Production `Region2D` change was required merely for convenience.
 
 Only then does R0.3a proceed to the identity streamed-equivalence harness.
+
+# E3.2 — Identity Streamed Equivalence
+
+## 18. Purpose
+
+E3.2 is the first integration experiment above the E3.1 geometry layer.
+
+It must prove that one logical output request produces exactly the same pixel
+result whether it is processed:
+
+- as one whole request;
+- as horizontal strips;
+- as vertical strips;
+- as regular rectangular tiles;
+- as irregular rectangular regions;
+- as individual pixels for a deliberately small fixture.
+
+The experiment tests identity only:
+
+    output = input
+
+No neighbourhood operation, cache, provider tiling or scheduler is introduced.
+
+## 19. Existing production raster core is the resident execution layer
+
+E3.2 must consume the existing public raster API rather than reproduce it inside
+the experiment.
+
+Resident materializations should use the public path:
+
+    malloc-compatible storage
+        ->
+    OwnedByteResource
+        ->
+    tryImportOwnedRaster()
+        ->
+    RasterLease!ubyte
+        ->
+    RasterView!ubyte
+
+Writable resident destinations should use:
+
+    mutable RasterLease!ubyte
+        ->
+    tryWritableView()
+        ->
+    WritableRasterView!ubyte
+
+Identity execution should use the stable public operation:
+
+    tryCopyRasterPlane()
+
+Correctness inspection may use:
+
+    RasterView.trySample()
+
+or the equivalent read operation on a writable view.
+
+E3.2 must not access package-internal raster execution APIs.
+
+## 20. Logical versus resident coordinates
+
+Every source request belongs to logical-image coordinates.
+
+For example:
+
+    logical extent:
+        Region2D(0, 0, 8192, 6144)
+
+    requested output:
+        Region2D(1733, 911, 1021, 769)
+
+A decomposed logical task such as:
+
+    Region2D(1800, 950, 128, 64)
+
+must be materialized into a resident raster whose descriptor-space region is:
+
+    Region2D(0, 0, 128, 64)
+
+The logical placement must remain separate metadata owned by the experiment.
+
+E3.2 must explicitly assert that resident `RasterView.region` does not carry
+the logical/global origin.
+
+## 21. Procedural source
+
+The initial E3.2 source is procedural.
+
+It represents a logical image without allocating storage for the complete
+logical extent.
+
+A requested logical region is materialized on demand.
+
+Every generated sample must depend on its logical coordinates.
+
+A suitable conceptual pattern is:
+
+    value(x, y) =
+        deterministicFunction(x, y)
+
+The implementation should first reduce coordinates to small bounded values
+before multiplication or addition so the pattern generator itself remains
+overflow-safe for large `size_t` coordinates.
+
+For example, a pattern may be based on:
+
+    x % 251
+    y % 251
+
+combined using bounded arithmetic and finally converted to `ubyte`.
+
+Two equal local resident coordinates originating from different logical
+locations must therefore be capable of containing different values.
+
+The experiment must include an explicit non-zero-origin case whose resident
+sample `(0, 0)` differs from `value(0, 0)` and equals the value at the actual
+logical request origin.
+
+This prevents an implementation that accidentally resets each logical task to
+global `(0, 0)` from passing the equivalence test.
+
+## 22. Source request validity
+
+The procedural source accepts only:
+
+- representable logical extent;
+- representable non-empty request;
+- request contained in the logical extent.
+
+Invalid requests are rejected.
+
+They are not clipped.
+
+The initial resident materialization experiment does not materialize an empty
+request.
+
+Empty dependency/output semantics were already established by E3.1 and remain
+a no-op at this layer.
+
+## 23. Resident materialization
+
+For one non-empty logical request:
+
+1. compute checked sample/byte count;
+2. allocate exactly enough storage for one single-plane `ubyte` raster;
+3. transfer ownership through the public retained-import API;
+4. expose a writable borrow from the resulting lease;
+5. fill resident samples using the procedural value derived from the
+   corresponding logical coordinates;
+6. release the writable borrow;
+7. expose the ordinary read-only `RasterView`.
+
+The imported resident region is always:
+
+    Region2D(
+        0,
+        0,
+        logicalRequest.width,
+        logicalRequest.height
+    )
+
+The resulting materialization therefore contains two deliberately separate
+pieces of information:
+
+    logical request placement
+
+and:
+
+    resident RasterLease / RasterView
+
+No production raster type is extended with logical/global placement metadata.
+
+## 24. Identity execution
+
+Identity processing uses two distinct resident rasters:
+
+    materialized source
+    materialized destination
+
+The destination has the same resident shape as the source.
+
+The operation is:
+
+    tryCopyRasterPlane(
+        source.view(),
+        0,
+        destinationWritable,
+        0,
+        error
+    )
+
+The operation must succeed with:
+
+    RasterCopyError.none
+
+The identity experiment must not implement its own pixel-copy loop as the
+operation under test.
+
+A loop is permitted only for:
+
+- procedural source generation;
+- reference/output inspection;
+- decomposition construction;
+- reassembly into the test oracle.
+
+## 25. E3.1 dependency integration
+
+Identity has zero dependency margins.
+
+For every output task E3.2 must derive its required input through the E3.1.2
+dependency logic using:
+
+    DependencyMargins.init
+
+and verify:
+
+    validInput == outputTask
+    contextDeficit == ContextDeficit.init
+
+The materialized source request is this derived `validInput`.
+
+This ensures E3.2 consumes the dependency layer rather than bypassing it.
+
+## 26. E3.1 decomposition integration
+
+Before decomposed execution begins, the complete decomposition must be checked
+with the E3.1.3 decomposition oracle.
+
+Execution proceeds only if:
+
+    tryValidateDecomposition(...) == true
+    issue == DecompositionIssue.none
+
+This makes decomposition correctness independent of the identity comparison.
+
+A broken partition must not be able to masquerade as an image-processing bug.
+
+## 27. Reassembly
+
+The decomposed result is reassembled into one ordinary test buffer whose
+coordinate system is relative to the complete requested output region.
+
+For a processed logical task:
+
+    relativeX =
+        task.x - requestedOutput.x
+
+    relativeY =
+        task.y - requestedOutput.y
+
+Each resident destination sample `(localX, localY)` is written to:
+
+    output[
+        relativeX + localX,
+        relativeY + localY
+    ]
+
+The task result should be read through the public semantic raster accessor.
+
+The reassembly buffer is test-oracle state.
+
+It is not a cache block, resident raster resource or proposed production
+output representation.
+
+## 28. Reference execution
+
+For a modest requested region, E3.2 first executes identity once as a single
+whole request.
+
+That produces the reference output.
+
+Each legal decomposition is then processed independently and reassembled.
+
+Every decomposed result must be byte-identical to the whole-request reference.
+
+The whole-request reference is a correctness oracle.
+
+It is not evidence that production processing should materialize a complete
+logical image or complete future viewport result at once.
+
+## 29. Required decompositions
+
+At minimum E3.2 must test:
+
+### Whole request
+
+One task equal to the requested output.
+
+### Horizontal strips
+
+Multiple complete-width tasks.
+
+At least one decomposition must contain a final strip smaller than the nominal
+strip height.
+
+### Vertical strips
+
+Multiple complete-height tasks.
+
+At least one decomposition must contain a final strip smaller than the nominal
+strip width.
+
+### Regular rectangular tiles
+
+A regular task grid whose dimensions do not evenly divide the requested output.
+
+This forces smaller right and bottom edge tasks.
+
+### Irregular rectangles
+
+A manually defined legal decomposition with unequal rectangles and boundaries
+that do not follow one regular grid.
+
+### Single-pixel decomposition
+
+A deliberately small requested region is partitioned into one task per pixel.
+
+The large principal fixture must not use a single-pixel decomposition merely
+to create hundreds of thousands of allocations.
+
+## 30. Principal non-zero-origin fixture
+
+The principal exact-equivalence fixture should use:
+
+    logical extent:
+        Region2D(0, 0, 8192, 6144)
+
+    requested output:
+        Region2D(1733, 911, 1021, 769)
+
+The dimensions are deliberately not convenient multiples of common strip or
+tile dimensions.
+
+All decomposition forms except the dedicated small single-pixel fixture should
+be exercised against this request.
+
+## 31. Large-logical-image fixture
+
+E3.2 must also demonstrate that the procedural source can represent a logical
+image much larger than any resident task without allocating the whole image.
+
+The logical extent should therefore be deliberately much larger than the
+principal resident request.
+
+For example, subject to representability on the test platform:
+
+    logical extent:
+        1,000,000 x 1,000,000
+
+with a modest non-zero-origin requested region.
+
+The experiment must demonstrate:
+
+    logical image bytes
+        >>
+    maximum simultaneously resident task raster bytes
+
+No allocation proportional to the complete logical image is permitted.
+
+## 32. Residency accounting
+
+E3.2 should distinguish at least:
+
+    logical image size
+    requested output size
+    source materialization bytes
+    destination materialization bytes
+    current resident raster bytes
+    peak resident raster bytes
+    number of source materializations
+    total materialized source pixels
+
+Test-oracle memory such as:
+
+- the whole-request reference buffer;
+- the reassembled comparison buffer;
+- decomposition metadata;
+
+must be reported separately from resident raster materialization.
+
+E3.2 must not claim that total process memory is bounded by task size while a
+whole requested-output oracle buffer is deliberately retained for testing.
+
+The required claim is narrower:
+
+> raster residency is independent of complete logical-image size and can be
+> bounded by the currently processed materialization.
+
+## 33. Materialization lifetime
+
+Decomposed execution should process tasks sequentially in E3.2.
+
+For each task:
+
+    derive dependency
+        ->
+    materialize source
+        ->
+    allocate destination
+        ->
+    identity copy
+        ->
+    reassemble result
+        ->
+    release task source/destination
+        ->
+    process next task
+
+The initial experiment therefore requires no worker pool or scheduler.
+
+Peak resident-raster accounting should make this sequential lifetime visible.
+
+## 34. Exact comparison
+
+Identity on `ubyte` data is exact.
+
+Therefore the correctness condition is:
+
+    reference.length == streamed.length
+
+and every corresponding byte is exactly equal.
+
+No numerical tolerance is permitted.
+
+When a mismatch occurs, diagnostics should identify at least:
+
+    output-relative x
+    output-relative y
+    logical x
+    logical y
+    expected value
+    actual value
+
+This makes coordinate-space mistakes directly diagnosable.
+
+## 35. E3.2 failure separation
+
+The experiment should keep failures attributable to distinct layers.
+
+At minimum distinguish:
+
+    invalid logical/source request
+    dependency derivation failure
+    invalid decomposition
+    allocation/adoption/import failure
+    writable-borrow failure
+    raster-copy failure
+    sample-read failure
+    reassembly mismatch
+
+This is experimental diagnostics, not a proposed production error hierarchy.
+
+## 36. E3.2 module direction
+
+If the contract survives implementation, a minimal split is expected to be:
+
+    experiments/r0_3_regions_streaming/
+        procedural_source.d
+        identity_streaming.d
+
+Existing E3.1 modules remain:
+
+        region_algebra.d
+        dependency.d
+        decomposition_oracle.d
+
+A separate scheduler, provider or cache module is not justified by E3.2.
+
+## 37. E3.2 completion gate
+
+E3.2 is complete only when all of the following hold:
+
+1. procedural pixels depend on logical/global coordinates;
+2. source requests may begin at non-zero logical coordinates;
+3. every materialized resident raster begins at resident `(0, 0)`;
+4. identity dependency is derived through E3.1.2;
+5. every decomposition is validated through E3.1.3;
+6. identity execution uses the public `tryCopyRasterPlane()` operation;
+7. whole-request and decomposed outputs are byte-identical;
+8. horizontal, vertical, regular-tile and irregular decompositions pass;
+9. a small single-pixel decomposition passes;
+10. a logical image substantially larger than resident task storage is
+    demonstrated without whole-image allocation;
+11. resident-raster peak accounting is separated from test-oracle memory;
+12. DMD and LDC pass;
+13. no production API change was required merely to support the experiment.
+
+Only after these gates pass should R0.3 proceed to the first neighbourhood /
+halo equivalence experiment.
