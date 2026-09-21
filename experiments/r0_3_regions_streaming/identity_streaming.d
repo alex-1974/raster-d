@@ -810,3 +810,591 @@ unittest
         == 0
     );
 }
+
+
+
+/++
+    Executes identity for one already-defined decomposition of a requested
+    output.
+
+    The complete decomposition is validated before any resident raster is
+    materialized.
+
+    Tasks are then processed sequentially through the already proven
+    whole-request task path.
+
+    `sourceResidentBytes` and `destinationResidentBytes` report the largest
+    corresponding single-task materialization for a decomposed execution.
+
+    `peakResidentRasterBytes` reports the largest simultaneously resident
+    source-plus-destination task pair.
+
+    `oracleBytes` reports the returned reassembled output buffer only. It is
+    deliberately separate from resident raster accounting.
++/
+IdentityExecutionResult executeIdentityDecomposition(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    scope const(Region2D)[] tasks
+)
+@safe
+{
+    IdentityExecutionResult result;
+
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        result.error =
+            IdentityExecutionError.invalidRequest;
+
+        return result;
+    }
+
+
+    DecompositionIssue decompositionIssue;
+
+    if (!tryValidateDecomposition(
+        requestedOutput,
+        tasks,
+        decompositionIssue
+    ))
+    {
+        result.error =
+            IdentityExecutionError.invalidDecomposition;
+
+        result.decompositionIssue =
+            decompositionIssue;
+
+        return result;
+    }
+
+    assert(
+        decompositionIssue
+        == DecompositionIssue.none
+    );
+
+    result.decompositionIssue =
+        decompositionIssue;
+
+
+    /*
+     * Successful bounded decomposition validation already checked this
+     * multiplication before constructing its coverage oracle.
+     */
+    const sampleCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    result.output =
+        new ubyte[sampleCount];
+
+    result.accounting.requestedOutputBytes =
+        sampleCount;
+
+    result.accounting.oracleBytes =
+        sampleCount;
+
+
+    foreach (const task; tasks)
+    {
+        if (task.empty())
+        {
+            /*
+             * The decomposition oracle permits empty members because they
+             * contribute no coverage. They require no resident execution.
+             */
+            continue;
+        }
+
+        auto taskResult =
+            executeWholeIdentity(
+                logicalExtent,
+                task
+            );
+
+        if (!taskResult.ok)
+        {
+            result.error =
+                taskResult.error;
+
+            result.sourceError =
+                taskResult.sourceError;
+
+            result.destinationImportError =
+                taskResult.destinationImportError;
+
+            result.copyError =
+                taskResult.copyError;
+
+            /*
+             * The complete decomposition itself was already valid. Preserve
+             * that diagnostic instead of replacing it with the task-local
+             * one-member validation result.
+             */
+            return result;
+        }
+
+        assert(
+            taskResult.accounting
+                .currentResidentRasterBytes
+            == 0
+        );
+
+
+        if (
+            taskResult.accounting.sourceResidentBytes
+            > result.accounting.sourceResidentBytes
+        )
+        {
+            result.accounting.sourceResidentBytes =
+                taskResult.accounting.sourceResidentBytes;
+        }
+
+        if (
+            taskResult.accounting.destinationResidentBytes
+            > result.accounting.destinationResidentBytes
+        )
+        {
+            result.accounting.destinationResidentBytes =
+                taskResult.accounting.destinationResidentBytes;
+        }
+
+        if (
+            taskResult.accounting.peakResidentRasterBytes
+            > result.accounting.peakResidentRasterBytes
+        )
+        {
+            result.accounting.peakResidentRasterBytes =
+                taskResult.accounting.peakResidentRasterBytes;
+        }
+
+
+        result.accounting.sourceMaterializations +=
+            taskResult.accounting.sourceMaterializations;
+
+        result.accounting.totalMaterializedSourcePixels +=
+            taskResult.accounting.totalMaterializedSourcePixels;
+
+
+        /*
+         * Exact decomposition containment proves both subtractions safe.
+         */
+        const relativeX =
+            task.x - requestedOutput.x;
+
+        const relativeY =
+            task.y - requestedOutput.y;
+
+
+        assert(
+            taskResult.output.length
+            == task.width * task.height
+        );
+
+        foreach (localY; 0 .. task.height)
+        {
+            foreach (localX; 0 .. task.width)
+            {
+                const taskIndex =
+                    localY * task.width
+                    + localX;
+
+                const outputIndex =
+                    (relativeY + localY)
+                        * requestedOutput.width
+                    + relativeX
+                    + localX;
+
+                assert(
+                    outputIndex
+                    < result.output.length
+                );
+
+                result.output[outputIndex] =
+                    taskResult.output[taskIndex];
+            }
+        }
+    }
+
+
+    /*
+     * Every task-local resident source/destination pair was destroyed before
+     * the next task was entered.
+     */
+    result.accounting.currentResidentRasterBytes = 0;
+
+    result.error =
+        IdentityExecutionError.none;
+
+    return result;
+}
+
+
+/++
+    Constructs a horizontal-strip decomposition.
+
+    Every strip spans the complete requested width. The final strip may be
+    shorter than `nominalStripHeight`.
+
+    Invalid or empty input, or a zero nominal strip height, produces no tasks.
++/
+private
+Region2D[] makeHorizontalStrips(
+    Region2D requestedOutput,
+    size_t nominalStripHeight
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalStripHeight == 0
+    )
+    {
+        return null;
+    }
+
+    const completeStripCount =
+        requestedOutput.height
+        / nominalStripHeight;
+
+    const remainder =
+        requestedOutput.height
+        % nominalStripHeight;
+
+    const stripCount =
+        completeStripCount
+        + (remainder == 0 ? 0 : 1);
+
+    assert(stripCount != 0);
+
+    auto tasks =
+        new Region2D[stripCount];
+
+    size_t currentY =
+        requestedOutput.y;
+
+    size_t remainingHeight =
+        requestedOutput.height;
+
+    foreach (ref task; tasks)
+    {
+        const height =
+            remainingHeight < nominalStripHeight
+            ? remainingHeight
+            : nominalStripHeight;
+
+        assert(height != 0);
+
+        task =
+            Region2D(
+                requestedOutput.x,
+                currentY,
+                requestedOutput.width,
+                height
+            );
+
+        /*
+         * requestedOutput representability proves this addition safe.
+         */
+        currentY +=
+            height;
+
+        remainingHeight -=
+            height;
+    }
+
+    assert(remainingHeight == 0);
+
+    assert(
+        currentY
+        == requestedOutput.y
+            + requestedOutput.height
+    );
+
+    return tasks;
+}
+
+
+/++
+    Executes identity as sequential horizontal strips.
++/
+IdentityExecutionResult executeHorizontalStripIdentity(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    size_t nominalStripHeight
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+        || nominalStripHeight == 0
+    )
+    {
+        IdentityExecutionResult result;
+
+        result.error =
+            IdentityExecutionError.invalidRequest;
+
+        return result;
+    }
+
+    const tasks =
+        makeHorizontalStrips(
+            requestedOutput,
+            nominalStripHeight
+        );
+
+    assert(tasks.length != 0);
+
+    return executeIdentityDecomposition(
+        logicalExtent,
+        requestedOutput,
+        tasks
+    );
+}
+
+
+/*
+ * E3.2.3 horizontal-strip streamed equivalence.
+ *
+ * The principal fixture height is 769. A nominal strip height of 128 creates:
+ *
+ *     6 * 128 + 1
+ *
+ * so the final strip is deliberately smaller than the nominal task height.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            0,
+            0,
+            8192,
+            6144
+        );
+
+    const requestedOutput =
+        Region2D(
+            1733,
+            911,
+            1021,
+            769
+        );
+
+    enum size_t nominalStripHeight =
+        128;
+
+
+    const tasks =
+        makeHorizontalStrips(
+            requestedOutput,
+            nominalStripHeight
+        );
+
+    assert(tasks.length == 7);
+
+    foreach (const task; tasks)
+    {
+        assert(
+            task.width
+            == requestedOutput.width
+        );
+
+        assert(
+            task.height
+            <= nominalStripHeight
+        );
+    }
+
+    assert(
+        tasks[$ - 1].height
+        == 1
+    );
+
+
+    DecompositionIssue issue;
+
+    assert(
+        tryValidateDecomposition(
+            requestedOutput,
+            tasks,
+            issue
+        )
+    );
+
+    assert(
+        issue
+        == DecompositionIssue.none
+    );
+
+
+    auto reference =
+        executeWholeIdentity(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(reference.ok);
+
+
+    auto streamed =
+        executeHorizontalStripIdentity(
+            logicalExtent,
+            requestedOutput,
+            nominalStripHeight
+        );
+
+    assert(streamed.ok);
+
+    assert(
+        streamed.error
+        == IdentityExecutionError.none
+    );
+
+    assert(
+        streamed.decompositionIssue
+        == DecompositionIssue.none
+    );
+
+
+    assert(
+        streamed.output.length
+        == reference.output.length
+    );
+
+    /*
+     * Identity on ubyte pixels is exact. No tolerance is permitted.
+     *
+     * Keep the coordinate-aware loop rather than relying only on array
+     * equality so any future assertion failure can be localized directly.
+     */
+    foreach (relativeY; 0 .. requestedOutput.height)
+    {
+        foreach (relativeX; 0 .. requestedOutput.width)
+        {
+            const index =
+                relativeY * requestedOutput.width
+                + relativeX;
+
+            const expected =
+                reference.output[index];
+
+            const actual =
+                streamed.output[index];
+
+            assert(
+                actual
+                == expected
+            );
+
+            assert(
+                actual
+                ==
+                proceduralValue(
+                    requestedOutput.x + relativeX,
+                    requestedOutput.y + relativeY
+                )
+            );
+        }
+    }
+
+
+    const requestedPixels =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    const largestTaskPixels =
+        requestedOutput.width
+        * nominalStripHeight;
+
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.oracleBytes
+        == requestedPixels
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == tasks.length
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == requestedPixels
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.destinationResidentBytes
+        == largestTaskPixels
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == largestTaskPixels * 2
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    /*
+     * This is the first actual streamed-residency result:
+     *
+     * the complete requested output remains much larger than one resident
+     * strip, while raster residency is bounded by the current task pair.
+     */
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        reference.accounting.peakResidentRasterBytes
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        <
+        requestedPixels
+    );
+}
+
+
+/*
+ * A zero strip height cannot define a streaming decomposition.
+ */
+unittest
+{
+    const result =
+        executeHorizontalStripIdentity(
+            Region2D(0, 0, 100, 100),
+            Region2D(10, 20, 10, 10),
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == IdentityExecutionError.invalidRequest
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+}
