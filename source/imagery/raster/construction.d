@@ -430,7 +430,7 @@ RasterConstructionResult constructRetainedRasterWithMetadataOps(T)(
      * - all physical resource release obligations represented by that table.
      */
     auto backing =
-        RasterBacking!T(
+        RasterBacking(
             stableResources,
             stableDescriptors,
             resourceTableAllocation,

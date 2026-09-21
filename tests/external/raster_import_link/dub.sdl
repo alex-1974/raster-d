@@ -1,0 +1,11 @@
+name "imagery-d-raster-import-link-probe"
+description "External retained raster import link-closure regression probe"
+authors "imagery-d contributors"
+license "MIT"
+
+targetType "library"
+targetPath ".dub"
+
+dflags "-preview=dip1000"
+
+dependency "imagery-d" path="../../.."
