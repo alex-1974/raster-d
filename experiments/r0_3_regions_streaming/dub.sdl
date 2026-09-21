@@ -12,3 +12,5 @@ dependency "imagery-d" path="../.."
 
 importPaths "."
 sourceFiles "region_algebra.d" "dependency.d" "decomposition_oracle.d" "procedural_source.d" "identity_streaming.d"
+
+sourceFiles "neighbourhood_kernel.d"
