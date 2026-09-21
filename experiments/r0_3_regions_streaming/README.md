@@ -1062,3 +1062,469 @@ E3.2 therefore supports the narrower intended conclusion:
 > bounded by the currently processed materialization.
 
 The next R0.3 research slice is R0.3b: neighbourhood / halo equivalence.
+
+
+---
+
+## 38. E3.3 neighbourhood / halo equivalence
+
+E3.3 is the first R0.3b experiment.
+
+Its purpose is to prove that a neighbourhood operation produces the same
+logical output whether the requested output is processed as one region or as
+multiple independently materialized tasks with sufficient input context.
+
+The central invariant is:
+
+```text
+same logical output region
++ same logical source
++ sufficient semantic input context
+=
+same exact output bytes
+```
+
+Processing-task boundaries must not become image-content boundaries.
+
+E3.3 remains research code.
+
+It does not define a production scheduler, provider-tile model, cache-block
+model or border-policy API.
+
+## 39. Exact reference kernel
+
+The first neighbourhood operation is deliberately simple and exactly
+reproducible.
+
+For the 3 x 3 neighbourhood:
+
+```text
+NW   N   NE
+ W   C    E
+SW   S   SE
+```
+
+the output value is:
+
+```text
+weighted =
+      2 * NW +  3 * N  +  5 * NE
+    + 7 * W  + 11 * C  + 13 * E
+    +17 * SW + 19 * S  + 23 * SE
+
+output = weighted % 251
+```
+
+All inputs are `ubyte`.
+
+The weights sum to 100, so the maximum weighted intermediate is:
+
+```text
+255 * 100 = 25,500
+```
+
+The arithmetic therefore remains exactly representable without overflow in
+the intended experiment.
+
+Distinct weights deliberately make coordinate or neighbour-order mistakes
+observable.
+
+No floating-point arithmetic or numerical tolerance is involved.
+
+## 40. Semantic dependency
+
+The kernel requires exactly one source pixel around every output pixel.
+
+Its dependency is therefore:
+
+```text
+DependencyMargins(
+    1,  // left
+    1,  // top
+    1,  // right
+    1   // bottom
+)
+```
+
+These margins describe semantic input dependency.
+
+They do not describe:
+
+- provider overlap;
+- cache padding;
+- storage alignment;
+- border synthesis.
+
+E3.3 must derive every task dependency through the existing E3.1.2
+`tryExpandDependency()` operation.
+
+## 41. Output task versus input dependency
+
+For one logical output task:
+
+```text
+outputTask
+```
+
+E3.3 derives:
+
+```text
+ExpandedDependency dependency
+```
+
+where:
+
+```text
+dependency.validInput
+```
+
+is the logical source region that may be materialized from the procedural
+source.
+
+The output task and its input dependency are different regions.
+
+For an interior task with complete context:
+
+```text
+dependency.contextDeficit == ContextDeficit.init
+```
+
+and the valid input is one pixel larger on every side.
+
+Output tasks must form an exact non-overlapping decomposition of the requested
+output.
+
+Input dependencies may and normally will overlap.
+
+That overlap is required neighbourhood context and must not be treated as an
+output-decomposition error.
+
+E3.1.3 therefore validates output tasks, not their expanded input
+dependencies.
+
+## 42. Logical versus resident coordinates
+
+The procedural source continues to operate in logical/global coordinates.
+
+Every materialized source dependency remains rebased into resident descriptor
+space:
+
+```text
+Region2D(
+    0,
+    0,
+    dependency.validInput.width,
+    dependency.validInput.height
+)
+```
+
+The logical output task must not be encoded into resident RasterView geometry.
+
+For task-local output coordinate `(localX, localY)`, the corresponding center
+sample in the resident source is located at:
+
+```text
+sourceBaseX =
+    outputTask.x - dependency.validInput.x
+
+sourceBaseY =
+    outputTask.y - dependency.validInput.y
+
+residentCenterX =
+    sourceBaseX + localX
+
+residentCenterY =
+    sourceBaseY + localY
+```
+
+The implementation must derive these offsets from region geometry.
+
+It must not merely assume that both offsets are always one.
+
+For a fully satisfied one-pixel dependency they will normally equal one, but
+the semantic mapping is the region difference.
+
+## 43. Interior execution rule
+
+The first E3.3 processing path executes the kernel only when:
+
+```text
+dependency.contextDeficit
+    == ContextDeficit.init
+```
+
+This keeps the first seam-equivalence experiment independent of border-policy
+selection.
+
+A non-empty context deficit is not silently synthesized.
+
+## 44. Logical-image boundary rule
+
+E3.3 deliberately does not choose a production border policy.
+
+When a requested output requires source context outside the logical extent,
+E3.1.2 already reports that missing context through `ContextDeficit`.
+
+The initial E3.3 behaviour is:
+
+```text
+context deficit
+    ->
+detectable unsatisfied-context result
+    ->
+no neighbourhood kernel execution
+```
+
+E3.3 therefore does not introduce:
+
+- zero padding;
+- constant padding;
+- clamping;
+- mirroring;
+- wrapping;
+- extrapolation.
+
+Later research may compare such policies explicitly.
+
+Task boundaries inside the logical image are not logical-image boundaries and
+must never create a context deficit merely because execution is decomposed.
+
+## 45. Whole-request reference
+
+The whole-request reference uses the same kernel and dependency semantics as
+decomposed execution.
+
+For the principal fixture:
+
+```text
+logical extent:
+    Region2D(0, 0, 8192, 6144)
+
+requested output:
+    Region2D(1733, 911, 1021, 769)
+```
+
+the requested output is strictly interior.
+
+With one-pixel margins, the expected whole dependency is:
+
+```text
+Region2D(1732, 910, 1023, 771)
+```
+
+with:
+
+```text
+ContextDeficit.init
+```
+
+The whole execution materializes only that dependency, not the complete
+logical image.
+
+## 46. Required decompositions
+
+E3.3 should repeat the decomposition classes that were useful in E3.2:
+
+- whole request;
+- horizontal strips;
+- vertical strips;
+- regular rectangular tiles;
+- manually irregular rectangles;
+- a deliberately small one-pixel-task decomposition.
+
+The principal fixture should again exercise all forms except the dedicated
+small pixel fixture.
+
+The same output decomposition oracle remains applicable because decomposition
+correctness concerns output coverage.
+
+## 47. One-pixel task fixture
+
+The dedicated small fixture is especially important for neighbourhood
+semantics.
+
+Each:
+
+```text
+1 x 1
+```
+
+output task requires a:
+
+```text
+3 x 3
+```
+
+source dependency when fully interior.
+
+This strongly exercises:
+
+- dependency expansion;
+- logical/resident coordinate mapping;
+- repeated overlapping input materialization;
+- exact one-pixel reassembly.
+
+The large principal fixture should not be decomposed into individual pixels.
+
+## 48. Exact seam oracle
+
+Whole-request output is the reference.
+
+Every legal decomposed execution is reassembled into the requested-output
+coordinate system.
+
+The correctness condition is exact byte equality.
+
+A mismatch diagnostic should continue to identify:
+
+```text
+output-relative x
+output-relative y
+logical x
+logical y
+expected value
+actual value
+```
+
+No tolerance is permitted.
+
+A mismatch at or near an internal task boundary is still an ordinary
+correctness failure; task boundaries receive no special image semantics.
+
+## 49. Boundary-deficit fixtures
+
+Separate fixtures must exercise logical-image boundaries.
+
+At minimum test:
+
+- left edge;
+- top edge;
+- right edge;
+- bottom edge;
+- top-left corner;
+- top-right corner;
+- bottom-left corner;
+- bottom-right corner.
+
+For the initial E3.3 contract these fixtures must prove:
+
+1. dependency derivation succeeds for a valid output request;
+2. `validInput` remains inside the logical extent;
+3. `contextDeficit` identifies exactly the unavailable sides;
+4. neighbourhood execution reports unsatisfied context;
+5. no kernel output is silently produced using incomplete context.
+
+These are dependency/boundary tests, not border-policy tests.
+
+## 50. Residency and materialization accounting
+
+Neighbourhood processing adds halo overhead.
+
+E3.3 should distinguish at least:
+
+```text
+requested output bytes
+largest source dependency bytes
+largest destination output bytes
+current resident raster bytes
+peak resident raster bytes
+source materialization count
+total materialized source pixels
+total output pixels
+output oracle bytes
+decomposition coverage-oracle bytes
+decomposition metadata payload
+```
+
+For streamed execution, repeated halo pixels may be materialized by adjacent
+tasks.
+
+Therefore:
+
+```text
+total materialized source pixels
+```
+
+may exceed the number of unique logical source pixels.
+
+That repetition is expected for this experiment and must not be confused with
+a correctness failure.
+
+Cache reuse is deliberately outside E3.3.
+
+For the principal whole-request fixture:
+
+```text
+output:
+    1021 x 769
+    = 785,149 bytes
+
+source dependency:
+    1023 x 771
+    = 788,733 bytes
+
+source + destination raster payload:
+    1,573,882 bytes
+```
+
+For a complete regular `128 x 96` output tile:
+
+```text
+destination:
+    128 x 96
+    = 12,288 bytes
+
+source including halo:
+    130 x 98
+    = 12,740 bytes
+
+source + destination raster payload:
+    25,028 bytes
+```
+
+These are raster payload figures, not total process-memory measurements.
+
+## 51. Explicit non-goals
+
+E3.3 does not require:
+
+- provider-native tiles;
+- cache blocks;
+- cache reuse;
+- assembled multi-block resident views;
+- worker pools;
+- parallel execution;
+- prefetch;
+- asynchronous I/O;
+- resolution or pyramid-level identity;
+- multi-input operations;
+- a public border-policy abstraction;
+- promotion of experimental dependency types into production APIs.
+
+Those require later evidence.
+
+## 52. E3.3 completion gate
+
+E3.3 is complete only when all of the following hold:
+
+1. the exact weighted 3 x 3 integer kernel is independently tested;
+2. its semantic dependency is `DependencyMargins(1, 1, 1, 1)`;
+3. whole-request dependency is derived through E3.1.2;
+4. every decomposed output task derives its own dependency through E3.1.2;
+5. interior kernel execution requires `ContextDeficit.init`;
+6. source materialization uses `dependency.validInput`;
+7. every resident source raster begins at resident `(0, 0)`;
+8. output-to-source resident offsets are derived from logical region geometry;
+9. output decompositions are validated through E3.1.3;
+10. overlapping input halos are explicitly legal;
+11. whole, horizontal, vertical, regular-tile, irregular and small pixel-task
+    outputs are byte-identical;
+12. edge and corner context deficits are detected and do not silently execute
+    the kernel;
+13. halo/source residency and materialization accounting remain separate from
+    test-oracle state;
+14. DMD and LDC pass, and no production API is promoted merely for experiment
+    convenience.
+
+Only after these gates pass should R0.3 proceed to dependency composition or
+a contract revision justified by E3.3 evidence.

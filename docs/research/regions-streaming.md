@@ -736,3 +736,63 @@ R0.3b — neighbourhood / halo equivalence
 The first neighbourhood experiment should use a deliberately simple exact
 kernel, such as a 3 x 3 integer operation, and prove that sufficient context
 produces byte-identical whole and decomposed output with no task-boundary seam.
+
+
+## 21. R0.3b / E3.3 contract
+
+The first R0.3b implementation slice is E3.3: exact neighbourhood / halo
+equivalence.
+
+The experiment uses a deterministic weighted 3 x 3 integer kernel whose
+semantic dependency is:
+
+```text
+DependencyMargins(1, 1, 1, 1)
+```
+
+Every output task derives its own request-bounded dependency through E3.1.2.
+
+For the initial experiment, kernel execution requires:
+
+```text
+ContextDeficit.init
+```
+
+A non-empty context deficit is reported as unsatisfied context.
+
+No production border policy is selected by E3.3.
+
+This preserves the existing distinction:
+
+```text
+logical-image boundary
+    !=
+processing-task boundary
+```
+
+Processing-task boundaries receive overlapping input halos as necessary and
+must not alter output pixels.
+
+The principal invariant is:
+
+```text
+whole-request neighbourhood output
+    ==
+reassembled decomposed neighbourhood output
+```
+
+for every tested decomposition with sufficient context.
+
+Output decompositions remain exact and non-overlapping.
+
+Input dependencies are allowed to overlap.
+
+The detailed E3.3 execution, accounting, boundary-fixture and completion
+contract is maintained in:
+
+```text
+experiments/r0_3_regions_streaming/README.md
+```
+
+No production scheduler, cache model, provider-tile model or border-policy API
+is implied by the experiment.
