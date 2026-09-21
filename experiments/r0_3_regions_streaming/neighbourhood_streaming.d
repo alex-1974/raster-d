@@ -2539,3 +2539,345 @@ unittest
         );
     }
 }
+
+
+
+/++
+    Constructs a row-major decomposition containing exactly one output pixel
+    per non-empty task.
+
+    This is intentionally an extreme decomposition used to prove that the E3.3
+    neighbourhood semantics do not depend on processing multiple output pixels
+    from one resident source raster.
++/
+private Region2D[] makePixelTasks(
+    Region2D requestedOutput
+)
+@safe
+{
+    if (
+        !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        return null;
+    }
+
+    if (
+        requestedOutput.width != 0
+        && requestedOutput.height
+            > size_t.max / requestedOutput.width
+    )
+    {
+        return null;
+    }
+
+    const taskCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    assert(taskCount != 0);
+
+    auto tasks =
+        new Region2D[taskCount];
+
+    size_t taskIndex = 0;
+
+    foreach (localY; 0 .. requestedOutput.height)
+    {
+        foreach (localX; 0 .. requestedOutput.width)
+        {
+            tasks[taskIndex] =
+                Region2D(
+                    requestedOutput.x + localX,
+                    requestedOutput.y + localY,
+                    1,
+                    1
+                );
+
+            ++taskIndex;
+        }
+    }
+
+    assert(taskIndex == tasks.length);
+
+    return tasks;
+}
+
+
+/*
+ * E3.3.10 one-pixel-task streamed equivalence.
+ *
+ * A deliberately small 7 x 5 output is decomposed into 35 independent
+ * one-pixel tasks.
+ *
+ * Every task therefore follows the already-proven E3.3.4 path:
+ *
+ *     1 x 1 logical output
+ *          ->
+ *     3 x 3 logical dependency
+ *          ->
+ *     3 x 3 resident source at (0,0)
+ *          ->
+ *     one exact neighbourhood result
+ *
+ * There is no resident source sharing between neighbouring output pixels.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            100,
+            200,
+            20,
+            20
+        );
+
+    const requestedOutput =
+        Region2D(
+            105,
+            207,
+            7,
+            5
+        );
+
+
+    auto whole =
+        executeWholeNeighbourhood(
+            logicalExtent,
+            requestedOutput
+        );
+
+    assert(whole.ok);
+
+    assert(
+        whole.execution.dependency.validInput
+        == Region2D(
+            104,
+            206,
+            9,
+            7
+        )
+    );
+
+
+    auto tasks =
+        makePixelTasks(
+            requestedOutput
+        );
+
+    assert(tasks.length == 35);
+
+
+    /*
+     * Verify exact row-major task geometry.
+     */
+    size_t expectedIndex = 0;
+
+    foreach (localY; 0 .. requestedOutput.height)
+    {
+        foreach (localX; 0 .. requestedOutput.width)
+        {
+            assert(
+                tasks[expectedIndex]
+                == Region2D(
+                    requestedOutput.x + localX,
+                    requestedOutput.y + localY,
+                    1,
+                    1
+                )
+            );
+
+            ++expectedIndex;
+        }
+    }
+
+    assert(expectedIndex == tasks.length);
+
+
+    auto streamed =
+        executeNeighbourhoodDecomposition(
+            logicalExtent,
+            requestedOutput,
+            tasks
+        );
+
+    assert(streamed.ok);
+
+
+    const comparison =
+        compareNeighbourhoodOutputs(
+            requestedOutput,
+            whole.execution.output,
+            streamed.output
+        );
+
+    assert(
+        comparison.ok,
+        formatNeighbourhoodComparisonFailure(
+            comparison
+        )
+    );
+
+
+    /*
+     * Requested output.
+     */
+    enum size_t expectedOutputPixels =
+        7 * 5;
+
+    assert(expectedOutputPixels == 35);
+
+    assert(
+        streamed.accounting.requestedOutputBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.totalOutputPixels
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.outputOracleBytes
+        == expectedOutputPixels
+    );
+
+
+    /*
+     * Every one-pixel task materializes exactly:
+     *
+     *     3 x 3 = 9
+     *
+     * source samples.
+     */
+    enum size_t sourcePixelsPerTask =
+        3 * 3;
+
+    enum size_t expectedMaterializedSourcePixels =
+        expectedOutputPixels
+        * sourcePixelsPerTask;
+
+    assert(sourcePixelsPerTask == 9);
+
+    assert(
+        expectedMaterializedSourcePixels
+        == 315
+    );
+
+
+    assert(
+        streamed.accounting.sourceResidentBytes
+        == sourcePixelsPerTask
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == sourcePixelsPerTask
+    );
+
+    assert(
+        streamed.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting.sourceMaterializations
+        == 35
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+        == expectedMaterializedSourcePixels
+    );
+
+
+    /*
+     * Whole execution needs one:
+     *
+     *     9 x 7 = 63
+     *
+     * source raster.
+     */
+    enum size_t wholeSourcePixels =
+        9 * 7;
+
+    assert(wholeSourcePixels == 63);
+
+    assert(
+        whole.accounting.sourceResidentBytes
+        == wholeSourcePixels
+    );
+
+    assert(
+        whole.accounting.peakResidentRasterBytes
+        == wholeSourcePixels
+    );
+
+
+    /*
+     * Extreme decomposition deliberately trades repeated halo materialization
+     * for the smallest possible source residency.
+     */
+    enum size_t expectedHaloRematerializationOverhead =
+        expectedMaterializedSourcePixels
+        - wholeSourcePixels;
+
+    assert(
+        expectedHaloRematerializationOverhead
+        == 252
+    );
+
+    assert(
+        streamed.accounting.totalMaterializedSourcePixels
+            - wholeSourcePixels
+        == expectedHaloRematerializationOverhead
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        == 9
+    );
+
+    assert(
+        streamed.accounting.peakResidentRasterBytes
+        < whole.accounting.peakResidentRasterBytes
+    );
+
+
+    /*
+     * Decomposition bookkeeping remains separate from raster residency.
+     */
+    assert(
+        streamed.accounting
+            .peakDecompositionCoverageOracleBytes
+        == expectedOutputPixels
+    );
+
+    assert(
+        streamed.accounting
+            .decompositionMetadataPayloadBytes
+        == tasks.length * Region2D.sizeof
+    );
+
+
+    /*
+     * Explicitly require byte identity for every one of the 35 independently
+     * produced task outputs.
+     *
+     * The common comparison above already proves this; this loop documents
+     * the one-output-task relation directly.
+     */
+    foreach (index; 0 .. expectedOutputPixels)
+    {
+        assert(
+            streamed.output[index]
+            == whole.execution.output[index]
+        );
+    }
+}
