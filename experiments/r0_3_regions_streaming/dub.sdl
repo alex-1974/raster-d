@@ -20,3 +20,5 @@ sourceFiles "neighbourhood_dependency_contract.d"
 sourceFiles "neighbourhood_materialization_contract.d"
 
 sourceFiles "neighbourhood_task_execution.d"
+
+sourceFiles "neighbourhood_whole_reference.d"
