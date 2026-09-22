@@ -53,7 +53,7 @@ With both DMD 2.111.0 and LDC 1.41.0, using `-preview=dip1000`:
 
 ## Design consequence
 
-A foreign pointer may become a `RasterLease` only when imagery-d has a
+A foreign pointer may become a `RasterLease` only when raster-d has a
 reliable ownership, retain, or release contract.
 
 Otherwise the buffer must remain a synchronous borrow.

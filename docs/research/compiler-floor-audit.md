@@ -4,7 +4,7 @@ Date: 2026-09-19
 
 ## Purpose
 
-Determine the oldest compiler/frontend generations that `imagery-d` can
+Determine the oldest compiler/frontend generations that `raster-d` can
 reasonably support without compatibility shims or architecture changes.
 
 The audit distinguishes:
@@ -18,7 +18,7 @@ These are intentionally not treated as the same thing.
 
 The source/frontend floor is DMD/Phobos 2.101.
 
-`imagery-d` uses the following `std.typecons` facilities in its retained
+`raster-d` uses the following `std.typecons` facilities in its retained
 resource implementation:
 
 - `SafeRefCounted`;
@@ -53,7 +53,7 @@ requires the higher macOS versions.
 ## macOS boundary
 
 Older compiler packages fail on current macOS 15 runners before an
-`imagery-d` semantic incompatibility can be demonstrated.
+`raster-d` semantic incompatibility can be demonstrated.
 
 Observed DMD boundary on macOS x86-64:
 
@@ -81,7 +81,7 @@ because `setup-dlang` attempted to install DUB 1.40.0, for which no
 
 Repeating the job with the compiler-bundled DUB passed completely.
 
-This was an audit-harness/tool-distribution issue, not an `imagery-d`
+This was an audit-harness/tool-distribution issue, not an `raster-d`
 compatibility failure.
 
 ## Audit runs
@@ -116,7 +116,7 @@ All passing jobs exercised:
 
 ## Support policy
 
-`imagery-d` should continue to test current DMD and LDC releases separately
+`raster-d` should continue to test current DMD and LDC releases separately
 from minimum supported compiler packages.
 
 The minimum versions are compatibility baselines, not a promise to avoid

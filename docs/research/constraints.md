@@ -1,5 +1,12 @@
 # R0.0 — Operational Constraints and Performance Budgets
 
+> **Repository-pivot note (2026-09-22):** This document records the original
+> image-engine workload investigated while the repository was named
+> `imagery-d`. Generic raster constraints derived from that work remain
+> evidence for `raster-d`; image-, imagery- and OSM-specific workload
+> requirements belong to the future higher-level `imagery-d`.
+
+
 ## Status
 
 Initial constraints for architecture research.

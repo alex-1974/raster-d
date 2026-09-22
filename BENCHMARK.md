@@ -1,4 +1,4 @@
-# imagery-d Benchmark Principles
+# raster-d Benchmark Principles
 
 ## Purpose
 
@@ -34,11 +34,11 @@ Small kernels used to understand compiler and memory behaviour.
 
 ### Region
 
-Typical processing windows such as 2K, 4K and 8K image regions.
+Typical processing windows such as 2K, 4K and 8K raster regions.
 
 ### Streamed
 
-Datasets large enough that full-image processing is intentionally undesirable
+Datasets large enough that whole-raster processing is intentionally undesirable
 or impossible under the configured memory budget.
 
 ### Interactive
@@ -50,7 +50,7 @@ prioritisation.
 
 For algorithms with finite neighbourhood requirements:
 
-    whole-image result
+    whole-raster result
         ≈
     streamed/region result with sufficient context
 
@@ -60,14 +60,21 @@ Tile or region boundaries must not produce artificial output discontinuities.
 
 ## Boundary tests
 
-Test data must include:
+Test data must exercise boundaries that can expose incorrect region,
+stride, halo or decomposition behaviour, including:
 
-- objects crossing provider-tile boundaries;
-- roads crossing boundaries;
-- buildings crossing boundaries;
-- natural features crossing boundaries;
-- neighbouring source tiles;
-- imagery mosaic seams.
+- requested regions crossing source/materialization boundaries;
+- neighbourhood operations crossing decomposition boundaries;
+- non-zero logical origins;
+- negative and padded strides;
+- planar and interleaved layouts;
+- empty and degenerate regions;
+- adjacent source regions with disjoint or overlapping backing;
+- irregular decomposition seams.
+
+Consumer-derived geospatial imagery may additionally contain roads, buildings,
+natural features, provider-tile boundaries or mosaic seams, but those are test
+fixtures rather than `raster-d` semantics.
 
 ## Memory tests
 
@@ -81,7 +88,7 @@ Measure separately where possible:
 - temporary buffers;
 - outputs.
 
-The engine must eventually support an explicit memory budget.
+Streamed raster execution should support an explicit residency/memory budget.
 
 ## Comparison policy
 
@@ -91,29 +98,27 @@ implementations.
 Examples:
 
 - `mir.ndslice` versus custom stride view;
-- planar versus interleaved RGB;
+- planar versus interleaved multi-plane storage;
 - generic versus contiguous kernels;
 - fixed-tile versus arbitrary-region execution.
 
 Implementations should be discarded when evidence favours a better design.
 
-## Test imagery
+## Test data and imagery-derived fixtures
 
-Benchmark imagery is not committed to Git.
+Core correctness tests should prefer deterministic synthetic data when that
+isolates the property under test.
 
-Scene and source definitions must allow the local corpus to be reproduced.
+Real-world raster datasets may be used for stress, performance and
+cross-boundary validation when they add evidence unavailable from synthetic
+fixtures.
 
-Each downloaded source should eventually have provenance information containing
-at least:
+Historical ADR 0002 records that large benchmark imagery is not committed to
+Git. Reproducible imagery-derived fixtures should therefore carry sufficient
+provenance and content hashes.
 
-- scene ID;
-- source ID;
-- ground extent;
-- retrieval time;
-- source parameters;
-- dimensions;
-- pixel resolution where known;
-- content hash.
+A complete aerial/satellite imagery corpus is a future `imagery-d`
+responsibility rather than part of the generic `raster-d` identity.
 
 ## Compilers
 
@@ -124,7 +129,7 @@ useful.
 
 ## Reference and cross-platform benchmarking
 
-imagery-d distinguishes stable reference benchmarking from cross-platform
+raster-d distinguishes stable reference benchmarking from cross-platform
 validation.
 
 ### Local reference platform
@@ -175,7 +180,7 @@ Architecture-specific fast paths are permitted, but architecture-specific
 behaviour should not unnecessarily leak into the semantic raster API.
 
 In particular, conclusions based on AVX2 code generation should be checked
-against AArch64/NEON code generation when they influence general engine
+against AArch64/NEON code generation when they influence general raster
 architecture.
 
 ### Performance CI policy

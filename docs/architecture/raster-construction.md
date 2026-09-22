@@ -262,7 +262,7 @@ That condition is therefore not represented as an ordinary
 RasterConstructionResult failure.
 
 Recoverable construction failures currently cover validation and the
-imagery-d-owned metadata allocations.
+raster-d-owned metadata allocations.
 
 The public API still does not promise an out-of-memory recovery policy.
 

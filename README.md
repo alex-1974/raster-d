@@ -1,122 +1,125 @@
-# imagery-d
+# raster-d
 
-`imagery-d` is an experimental high-performance image engine written in D,
-designed primarily for large geospatial imagery such as aerial photographs,
-orthophotos and satellite imagery.
+`raster-d` is an experimental high-performance generic raster library written
+in D.
 
-The initial target application is an interactive OpenStreetMap editor, but the
-engine itself is intended to remain independent of OSM and generally useful for
-geospatial and large-image processing.
+It provides the reusable raster foundation for large resident and streamed
+datasets without imposing image, colour, radiometric or geospatial-image
+semantics on every consumer.
+
+The intended dependency boundary is:
+
+```text
+future imagery-d
+        |
+        v
+     raster-d
+```
+
+Other consumers such as scientific grids, elevation data, GDAL-backed windows
+or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-Active core-engine implementation following the initial research and
-architecture phase.
+Active generic raster-core implementation.
 
-The retained raster foundation now includes:
+The production DUB package is `raster-d` and the public D namespace is
+`raster` / `raster.*`.
 
-- owned-resource import and retained backing lifetime;
-- descriptor-space regions and read-only `RasterView` semantics;
-- signed row and sample strides;
-- per-plane execution-layout classification;
-- internal Mir adapters and scalar reference kernels;
-- evidence-driven reduction and copy specialization;
-- checked `ubyte -> float` conversion;
-- per-resource read/write provenance;
-- writable-backing certification;
-- a public semantic `WritableRasterView`;
-- a lease-bound public writable borrow from `RasterLease`.
+The retained raster foundation includes:
 
-E5.4g is now in progress. E5.4g.1 exposes the semantic writable borrow:
-retained writable backing may be borrowed as `WritableRasterView`, while
-writable certification, execution classification, raw execution pointers,
-`RasterTargetPlane`, Mir adapters and alias-relation machinery remain internal.
+- retained ownership of one or more physical resources;
+- validated multi-plane backing and signed row/sample strides;
+- descriptor-space regions;
+- lease-bound read-only `RasterView`;
+- lease-bound public `WritableRasterView`;
+- read/write provenance and writable-backing certification;
+- internal execution-layout classification and Mir adapters;
+- checked physical-range and affine-overlap analysis;
+- strict `trySumFloatToDouble()`;
+- checked `tryCopyRasterPlane()`;
+- exact `tryConvertUbyteToFloatPlane()`.
 
-E5.4g.2 adds the first stable public raster operation:
-`trySumFloatToDouble()`. It exposes only the reviewed strict row-major
-float-to-double reduction semantic. A valid empty plane succeeds with `0.0`;
-an invalid plane is the only recoverable public failure. Fixed-lane semantics
-and execution-layout failures remain internal.
+Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
+types, affine-relation machinery, checked-wide arithmetic and operation
+dispatch internals remain non-public.
 
-E5.4g.3 exposes `tryCopyRasterPlane()` with the operation-specific
-`RasterCopyError`. The public contract rejects invalid source/destination
-planes, shape mismatch, non-injective destinations and actual reachable
-sample-byte overlap before the first write. Shared backing remains permitted
-when the represented sample bytes are disjoint. Contiguous memcpy, affine
-classification and arithmetic fallback remain internal execution choices.
-
-E5.4g.4 exposes `tryConvertUbyteToFloatPlane()` with the operation-specific
-`UbyteToFloatConversionError`. Every successful sample is exactly
-`cast(float)` of the source ubyte; all 256 input values are exactly
-representable. Matching empty shapes succeed, while invalid planes, shape
-mismatch, non-injective destinations and actual reachable sample-byte overlap
-are semantic failures. Contiguous Mir/scalar execution, affine classification
-and defensive arithmetic fallback remain internal.
-
-
-E5.4g is complete. The stable operation surface now consists of the semantic
-writable borrow plus strict float-to-double sum, checked same-type plane copy
-and exact ubyte-to-float conversion. Public-source compatibility includes the
-reviewed parameter names. Raw writable certification, execution traits,
-execution pointers, `RasterTargetPlane`, Mir adapters, physical-range and affine
-relation machinery, checked-wide arithmetic and internal dispatcher result
-types remain non-public.
+R0.3 research has additionally demonstrated decomposition-independent streamed
+identity and neighbourhood/halo execution with bounded raster residency.
+Those research types are not promoted into the stable production API merely by
+the repository pivot.
 
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.
 
 ## Primary goals
 
-- process imagery substantially larger than available RAM;
-- bounded and configurable memory consumption;
+- support logical rasters substantially larger than available RAM;
+- bounded and configurable raster residency;
 - efficient regions, windows and neighbourhood access;
-- low-copy and zero-copy views where appropriate;
-- efficient tiled and streamed processing;
+- low-copy and zero-copy semantic views where appropriate;
+- correct signed-stride and multi-plane layouts;
+- generic planar and interleaved raster representation;
+- decomposition-independent streamed processing;
 - predictable halo/context handling;
-- support interactive workloads;
-- SIMD-friendly CPU processing;
-- scalable multithreaded execution;
-- clear separation between image algorithms and execution strategy;
-- retain a path toward future GPU processing;
-- support geospatial raster sources without coupling the processing core to
-  a particular file format or provider.
+- SIMD-friendly CPU execution;
+- scalable future scheduling and parallel execution;
+- clear separation between semantic raster contracts and execution strategy;
+- retain a path toward future GPU-backed execution without exposing GPU
+  assumptions in the public raster model;
+- remain independent of a particular codec, file format, provider, geospatial
+  stack or image-domain interpretation.
 
 ## Non-goals of the initial phase
 
-The initial research phase does not attempt to implement a comprehensive image
-processing library.
+`raster-d` is not intended to become a comprehensive image-processing library.
 
-Advanced work such as:
+Image-domain responsibilities belong above the generic raster layer. A future
+`imagery-d` may own, among other things:
 
+- image and pixel-format semantics;
+- colour semantics;
 - radiometric normalization;
-- shadow correction;
-- image enhancement;
-- feature extraction;
-- segmentation;
-- machine-learning inference;
+- image enhancement and filters;
+- imagery mosaics and pyramids;
+- imagery-specific source/cache policy;
+- image-quality analysis;
+- shadow and illumination processing;
+- feature extraction and segmentation;
+- ML-assisted image interpretation;
+- imagery-specific geospatial metadata integration.
 
-is deferred until the image-engine foundations have been evaluated and
-stabilized.
+Those higher-level requirements may inform `raster-d` abstractions when they
+produce a demonstrated generic raster need, but they do not define the raster
+API by default.
 
 ## Repository layout
 
-    source/imagery/       library implementation
-    tests/                correctness tests
-    docs/adr/             architecture decision records
-    docs/research/        research results
-    benchmark/scenes/     reproducible test-scene definitions
-    benchmark/sources/    imagery-source definitions
-    benchmark/tools/      benchmark corpus tooling
-    data/                 local, non-versioned imagery and results
+```text
+source/raster/        production library
+tests/                correctness and external-consumer tests
+tools/                maintained verification/probe tooling
+experiments/          research and reproducible experiment evidence
+docs/adr/             architecture decision records
+docs/architecture/    current architecture contracts
+docs/research/        research results and retained technical evidence
+```
 
-## Benchmark imagery
+Historical research artifacts retain their original naming where changing them
+would weaken reproducibility.
 
-Satellite and aerial imagery is not stored in Git.
+## Benchmark and test data
 
-The repository will instead contain reproducible scene definitions, source
-metadata, retrieval parameters, provenance information and hashes.
+`raster-d` should use deterministic synthetic fixtures and reproducible real
+raster workloads where each is appropriate.
 
-Downloaded imagery lives below `data/` and remains local.
+ADR 0002 records the historical policy that large benchmark imagery is not
+stored in Git. That decision remains repository history, but management of a
+full aerial/satellite imagery corpus is a responsibility of the future
+`imagery-d`, not a defining responsibility of the generic raster library.
+
+Consumer-derived imagery may still be useful as raster stress-test input when
+its provenance and reproducibility are controlled.
 
 ## Build
 
@@ -150,14 +153,16 @@ Current DMD and LDC releases remain part of the normal CI matrix. See
 
 ## Workspace context
 
-When developed inside `d-geospatial-workspace`, current shared architecture
-and research context is available locally under:
+When developed inside `d-geospatial-workspace`, shared architecture and
+research context is available locally under:
 
 ```text
 .workspace/
 ```
 
-That directory is local workspace context and is not part of the `imagery-d`
+That directory is local workspace context and is not part of the `raster-d`
 repository or DUB package.
 
-Repository-root documentation remains specific to `imagery-d`.
+Repository-root documentation describes `raster-d`. Shared workspace
+documentation is migrated separately because those files are hard-linked across
+multiple workspace repositories.

@@ -23,7 +23,7 @@ The resulting decision is to keep the ordinary production implementation and rel
 
 The historical production source is not duplicated under `original/`.
 
-The relevant implementation remains versioned in the repository at `source/imagery/raster/internal/scalar_conversion.d`.
+The relevant implementation remains versioned in the repository at `source/raster/internal/scalar_conversion.d`.
 
 The durable research artifacts record the generated code and measurement evidence associated with that production implementation.
 

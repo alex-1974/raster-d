@@ -529,7 +529,7 @@ Implemented invariants:
 - Moving transfers the obligation.
 - Relinquishing to package-internal raw construction disarms the token.
 - The public malloc-compatible adoption boundary is @system.
-- ResourceEntry and ReleaseFn remain outside the public imagery.raster API.
+- ResourceEntry and ReleaseFn remain outside the public raster API.
 - Raw callback/context adoption remains package-internal and @system.
 
 C6.1 deliberately does not yet implement:
@@ -1321,7 +1321,7 @@ Before the C6 public API is considered complete, implementation must prove:
 1. `tryImportOwnedRaster` is callable from `@safe` code.
 
 2. raw ResourceEntry and release callback/context state remain inaccessible
-   through the public imagery.raster package.
+   through the public raster package.
 
 3. success reports:
    - error == none;
@@ -1491,7 +1491,7 @@ C6.5 adds compiler probes establishing that:
 - `@safe` code can call tryImportOwnedRaster when given an
   OwnedByteResource;
 - package-internal SingleResourceRasterImport types are not exported through
-  imagery.raster;
+  raster;
 - public callers cannot mutate the private result state.
 
 These probes run under both DMD and LDC in CI.
@@ -1537,13 +1537,13 @@ state whose destructor path crosses Phobos template instantiations.
 
 A separate external `dub test` consumer exposed the gap. The public import
 itself compiled successfully, ordinary executable consumers linked, and the
-imagery-d root unittest suite passed. An independently compiled unittest
+then-current root raster-library unittest suite passed. An independently compiled unittest
 consumer, however, referenced a required SafeRefCounted/object.destroy
-instantiation that the separately built imagery-d archive did not provide.
+instantiation that the separately built raster-library archive did not provide.
 
 Using compiler-wide all-instantiation flags made the reproducer link, which
 confirmed a template-emission/separate-compilation boundary. Such flags are not
-part of the imagery-d consumer contract and are not used as the fix.
+part of the raster-d consumer contract and are not used as the fix.
 
 The retained representation is therefore split according to its actual
 semantics:
@@ -1553,11 +1553,11 @@ semantics:
   geometry;
 - RasterBackingOwner is one concrete SafeRefCounted!RasterBacking owner;
 - creation of that owner occurs through the non-templated
-  makeRasterBackingOwner() function inside imagery-d;
+  makeRasterBackingOwner() function inside raster-d;
 - RasterLease!T, RasterView!T, construction, validation, and raster operations
   remain sample-type aware.
 
-This gives the separately compiled imagery-d library one concrete code-generation
+This gives the separately compiled raster-d library one concrete code-generation
 anchor for the retained backing destruction path without changing the public
 sample-typed API.
 

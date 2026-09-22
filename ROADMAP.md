@@ -1,18 +1,26 @@
-# imagery-d Roadmap
+# raster-d Roadmap
 
-## Current implementation checkpoint — 2026-09-20
+## Current implementation checkpoint — 2026-09-22
 
-The repository has progressed beyond the initial architecture-only stage while
-the long-term milestone structure below remains valid.
+The generic raster foundation is now implemented far enough that the former
+`imagery-d` repository has passed the extraction gate defined by ADR 0003.
 
-The resident raster foundation now includes:
+The technical package/namespace pivot is complete:
+
+```text
+DUB package:       raster-d
+public namespace: raster / raster.*
+production source: source/raster/**
+```
+
+The current production foundation includes:
 
 - retained raster-resource ownership;
 - validated multi-plane raster backing;
 - signed row and sample strides;
 - zero-copy resident ROIs;
 - read-only `RasterView!T`;
-- public lease-bound `WritableRasterView!T`;
+- lease-bound `WritableRasterView!T`;
 - retained read/write provenance and writable-backing certification;
 - internal execution-layout classification and Mir adapters;
 - checked affine alias/overlap analysis;
@@ -20,60 +28,26 @@ The resident raster foundation now includes:
 - checked same-type raster-plane copy;
 - exact `ubyte -> float` raster-plane conversion.
 
-The current raster-operations sequence is:
+The E5.4 public-operation sequence is complete. Internal execution,
+certification, physical-range, affine-relation and checked-wide-arithmetic
+machinery remains non-public.
+
+R0.3a and R0.3b are also complete as research evidence. They demonstrate
+decomposition-independent identity processing and neighbourhood/halo processing
+with bounded raster residency without forcing premature promotion of the
+research types into production.
+
+The repository-pivot sequence is currently:
 
 ```text
-E5.4a       public-surface audit                         complete
-E5.4b       writable prerequisites audit                complete
-E5.4c       retained write-access provenance design     complete
-E5.4c.1     retained ResourceAccess implementation      complete
-E5.4d       semantic writable-view contract             complete
-E5.4d.1a    writable backing certification              complete
-E5.4d.1b    semantic WritableRasterView implementation  complete
-E5.4d.1c    RasterLease -> writable borrow              complete
-E5.4e       writable execution capabilities             complete
-E5.4e.1     writable execution primitives               complete
-E5.4e.2     WritableRasterView -> RasterTargetPlane     complete
-E5.4e.3     existing consumer integration               complete
-E5.4f       public operation contract redesign          complete
-E5.4f.0     initial contract audit                      complete
-E5.4f.1     public contract matrix audit                complete
-E5.4f.2     writable affine execution-gap audit         complete
-E5.4f.3     bulk-write alias contract                   complete
-E5.4f.4     exact affine overlap research               complete
-E5.4f.5a    checked-arithmetic carrier audit            complete
-E5.4f.5b.1  sign+magnitude wide arithmetic              complete
-E5.4f.5b.2a bounded wide Diophantine solver             complete
-E5.4f.5b.2b affine-overlap equivalence                  complete
-E5.4f.5c    production mapping audit                    complete
-E5.4f.5c.1  writable execution stride query             complete
-E5.4f.5c.2  affine relation + concrete consumer mapping complete
-E5.4g       stable public operation exposure            complete
-E5.4g.0     public exposure sequencing                  complete
-E5.4g.1     semantic writable-borrow exposure           complete
-E5.4g.2     strict float-to-double sum exposure         complete
-E5.4g.3     same-type raster copy exposure              complete
-E5.4g.4     exact ubyte-to-float conversion exposure    complete
-E5.4g.5     public-surface/lifetime closeout            complete
+P1  package / namespace / replay migration       complete
+P2  repository documentation                    complete
+P3  full technical migration gate               pending
+P4  PR and merge under existing GitHub identity pending
+P5  GitHub/local repository rename to raster-d  pending
+P6  shared workspace-context migration          pending
+P7  future higher-level imagery-d               later
 ```
-
-The stable public raster-operation surface now consists of:
-
-- the semantic lease-bound writable borrow;
-- strict `trySumFloatToDouble()`;
-- checked `tryCopyRasterPlane()`;
-- exact `tryConvertUbyteToFloatPlane()`.
-
-Execution layouts, Mir adapters, mutable execution pointers,
-`RasterTargetPlane`, physical-range classification, affine relation machinery,
-checked-wide arithmetic and operation dispatch internals remain non-public.
-
-The next research milestone is R0.3: define the region, dependency and streaming
-model above the resident raster core without collapsing provider tiles, cache
-blocks, logical regions or future processing tasks into one tile abstraction.
-
-R0.3 begins as research under `experiments/r0_3_regions_streaming/`. No new
-stable production API is implied by starting this phase.
 
 ## R0 — Constraints, Research and Architecture
 
@@ -157,42 +131,31 @@ Deliverable:
 
     docs/research/memory-model.md
 
-### R0.3 — Region, tile and streaming model
+### R0.3 — Region, dependency and streaming model
 
-**Status (2026-09-21):** R0.3a / E3.2 identity streamed-equivalence complete.
+**Status (2026-09-22): complete as research evidence.**
 
-Validated:
+R0.3 established and validated:
 
-- whole/decomposed exact identity equivalence;
+- logical/global versus resident-coordinate separation;
+- checked region/dependency algebra;
+- decomposition validation;
 - horizontal, vertical, regular-tile and irregular decompositions;
 - dedicated one-pixel-task decomposition;
-- logical/global versus resident-coordinate separation;
+- decomposition-independent identity execution;
+- explicit halo/context dependency derivation;
+- whole/decomposed neighbourhood equivalence;
 - bounded sequential raster residency;
-- huge logical extent without whole-image allocation;
+- huge logical extents without whole-image allocation;
 - separate raster/oracle/metadata accounting;
-- DMD and LDC;
-- no E3.2-driven production API change.
+- DMD and LDC equivalence.
 
-**Next:** R0.3b — neighbourhood / halo equivalence.
+The extraction gate following R0.3 is resolved by ADR 0003: the generic raster
+domain is independently useful and the existing repository lineage becomes
+`raster-d`.
 
-
-Define and separate:
-
-- provider tiles;
-- cache blocks;
-- regions;
-- windows;
-- processing tiles;
-- halo/context;
-- output regions.
-
-Compare fixed-tile processing with arbitrary requested regions.
-
-Test neighbouring tiles and cross-boundary processing.
-
-Deliverable:
-
-    docs/research/regions-streaming.md
+R0.3 types remain research types until a separate production-API promotion
+decision is justified.
 
 ### R0.4 — Execution and scheduling research
 
@@ -218,13 +181,12 @@ Use deliberately simple kernels:
 
 - copy;
 - fill;
-- RGB channel extraction;
-- RGB to grayscale;
-- point transform;
-- LUT;
+- plane extraction;
+- numeric point conversion;
+- LUT-style scalar transforms;
 - min/max reduction;
-- histogram;
-- small convolution.
+- histogram/reduction workloads;
+- small generic neighbourhood kernels.
 
 Compare:
 
@@ -240,53 +202,48 @@ Deliverable:
 
     docs/research/cpu-performance.md
 
-### R0.6 — I/O and raster-source architecture
+### R0.6 — Raster-source and adapter boundary research
 
-Research boundaries for:
+Research the boundary between `raster-d` and external raster producers.
+
+Reference systems may include:
 
 - GDAL;
 - local codecs;
-- GeoTIFF;
-- COG;
-- XYZ/TMS;
-- WMTS;
-- WMS.
+- GeoTIFF / COG readers;
+- XYZ/TMS/WMTS/WMS consumers;
+- procedural sources;
+- scientific-grid or elevation sources.
 
-Define requirements for a generic raster/imagery source abstraction.
+The goal is not to make every source backend a `raster-d` dependency. The goal
+is to determine the smallest generic contract needed to import, retain,
+materialize or stream raster data while keeping provider- and image-specific
+policy outside the core library.
 
 Deliverable:
 
     docs/research/io-sources.md
 
-### R0.7 — Reproducible imagery corpus
+### R0.7 — Representative raster workload corpus
 
-Define test scenes covering:
+Define reproducible workloads that exercise generic raster behaviour:
 
-- multiple latitudes;
-- Northern and Southern Hemisphere;
-- low and high elevation;
-- flat and mountainous terrain;
-- urban and rural areas;
-- multiple providers;
-- multiple quality levels;
-- neighbouring tiles;
-- mosaic seams.
+- contiguous and non-contiguous layouts;
+- planar and interleaved storage;
+- signed strides;
+- large logical extents;
+- region boundaries;
+- neighbourhood halos;
+- streaming and bounded residency;
+- multiple sample types;
+- externally supplied memory.
 
-Imagery is downloaded locally and is not committed.
+Synthetic fixtures should be preferred when they isolate a semantic or
+performance property.
 
-Version:
-
-- scene definitions;
-- source definitions;
-- retrieval parameters;
-- provenance;
-- hashes.
-
-Deliverable:
-
-    docs/research/test-corpus.md
-    benchmark/scenes/
-    benchmark/sources/
+Real imagery may be retained as consumer-derived stress-test input, but the
+full aerial/satellite imagery corpus and imagery-specific provenance policy
+belong to the future `imagery-d`.
 
 ### R0.8 — Prototype bake-off
 
@@ -326,7 +283,7 @@ R0 is complete when:
 
 1. reference engines have been studied;
 2. operational constraints are documented;
-3. representative imagery is reproducibly obtainable;
+3. representative raster workloads are reproducibly obtainable;
 4. memory-layout alternatives have been benchmarked;
 5. Region/Tile/Halo semantics are defined;
 6. streaming correctness rules are defined;
@@ -390,46 +347,49 @@ Optimise proven hot paths using:
 
 ---
 
-## M4 — Image I/O and Geospatial Sources
+## Future higher-level consumer — imagery-d
 
-Integrate source backends and geospatial metadata.
+Image-domain work no longer defines later milestones of `raster-d`.
 
----
+After the generic raster library is stable, a separate higher-level
+`imagery-d` may depend on it and own work such as:
 
-## R1 — Image Processing Research
+### Image and pixel semantics
 
-Only after the engine foundation is stable, research:
+- image/pixel-format models;
+- colour semantics;
+- alpha/mask interpretation;
+- display-oriented transforms.
+
+### Image I/O and imagery sources
+
+- image codecs;
+- GeoTIFF/COG imagery policy;
+- XYZ/TMS/WMTS/WMS imagery integration;
+- imagery-specific caching;
+- image pyramids and mosaics;
+- acquisition/provenance metadata.
+
+Generic GDAL/raster adapters may instead live in focused integration libraries
+when that boundary proves independently useful.
+
+### Image-processing research
 
 - resampling;
 - sharpening and blur;
 - local contrast;
 - colour processing;
 - quality metrics;
-- radiometric normalization.
-
----
-
-## R2 — Illumination and Shadow Research
-
-Research:
-
-- cast shadows;
-- terrain shadows;
-- vegetation shadows;
-- sun direction;
-- acquisition metadata;
-- shadow confidence;
-- illumination correction.
-
----
-
-## M5+ — Advanced Processing
-
-Later milestones may include:
-
-- editor display pipelines;
-- GPU processing;
+- radiometric normalization;
+- shadow and illumination analysis;
 - feature extraction;
 - segmentation;
-- ML inference;
-- mapping assistance.
+- ML-assisted interpretation.
+
+### Relationship to raster-d
+
+Higher-level image requirements may motivate additions to `raster-d` only when
+they reveal a coherent, reusable raster-domain need.
+
+They must not cause image semantics, provider policy or application-specific
+behaviour to leak into the generic raster API.

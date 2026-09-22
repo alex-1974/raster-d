@@ -1780,7 +1780,7 @@ generic operation hierarchy designed in advance.
 
 ### E5.4a current public-surface audit
 
-The current `imagery.raster` package publicly exposes:
+The current `raster` package publicly exposes:
 
 ```text
 isRasterSampleType
@@ -1820,7 +1820,7 @@ This boundary is correct and must be preserved.
 
 The execution-surface compile-negative tests independently verify that the
 current reduction, copy, conversion, and physical-range machinery cannot be
-imported from modules outside `imagery.raster`.
+imported from modules outside `raster`.
 
 No existing internal operation type should therefore be made public merely by
 changing its visibility.
@@ -4028,7 +4028,7 @@ resources again.
 The first implementation remains:
 
 ```text
-package(imagery.raster)
+package(raster)
 ```
 
 even though the semantic type is designed as a future public abstraction.
@@ -5658,7 +5658,7 @@ non-public.
 The public parameter names `source`, `planeIndex` and `sum` are covered by an
 external named-argument compile probe.
 
-Public-consumer compile probes that import the `imagery.raster` umbrella module
+Public-consumer compile probes that import the `raster` umbrella module
 resolve dependency import paths through `dub describe`. This mirrors the DUB
 consumer environment now required by public operations whose replaceable
 internal implementation uses Mir; it does not make Mir part of the public API.
