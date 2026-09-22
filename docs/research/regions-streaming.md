@@ -688,7 +688,7 @@ These questions require evidence from later experiments.
 
 No experimental type becomes public merely because it is convenient.
 
-Promotion into `source/imagery/` requires:
+Promotion into `source/raster/` requires:
 
 1. a concrete consumer;
 2. stable semantics supported by R0.3 evidence;
@@ -905,14 +905,15 @@ No production source under `source/` was changed or promoted by E3.3.
 E3.3 therefore closes the R0.3b neighbourhood/halo streamed-equivalence
 research slice.
 
-### Next architecture gate
+### Extraction-gate outcome
 
-Before substantial new raster/image-engine functionality is added, perform the
-planned `raster-d` extraction gate.
+The planned raster extraction gate has been resolved by
+`docs/adr/0003-repository-pivot-to-raster-d.md`.
 
-That gate must classify the working `imagery-d` implementation and determine
-whether the now-demonstrated generic raster domain is coherent and independently
-useful enough to extract into a standalone `raster-d`.
+The demonstrated generic raster domain is coherent and independently useful.
+The existing implementation and its Git history therefore form the `raster-d`
+lineage rather than being copied into a parallel raster implementation.
 
-Do not create a parallel raster implementation. Any `raster-d` must be an
-extraction from the validated implementation developed here.
+R0.3 remains research evidence. Promotion of its region, dependency,
+decomposition or streaming types into the production `raster` API requires a
+separate architecture decision and is not implied by the repository pivot.

@@ -4,7 +4,7 @@ import core.stdc.stdlib :
     free,
     malloc;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     OwnedRasterImportError,
     PlaneByteLayout,

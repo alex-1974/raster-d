@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-target-lifetime-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-target-lifetime-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -56,13 +56,13 @@ else
 
 
         cat > "$tmp_dir/positive.d" <<'D'
-module imagery.raster.target_lifetime_positive;
+module raster.target_lifetime_positive;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
-import imagery.raster.internal.mir_target_adapter :
+import raster.internal.mir_target_adapter :
     MirTargetContiguousPlane,
     asMirTargetContiguous;
 
@@ -118,17 +118,17 @@ D
 
 
         cat > "$tmp_dir/writable_view_positive.d" <<'D'
-module imagery.raster.target_lifetime_writable_view_positive;
+module raster.target_lifetime_writable_view_positive;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
-import imagery.raster.internal.mir_target_adapter :
+import raster.internal.mir_target_adapter :
     MirTargetContiguousPlane,
     asMirTargetContiguous;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -187,13 +187,13 @@ D
 
 
         cat > "$tmp_dir/writable_view_return_target.d" <<'D'
-module imagery.raster.target_lifetime_writable_view_negative_return_target;
+module raster.target_lifetime_writable_view_negative_return_target;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -219,16 +219,16 @@ D
 
 
         cat > "$tmp_dir/writable_view_return_mir.d" <<'D'
-module imagery.raster.target_lifetime_writable_view_negative_return_mir;
+module raster.target_lifetime_writable_view_negative_return_mir;
 
-import imagery.raster.internal.mir_target_adapter :
+import raster.internal.mir_target_adapter :
     MirTargetContiguousPlane,
     asMirTargetContiguous;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     tryBorrowContiguousTarget;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -259,13 +259,13 @@ D
 
 
         cat > "$tmp_dir/writable_view_global.d" <<'D'
-module imagery.raster.target_lifetime_writable_view_negative_global;
+module raster.target_lifetime_writable_view_negative_global;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -295,12 +295,12 @@ D
 
 
         cat > "$tmp_dir/writable_view_const.d" <<'D'
-module imagery.raster.target_lifetime_writable_view_negative_const;
+module raster.target_lifetime_writable_view_negative_const;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     tryBorrowContiguousTarget;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -329,9 +329,9 @@ D
 
 
         cat > "$tmp_dir/return_target.d" <<'D'
-module imagery.raster.target_lifetime_negative_return_target;
+module raster.target_lifetime_negative_return_target;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
@@ -365,13 +365,13 @@ D
 
 
         cat > "$tmp_dir/return_mir.d" <<'D'
-module imagery.raster.target_lifetime_negative_return_mir;
+module raster.target_lifetime_negative_return_mir;
 
-import imagery.raster.internal.mir_target_adapter :
+import raster.internal.mir_target_adapter :
     MirTargetContiguousPlane,
     asMirTargetContiguous;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     tryBorrowContiguousTarget;
 
 
@@ -406,9 +406,9 @@ D
 
 
         cat > "$tmp_dir/global_target.d" <<'D'
-module imagery.raster.target_lifetime_negative_global;
+module raster.target_lifetime_negative_global;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
@@ -452,11 +452,11 @@ module raster_target_negative_external_surface;
  * Writable target semantics and Mir adapters remain internal implementation
  * details.
  */
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane,
     tryBorrowContiguousTarget;
 
-import imagery.raster.internal.mir_target_adapter :
+import raster.internal.mir_target_adapter :
     MirTargetContiguousPlane,
     asMirTargetContiguous;
 

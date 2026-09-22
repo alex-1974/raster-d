@@ -1,5 +1,12 @@
 # R0.1 — Reference Engine Research
 
+> **Repository-pivot note (2026-09-22):** This R0.1 document predates the
+> repository pivot. References to `imagery-d` below describe the then-current
+> combined image/raster project. Generic raster lessons informed `raster-d`;
+> image-domain conclusions remain relevant to the future higher-level
+> `imagery-d`.
+
+
 ## Status
 
 Research in progress.

@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-lifetime-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-lifetime-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -25,7 +25,7 @@ module raster_lifetime_positive;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeLifetimeTestLease;
 
 @safe
@@ -64,11 +64,11 @@ module raster_lifetime_negative_return_view;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     RasterLease,
     makeLifetimeTestLease;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 /*
@@ -100,13 +100,13 @@ module raster_lifetime_negative_return_roi;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeLifetimeTestLease;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 /*
@@ -156,10 +156,10 @@ module raster_lifetime_negative_global;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeLifetimeTestLease;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 RasterView!ubyte escaped;
@@ -184,11 +184,11 @@ D
 
 
 cat > "$tmp_dir/writable_positive.d" <<'D'
-module imagery.raster.raster_lifetime_writable_positive;
+module raster.raster_lifetime_writable_positive;
 
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeWritableLifetimeTestLease;
 
 
@@ -243,14 +243,14 @@ D
 
 
 cat > "$tmp_dir/writable_return.d" <<'D'
-module imagery.raster.raster_lifetime_writable_negative_return;
+module raster.raster_lifetime_writable_negative_return;
 
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeWritableLifetimeTestLease;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -277,14 +277,14 @@ D
 
 
 cat > "$tmp_dir/writable_global.d" <<'D'
-module imagery.raster.raster_lifetime_writable_negative_global;
+module raster.raster_lifetime_writable_negative_global;
 
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeWritableLifetimeTestLease;
 
-import imagery.raster.writable_view :
+import raster.writable_view :
     WritableRasterView;
 
 
@@ -315,11 +315,11 @@ D
 
 
 cat > "$tmp_dir/writable_const_lease.d" <<'D'
-module imagery.raster.raster_lifetime_writable_negative_const_lease;
+module raster.raster_lifetime_writable_negative_const_lease;
 
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeWritableLifetimeTestLease;
 
 

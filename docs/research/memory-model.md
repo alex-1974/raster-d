@@ -2,6 +2,13 @@
 
 Status: **COMPLETED R0.2 RESEARCH SNAPSHOT**
 
+>
+> **Repository-pivot note (2026-09-22):** References to `imagery-d` below
+> preserve the project identity under which this R0.2 research was performed.
+> The generic raster ownership/view model produced by this research is now
+> owned by `raster-d`.
+
+
 > **Implementation note — 2026-09-19**
 >
 > This document preserves the R0.2 research evidence and conclusions in their

@@ -83,7 +83,7 @@ done < "$ROOT/SHA256SUMS"
 
 RUN="$(
     mktemp -d \
-        "${TMPDIR:-/tmp}/imagery-d-e5_4f_5c2-replay.XXXXXX"
+        "${TMPDIR:-/tmp}/raster-d-e5_4f_5c2-replay.XXXXXX"
 )"
 
 trap 'rm -rf "$RUN"' EXIT

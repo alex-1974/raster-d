@@ -22,7 +22,7 @@ __dummy.html
 *.profile
 
 # DUB generated test executables
-/imagery-d-test-library
+/raster-d-test-library
 
 # Local d-geospatial-workspace context
 .workspace/

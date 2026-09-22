@@ -14,7 +14,7 @@ import dependency :
     ExpandedDependency,
     tryExpandDependency;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     OwnedRasterImportError,
     PlaneByteLayout,

@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-execution-lifetime-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-execution-lifetime-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -62,7 +62,7 @@ fi
 
 
 cat > "$tmp_dir/positive.d" <<'D'
-module imagery.raster.execution_lifetime_positive;
+module raster.execution_lifetime_positive;
 
 /*
  * Static lifetime is intentional.
@@ -72,10 +72,10 @@ module imagery.raster.execution_lifetime_positive;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeLifetimeTestLease;
 
-import imagery.raster.internal.mir_adapter :
+import raster.internal.mir_adapter :
     asMirUniversal;
 
 
@@ -109,7 +109,7 @@ D
 
 
 cat > "$tmp_dir/return_mir.d" <<'D'
-module imagery.raster.execution_lifetime_negative_return_mir;
+module raster.execution_lifetime_negative_return_mir;
 
 /*
  * Static lifetime is intentional.
@@ -119,10 +119,10 @@ module imagery.raster.execution_lifetime_negative_return_mir;
  */
 private size_t[3] releases;
 
-import imagery.raster.backing :
+import raster.backing :
     makeLifetimeTestLease;
 
-import imagery.raster.internal.mir_adapter :
+import raster.internal.mir_adapter :
     MirUniversalPlane,
     asMirUniversal;
 
@@ -159,9 +159,9 @@ module raster_execution_negative_external_surface;
  * MUST FAIL.
  *
  * Mir execution types/adapters are package-internal implementation details,
- * not public imagery-d raster API.
+ * not public raster-d raster API.
  */
-import imagery.raster.internal.mir_adapter :
+import raster.internal.mir_adapter :
     MirUniversalPlane,
     asMirUniversal;
 
@@ -176,10 +176,10 @@ module raster_execution_negative_fixed_lane_external_surface;
  * MUST FAIL.
  *
  * Fixed-lane execution kernels are package-internal implementation details.
- * Code outside imagery.raster must not acquire the specialized reduction
+ * Code outside raster must not acquire the specialized reduction
  * entry point directly.
  */
-import imagery.raster.internal.fixed_lane_kernels :
+import raster.internal.fixed_lane_kernels :
     fixedLane4SumFloatToDoubleContiguous1D;
 
 alias escapedFixedLaneReduction =
@@ -196,7 +196,7 @@ module raster_execution_negative_reduction_dispatch_external_surface;
  * Reduction semantics and dispatch remain package-internal until a separate
  * public raster-operation API is deliberately designed.
  */
-import imagery.raster.internal.reduction_dispatch :
+import raster.internal.reduction_dispatch :
     FloatToDoubleSumDispatchError,
     FloatToDoubleSumResult,
     SumReductionSemantics,
@@ -214,7 +214,7 @@ D
 cat > "$tmp_dir/public_reduction_surface.d" <<'D'
 module raster_execution_public_reduction_surface;
 
-import imagery.raster :
+import raster :
     RasterView,
     trySumFloatToDouble;
 
@@ -242,15 +242,15 @@ D
 
 
 cat > "$tmp_dir/copy_dispatch_positive.d" <<'D'
-module imagery.raster.copy_dispatch_positive;
+module raster.copy_dispatch_positive;
 
-import imagery.raster.internal.copy_dispatch :
+import raster.internal.copy_dispatch :
     tryCopyNonOverlappingContiguous1D;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 
@@ -301,7 +301,7 @@ module raster_execution_negative_copy_dispatch_external_surface;
  * Checked source/target alias analysis and copy dispatch remain
  * package-internal execution machinery.
  */
-import imagery.raster.internal.copy_dispatch :
+import raster.internal.copy_dispatch :
     NonOverlappingCopyError,
     NonOverlappingCopyResult,
     SameTypeRasterCopyError,
@@ -316,7 +316,7 @@ D
 cat > "$tmp_dir/public_copy_surface.d" <<'D'
 module raster_execution_public_copy_surface;
 
-import imagery.raster :
+import raster :
     RasterCopyError,
     RasterView,
     WritableRasterView,
@@ -356,7 +356,7 @@ D
 cat > "$tmp_dir/public_conversion_surface.d" <<'D'
 module raster_execution_public_conversion_surface;
 
-import imagery.raster :
+import raster :
     RasterView,
     UbyteToFloatConversionError,
     WritableRasterView,
@@ -394,15 +394,15 @@ D
 
 
 cat > "$tmp_dir/conversion_dispatch_positive.d" <<'D'
-module imagery.raster.conversion_dispatch_positive;
+module raster.conversion_dispatch_positive;
 
-import imagery.raster.internal.conversion_dispatch :
+import raster.internal.conversion_dispatch :
     tryConvertUbyteToFloatContiguous1D;
 
-import imagery.raster.internal.target :
+import raster.internal.target :
     RasterTargetPlane;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 
@@ -439,9 +439,9 @@ D
 
 
 cat > "$tmp_dir/physical_range_positive.d" <<'D'
-module imagery.raster.physical_range_positive;
+module raster.physical_range_positive;
 
-import imagery.raster.internal.physical_range :
+import raster.internal.physical_range :
     PhysicalByteRangeRelation,
     classifyByteAddressRanges;
 
@@ -450,7 +450,7 @@ import imagery.raster.internal.physical_range :
  * MUST PASS.
  *
  * The shared byte-address classifier is package-internal but usable by
- * operation implementations inside imagery.raster.
+ * operation implementations inside raster.
  */
 @safe
 pure
@@ -479,7 +479,7 @@ module raster_execution_negative_conversion_dispatch_external_surface;
  * Conversion result types and dispatch remain package-internal execution
  * machinery until a public raster-operation API is deliberately designed.
  */
-import imagery.raster.internal.conversion_dispatch :
+import raster.internal.conversion_dispatch :
     ExactUbyteToFloatRasterError,
     UbyteToFloatConversionError,
     UbyteToFloatConversionResult,
@@ -500,7 +500,7 @@ module raster_execution_negative_physical_range_external_surface;
  * Integer physical-range classification is internal execution machinery and
  * must not become part of the public raster API.
  */
-import imagery.raster.internal.physical_range :
+import raster.internal.physical_range :
     PhysicalByteRangeRelation,
     classifyByteAddressRanges;
 

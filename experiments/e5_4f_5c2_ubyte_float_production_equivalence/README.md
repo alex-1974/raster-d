@@ -112,7 +112,7 @@ The complete:
 
 path remains covered by production unit tests in:
 
-`source/imagery/raster/internal/conversion_dispatch.d`
+`source/raster/internal/conversion_dispatch.d`
 
 Those tests establish operation-level behavior such as:
 

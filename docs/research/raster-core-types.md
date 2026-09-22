@@ -1,5 +1,11 @@
 # R0.3 — Raster Core Type Research
 
+> **Repository-pivot note (2026-09-22):** This document preserves R0.3
+> terminology from the period when the repository was named `imagery-d`.
+> Generic raster type conclusions now belong to `raster-d`; the historical
+> wording below is retained as research provenance.
+
+
 ## Status
 
 ```text

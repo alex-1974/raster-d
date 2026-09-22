@@ -1,6 +1,6 @@
 module neighbourhood_materialization_contract;
 
-import imagery.raster.region : Region2D;
+import raster.region : Region2D;
 
 import dependency :
     ContextDeficit,

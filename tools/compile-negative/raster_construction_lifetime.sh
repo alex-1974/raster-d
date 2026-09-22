@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-construction-lifetime-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-construction-lifetime-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -15,21 +15,21 @@ failures=0
 
 
 cat > "$tmp_dir/support.d" <<'D'
-module imagery.raster.probe_support;
+module raster.probe_support;
 
-import imagery.raster.backing :
+import raster.backing :
     RasterLease;
 
-import imagery.raster.construction :
+import raster.construction :
     constructRetainedRaster;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
 
@@ -96,9 +96,9 @@ D
 
 
 cat > "$tmp_dir/positive.d" <<'D'
-module imagery.raster.probe_positive;
+module raster.probe_positive;
 
-import imagery.raster.probe_support :
+import raster.probe_support :
     makeConstructedLease;
 
 
@@ -126,12 +126,12 @@ D
 
 
 cat > "$tmp_dir/return_lease.d" <<'D'
-module imagery.raster.probe_positive_return_lease;
+module raster.probe_positive_return_lease;
 
-import imagery.raster.backing :
+import raster.backing :
     RasterLease;
 
-import imagery.raster.probe_support :
+import raster.probe_support :
     makeConstructedLease;
 
 
@@ -152,21 +152,21 @@ D
 
 
 cat > "$tmp_dir/safe_raw_construction.d" <<'D'
-module imagery.raster.probe_negative_safe_raw_construction;
+module raster.probe_negative_safe_raw_construction;
 
-import imagery.raster.backing :
+import raster.backing :
     RasterLease;
 
-import imagery.raster.construction :
+import raster.construction :
     constructRetainedRaster;
 
-import imagery.raster.descriptor :
+import raster.descriptor :
     PlaneDescriptor;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.resource :
+import raster.resource :
     ResourceEntry;
 
 
@@ -198,12 +198,12 @@ D
 
 
 cat > "$tmp_dir/return_view.d" <<'D'
-module imagery.raster.probe_negative_return_view;
+module raster.probe_negative_return_view;
 
-import imagery.raster.probe_support :
+import raster.probe_support :
     makeConstructedLease;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 
@@ -225,15 +225,15 @@ D
 
 
 cat > "$tmp_dir/return_roi.d" <<'D'
-module imagery.raster.probe_negative_return_roi;
+module raster.probe_negative_return_roi;
 
-import imagery.raster.probe_support :
+import raster.probe_support :
     makeConstructedLease;
 
-import imagery.raster.region :
+import raster.region :
     Region2D;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 
@@ -273,12 +273,12 @@ D
 
 
 cat > "$tmp_dir/global.d" <<'D'
-module imagery.raster.probe_negative_global;
+module raster.probe_negative_global;
 
-import imagery.raster.probe_support :
+import raster.probe_support :
     makeConstructedLease;
 
-import imagery.raster.view :
+import raster.view :
     RasterView;
 
 

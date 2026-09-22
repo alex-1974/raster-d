@@ -162,7 +162,7 @@ structure to a raw-pointer implementation on both tested ISAs.
 
 This supports the existing design decision:
 
-- keep imagery-d's public raster semantics independent of Mir;
+- keep raster-d's public raster semantics independent of Mir;
 - use Mir internally as an execution substrate;
 - classify layout before entering hot loops;
 - expose contiguous one-dimensional execution only when the operation is

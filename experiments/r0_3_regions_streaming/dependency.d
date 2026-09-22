@@ -1,6 +1,6 @@
 module dependency;
 
-import imagery.raster.region : Region2D;
+import raster.region : Region2D;
 import region_algebra : tryContainsAbsolute;
 
 

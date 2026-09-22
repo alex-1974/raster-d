@@ -9,7 +9,7 @@ repo_root="$(
 )"
 
 tmp_dir="$(
-    mktemp -d "${TMPDIR:-/tmp}/imagery-d-raster-public-operations-XXXXXX"
+    mktemp -d "${TMPDIR:-/tmp}/raster-d-raster-public-operations-XXXXXX"
 )"
 
 cleanup()
@@ -128,7 +128,7 @@ D
     cat > "$tmp_dir/public_surface.d" <<'D'
 module raster_public_operations_positive;
 
-import imagery.raster :
+import raster :
     RasterCopyError,
     RasterLease,
     RasterView,
@@ -206,7 +206,7 @@ D
     cat > "$tmp_dir/named_arguments.d" <<'D'
 module raster_public_operations_named_arguments;
 
-import imagery.raster :
+import raster :
     RasterCopyError,
     RasterLease,
     RasterView,
@@ -283,7 +283,7 @@ D
     cat > "$tmp_dir/internal_umbrella_surface.d" <<'D'
 module raster_public_operations_negative_internal_umbrella_surface;
 
-import imagery.raster :
+import raster :
     AffineByteOverlapRelation,
     ExactUbyteToFloatRasterError,
     FloatToDoubleSumResult,
@@ -302,7 +302,7 @@ D
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
 
-import imagery.raster :
+import raster :
     RasterLease,
     WritableRasterView;
 
@@ -325,7 +325,7 @@ D
     cat > "$tmp_dir/writable_global.d" <<'D'
 module raster_public_operations_negative_writable_global;
 
-import imagery.raster :
+import raster :
     RasterLease,
     WritableRasterView;
 

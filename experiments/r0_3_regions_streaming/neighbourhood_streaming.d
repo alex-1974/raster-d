@@ -2,7 +2,7 @@ module neighbourhood_streaming;
 
 import std.format : format;
 
-import imagery.raster.region : Region2D;
+import raster.region : Region2D;
 
 import decomposition_oracle :
     DecompositionIssue,

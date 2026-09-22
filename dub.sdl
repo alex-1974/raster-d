@@ -1,5 +1,5 @@
-name "imagery-d"
-description "High-performance image engine for large geospatial imagery"
+name "raster-d"
+description "High-performance raster engine for large and streamed raster data"
 authors "Alexander Bernardi"
 copyright "Copyright © 2026, Alexander Bernardi"
 license "MIT"

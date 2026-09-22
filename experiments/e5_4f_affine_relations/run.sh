@@ -78,7 +78,7 @@ do
     echo "$relative: PASS"
 done < "$ROOT/SHA256SUMS"
 
-RUN="$(mktemp -d "${TMPDIR:-/tmp}/imagery-d-e5_4f-replay.XXXXXX")"
+RUN="$(mktemp -d "${TMPDIR:-/tmp}/raster-d-e5_4f-replay.XXXXXX")"
 trap 'rm -rf "$RUN"' EXIT
 
 run_case()

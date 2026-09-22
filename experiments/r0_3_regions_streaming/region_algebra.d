@@ -1,6 +1,6 @@
 module region_algebra;
 
-import imagery.raster.region : Region2D;
+import raster.region : Region2D;
 
 
 /++

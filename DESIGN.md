@@ -1,21 +1,36 @@
-# imagery-d Design
+# raster-d Design
 
 ## 1. Purpose
 
-`imagery-d` is a high-performance image engine for large geospatial imagery.
+`raster-d` is a high-performance generic raster foundation for D.
 
-Its first intended consumer is an interactive OpenStreetMap editor. The engine
-must nevertheless remain independent of OSM-specific data structures and UI
-code.
+It owns reusable semantics for raster storage, ownership, layout, views,
+regions, generic operations and execution without defining what the raster
+means as an image, elevation model, scientific grid or application-specific
+dataset.
 
-The architecture must support both interactive display workloads and later
-analytical processing.
+The principal architectural relationship is:
+
+```text
+future imagery-d
+        |
+        v
+     raster-d
+```
+
+A future image engine can therefore reuse raster ownership, layout, streaming
+and execution machinery without making image-domain semantics mandatory for
+other raster consumers.
+
+The architecture must support both interactive and throughput-oriented
+consumers while remaining independent of OSM-specific data structures, UI
+code, concrete file formats and source providers.
 
 ## 2. Fundamental constraints
 
 ### 2.1 RAM is a budget, not a dataset-size limit
 
-The engine must not require an entire raster or imagery mosaic to reside in
+The library must not require an entire logical raster dataset to reside in
 memory.
 
 Memory consumption must be bounded and configurable.
@@ -38,17 +53,21 @@ No operation should silently require a complete-image copy.
 
 Internal coordinate and size types must not introduce avoidable 32-bit limits.
 
-The engine must support:
+The raster model must support:
 
-- individual high-resolution images;
-- imagery mosaics;
-- multiresolution imagery;
-- streamed datasets;
-- neighbouring imagery required for context.
+- large single-plane and multi-plane rasters;
+- planar and interleaved storage;
+- arbitrary valid signed strides;
+- subregions and non-contiguous views;
+- streamed logical datasets;
+- neighbouring/context regions required by generic operations.
+
+Image mosaics, image pyramids and other image-domain structures may be built
+above this raster representation but are not primitive raster semantics.
 
 ### 2.3 Performance
 
-The primary use case is eventually interactive.
+The library must serve both interactive consumers and throughput-oriented batch workloads.
 
 The architecture must therefore permit:
 
@@ -96,14 +115,14 @@ It is a storage concept.
 
 ### Region
 
-An arbitrary rectangular area requested from an image or processing stage.
+An arbitrary rectangular area requested from a raster or processing stage.
 
 It is expected to become a fundamental processing concept, subject to R0
 research.
 
 ### Window
 
-A view into an image or region.
+A view into a raster or region.
 
 A window should normally avoid copying pixel data.
 
@@ -174,7 +193,7 @@ not as part of the public semantic API.
 The current execution architecture therefore separates:
 
 ```text
-imagery-d raster semantics
+raster-d semantics
         |
         v
 validated RasterView / WritableRasterView
@@ -243,7 +262,7 @@ docs/architecture/raster-operations.md
 ROADMAP.md
 ```
 
-The wider image/source/cache/scheduling API remains experimental.
+The wider source/cache/scheduling architecture remains experimental. Image-domain APIs belong to the future `imagery-d`.
 
 ## 5. Region-first processing
 
@@ -266,7 +285,7 @@ Fixed tiles must not become an accidental limitation of the processing API.
 
 ## 6. Source independence
 
-Processing algorithms must not care whether their pixels originated from:
+Generic raster operations must not care whether their samples originated from:
 
 - an in-memory image;
 - GeoTIFF;
@@ -302,76 +321,67 @@ LDC/LLVM auto-vectorisation should be evaluated before explicit SIMD is used.
 
 ## 8. Parallel execution
 
-Image algorithms should not each invent their own threading model.
+Raster operations should not each invent their own threading model.
 
 Scheduling, task granularity, cancellation and priority should belong to an
 engine execution layer.
 
-The public image model should not be tied to one scheduler.
+The public raster model should not be tied to one scheduler.
 
 ## 9. GPU boundary
 
 GPU implementation is not an initial requirement.
 
-The CPU architecture must, however, avoid assumptions that make future GPU
-buffers or compute backends impractical.
+The CPU architecture must nevertheless avoid assumptions that make future
+device-backed raster storage or compute backends impractical.
 
-Interactive display transforms such as:
+Any future GPU integration must preserve the semantic distinction between:
 
-- brightness;
-- contrast;
-- gamma;
-- saturation;
-- opacity;
+```text
+public raster contract
+        |
+        v
+execution/storage backend
+```
 
-should eventually be executable without rewriting entire CPU image buffers.
+Image-display transforms such as brightness, contrast, gamma, saturation and
+opacity are image-domain operations for the future `imagery-d`; they are not
+reasons to place display semantics in the generic raster API.
 
-## 10. Geospatial concerns
+## 10. Metadata and geospatial boundary
 
-Geospatial imagery requires metadata beyond ordinary image dimensions.
+`raster-d` does not require a raster to be georeferenced.
 
-Future integration must account for:
+Ground extent, geotransforms, CRS, GSD, acquisition metadata and imagery
+provenance therefore remain outside the generic raster semantic core.
 
-- ground extent;
-- geotransform;
-- CRS;
-- resolution/GSD;
-- nodata;
-- alpha/masks;
-- imagery provenance;
-- acquisition metadata where available.
+Focused adapters or higher-level consumers may associate such metadata with
+raster resources without changing ownership, layout, region or execution
+semantics.
 
-The core image-processing representation should not require every image to be
-georeferenced.
+A future `imagery-d` may own imagery-specific geospatial integration. A focused
+GDAL integration library may expose generic raster transfer where that boundary
+is independently useful.
 
-## 11. Imagery test corpus
+## 11. Consumer-derived test corpora
 
-Real imagery is required for architecture and performance testing.
+`raster-d` requires reproducible correctness and performance fixtures, but it
+does not require a permanent aerial/satellite imagery corpus as part of its
+identity.
 
-The corpus must cover differences in:
+Synthetic fixtures should cover layout, ownership, regions, halos, aliasing,
+sample conversion and bounded-residency behaviour directly.
 
-- latitude;
-- hemisphere;
-- elevation;
-- terrain;
-- urban/rural environment;
-- source/provider;
-- effective resolution;
-- image quality;
-- neighbouring tiles;
-- mosaic seams.
+Real imagery remains useful as downstream stress-test data. ADR 0002 records
+the historical non-versioned imagery policy. Management of a full imagery
+corpus belongs to the future `imagery-d`.
 
-The imagery itself is not versioned.
+## 12. Future imagery-d responsibilities
 
-Only scene/source definitions, download metadata, provenance and hashes are
-stored in the repository.
+Image enhancement and interpretation are deliberately outside the generic
+`raster-d` contract.
 
-## 12. Deferred image-processing research
-
-Research into image enhancement and interpretation begins after the engine
-foundation.
-
-Deferred topics include:
+A future higher-level `imagery-d` may research and implement:
 
 - blur and sharpening;
 - colour and exposure normalization;
@@ -380,7 +390,10 @@ Deferred topics include:
 - shadow detection and correction;
 - feature extraction;
 - segmentation;
-- ML-assisted interpretation.
+- ML-assisted interpretation;
+- image pyramids and mosaics;
+- imagery-specific source/cache behaviour.
 
-These topics may impose requirements on the engine, but they do not define the
-initial memory architecture without evidence.
+Those topics may reveal requirements for reusable raster primitives. Such
+requirements should enter `raster-d` only when they are demonstrably generic
+rather than because one image consumer needs them.

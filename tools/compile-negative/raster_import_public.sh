@@ -7,7 +7,7 @@ repo_root="$(
     pwd
 )"
 
-tmp_dir="${TMPDIR:-/tmp}/imagery-d-raster-import-public-$$"
+tmp_dir="${TMPDIR:-/tmp}/raster-d-raster-import-public-$$"
 
 mkdir -p "$tmp_dir"
 
@@ -62,7 +62,7 @@ fi
 cat > "$tmp_dir/positive_safe.d" <<'D'
 module raster_import_public_positive_safe;
 
-import imagery.raster :
+import raster :
     OwnedByteResource,
     OwnedRasterImportError,
     OwnedRasterImportResult,
@@ -129,9 +129,9 @@ module raster_import_public_negative_internal_surface;
 /*
  * MUST FAIL:
  *
- * Package-internal import mechanics must not be exported by imagery.raster.
+ * Package-internal import mechanics must not be exported by raster.
  */
-import imagery.raster :
+import raster :
     SingleResourceRasterImportError,
     SingleResourceRasterImportResult,
     importSingleOwnedResource;
@@ -141,7 +141,7 @@ D
 cat > "$tmp_dir/result_constructor.d" <<'D'
 module raster_import_public_negative_result_constructor;
 
-import imagery.raster :
+import raster :
     OwnedRasterImportError,
     OwnedRasterImportResult,
     OwnedRasterResourceDisposition;
@@ -168,7 +168,7 @@ D
 cat > "$tmp_dir/result_mutation.d" <<'D'
 module raster_import_public_negative_result_mutation;
 
-import imagery.raster :
+import raster :
     OwnedRasterImportError,
     OwnedRasterImportResult;
 
