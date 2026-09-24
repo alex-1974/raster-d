@@ -14,6 +14,7 @@ importPaths "."
 importPaths "../r0_3_regions_streaming"
 
 sourceFiles "reuse_probe.d"
+sourceFiles "synchronous_execution.d"
 
 sourceFiles "../r0_3_regions_streaming/region_algebra.d"
 sourceFiles "../r0_3_regions_streaming/dependency.d"
