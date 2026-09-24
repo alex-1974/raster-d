@@ -117,8 +117,8 @@ Historical ADR 0002 records that large benchmark imagery is not committed to
 Git. Reproducible imagery-derived fixtures should therefore carry sufficient
 provenance and content hashes.
 
-A complete aerial/satellite imagery corpus is a future `imagery-d`
-responsibility rather than part of the generic `raster-d` identity.
+A complete aerial/satellite imagery corpus is an `imagery-d` responsibility
+rather than part of the generic `raster-d` identity.
 
 ## Compilers
 

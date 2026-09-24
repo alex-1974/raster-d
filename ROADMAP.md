@@ -1,6 +1,6 @@
 # raster-d Roadmap
 
-## Current implementation checkpoint — 2026-09-22
+## Current implementation checkpoint — 2026-09-24
 
 The generic raster foundation is now implemented far enough that the former
 `imagery-d` repository has passed the extraction gate defined by ADR 0003.
@@ -37,17 +37,20 @@ decomposition-independent identity processing and neighbourhood/halo processing
 with bounded raster residency without forcing premature promotion of the
 research types into production.
 
-The repository-pivot sequence is currently:
+The repository-pivot sequence is complete:
 
 ```text
 P1  package / namespace / replay migration       complete
 P2  repository documentation                    complete
-P3  full technical migration gate               pending
-P4  PR and merge under existing GitHub identity pending
-P5  GitHub/local repository rename to raster-d  pending
-P6  shared workspace-context migration          pending
-P7  future higher-level imagery-d               later
+P3  full technical migration gate               complete
+P4  PR and merge under existing GitHub identity complete
+P5  GitHub/local repository rename to raster-d  complete
+P6  shared workspace-context migration          complete
+P7  separate higher-level imagery-d bootstrap   complete
 ```
+
+P7 closes only the repository/bootstrap handoff. Development milestones of the
+separate `imagery-d` project remain independent of the `raster-d` roadmap.
 
 ## R0 — Constraints, Research and Architecture
 
@@ -243,7 +246,7 @@ performance property.
 
 Real imagery may be retained as consumer-derived stress-test input, but the
 full aerial/satellite imagery corpus and imagery-specific provenance policy
-belong to the future `imagery-d`.
+belong to the separate `imagery-d` project.
 
 ### R0.8 — Prototype bake-off
 
@@ -347,12 +350,13 @@ Optimise proven hot paths using:
 
 ---
 
-## Future higher-level consumer — imagery-d
+## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
 
-After the generic raster library is stable, a separate higher-level
-`imagery-d` may depend on it and own work such as:
+The separate higher-level `imagery-d` project now exists. Its production
+package/API, when admitted by that project, is intended to depend on `raster-d`
+and own work such as:
 
 ### Image and pixel semantics
 

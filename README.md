@@ -10,7 +10,7 @@ semantics on every consumer.
 The intended dependency boundary is:
 
 ```text
-future imagery-d
+    imagery-d
         |
         v
      raster-d
@@ -74,8 +74,8 @@ developed from measured evidence and validated with both DMD and LDC.
 
 `raster-d` is not intended to become a comprehensive image-processing library.
 
-Image-domain responsibilities belong above the generic raster layer. A future
-`imagery-d` may own, among other things:
+Image-domain responsibilities belong above the generic raster layer. The
+separate `imagery-d` project owns or researches, among other things:
 
 - image and pixel-format semantics;
 - colour semantics;
