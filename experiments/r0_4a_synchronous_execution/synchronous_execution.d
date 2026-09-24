@@ -136,6 +136,48 @@ private struct FailureInjection
 }
 
 
+
+/++
+    Deterministic research-only cancellation observation.
+
+    `beforeWorkUnitOrdinal` is one-based and counts only non-empty work units.
+
+    A value of zero disables cancellation.
+
+    Cancellation is observed only by the outer synchronous orchestration before
+    a work unit begins. It is never checked inside an executing work unit.
+
+    This is experiment machinery, not a proposed cancellation API.
++/
+private struct CancellationInjection
+{
+    size_t beforeWorkUnitOrdinal;
+
+
+    @property
+    bool active() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return beforeWorkUnitOrdinal != 0;
+    }
+
+
+    bool matches(size_t nextWorkUnitOrdinal) const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return active
+            && beforeWorkUnitOrdinal
+                == nextWorkUnitOrdinal;
+    }
+}
+
+
 /++
     Lifecycle accounting for the synchronous R0.4a path.
 
@@ -709,7 +751,8 @@ private SynchronousExecutionResult executeSynchronousNeighbourhoodImpl(
     Region2D logicalExtent,
     Region2D requestedOutput,
     scope const(Region2D)[] tasks,
-    FailureInjection injection
+    FailureInjection injection,
+    CancellationInjection cancellation
 )
 @safe
 {
@@ -796,6 +839,51 @@ private SynchronousExecutionResult executeSynchronousNeighbourhoodImpl(
         if (task.empty())
         {
             continue;
+        }
+
+
+        /*
+         * Cancellation is deliberately observed only between work units.
+         *
+         * The previous work unit, if any, has already completed, exposed its
+         * research result and released its local raster residency.
+         *
+         * The next work unit has not yet been considered or started.
+         */
+        const nextWorkUnitOrdinal =
+            result.accounting.workUnitsConsidered + 1;
+
+        if (
+            cancellation.matches(
+                nextWorkUnitOrdinal
+            )
+        )
+        {
+            if (
+                result.accounting.currentResidentRasterBytes
+                != 0
+            )
+            {
+                result.error =
+                    SynchronousExecutionError
+                        .residencyInvariantFailed;
+
+                return result;
+            }
+
+            result.termination =
+                TerminationReason.cancelled;
+
+            /*
+             * Cancellation is a distinct request termination state rather
+             * than an execution failure.
+             *
+             * `ok` remains false because requestCompleted is false.
+             */
+            result.error =
+                SynchronousExecutionError.none;
+
+            return result;
         }
 
 
@@ -947,7 +1035,8 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
         logicalExtent,
         requestedOutput,
         tasks,
-        FailureInjection.init
+        FailureInjection.init,
+        CancellationInjection.init
     );
 }
 
@@ -1356,7 +1445,8 @@ unittest
             FailureInjection(
                 FailureInjectionKind.materialization,
                 3
-            )
+            ),
+            CancellationInjection.init
         );
 
 
@@ -1506,7 +1596,8 @@ unittest
             FailureInjection(
                 FailureInjectionKind.operation,
                 3
-            )
+            ),
+            CancellationInjection.init
         );
 
 
@@ -1610,6 +1701,257 @@ unittest
             )
         );
     }
+}
+
+
+
+/*
+ * Shared H5 cancellation fixture.
+ */
+private enum Region2D[4] cancellationTasks =
+[
+    Region2D(1020, 2030, 8, 1),
+    Region2D(1020, 2031, 3, 2),
+    Region2D(1023, 2031, 5, 2),
+    Region2D(1020, 2033, 8, 1)
+];
+
+
+private enum Region2D cancellationLogicalExtent =
+    Region2D(
+        1000,
+        2000,
+        100,
+        100
+    );
+
+
+private enum Region2D cancellationRequestedOutput =
+    Region2D(
+        1020,
+        2030,
+        8,
+        4
+    );
+
+
+/*
+ * Verifies the common H5 cancellation result for a completed prefix.
+ */
+private void verifyCancelledPrefix(
+    SynchronousExecutionResult result,
+    size_t completedWorkUnits
+)
+@safe
+{
+    assert(!result.ok);
+    assert(!result.requestCompleted);
+
+    assert(
+        result.termination
+        == TerminationReason.cancelled
+    );
+
+    assert(
+        result.error
+        == SynchronousExecutionError.none
+    );
+
+    assert(
+        result.workUnitError
+        == WorkUnitError.none
+    );
+
+
+    assert(
+        result.accounting.workUnitsConsidered
+        == completedWorkUnits
+    );
+
+    assert(
+        result.accounting.workUnitsStarted
+        == completedWorkUnits
+    );
+
+    assert(
+        result.accounting.workUnitsCompleted
+        == completedWorkUnits
+    );
+
+
+    assert(
+        result.accounting.materializationsStarted
+        == completedWorkUnits
+    );
+
+    assert(
+        result.accounting.materializationsCompleted
+        == completedWorkUnits
+    );
+
+
+    assert(
+        result.accounting.operationExecutionsStarted
+        == completedWorkUnits
+    );
+
+    assert(
+        result.accounting.operationExecutionsCompleted
+        == completedWorkUnits
+    );
+
+
+    assert(
+        result.accounting.releases
+        == completedWorkUnits
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    size_t expectedPixels = 0;
+
+    foreach (
+        const task;
+        cancellationTasks[
+            0 .. completedWorkUnits
+        ]
+    )
+    {
+        expectedPixels +=
+            task.width * task.height;
+    }
+
+    assert(
+        result.accounting.completedOutputPixels
+        == expectedPixels
+    );
+
+
+    assert(
+        result.completedCoverage
+        == expectedCoverage(
+            cancellationRequestedOutput,
+            cancellationTasks[
+                0 .. completedWorkUnits
+            ]
+        )
+    );
+
+
+    foreach (
+        const task;
+        cancellationTasks[
+            0 .. completedWorkUnits
+        ]
+    )
+    {
+        assert(
+            taskOutputMatchesR03Oracle(
+                cancellationLogicalExtent,
+                cancellationRequestedOutput,
+                task,
+                result.output
+            )
+        );
+    }
+}
+
+
+/*
+ * H5 — cancellation before the first work unit.
+ *
+ * No work unit is considered, started or materialized.
+ */
+unittest
+{
+    auto result =
+        executeSynchronousNeighbourhoodImpl(
+            cancellationLogicalExtent,
+            cancellationRequestedOutput,
+            cancellationTasks[],
+            FailureInjection.init,
+            CancellationInjection(1)
+        );
+
+
+    verifyCancelledPrefix(
+        result,
+        0
+    );
+
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        == 0
+    );
+}
+
+
+/*
+ * H5 — cancellation after a completed prefix.
+ *
+ * Work units 1 and 2 complete normally.
+ *
+ * Cancellation is then observed before work unit 3 begins.
+ */
+unittest
+{
+    auto result =
+        executeSynchronousNeighbourhoodImpl(
+            cancellationLogicalExtent,
+            cancellationRequestedOutput,
+            cancellationTasks[],
+            FailureInjection.init,
+            CancellationInjection(3)
+        );
+
+
+    verifyCancelledPrefix(
+        result,
+        2
+    );
+
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        != 0
+    );
+}
+
+
+/*
+ * H5 — cancellation immediately before the final work unit.
+ *
+ * Work units 1 through 3 complete normally.
+ *
+ * The final work unit is never considered or started.
+ */
+unittest
+{
+    auto result =
+        executeSynchronousNeighbourhoodImpl(
+            cancellationLogicalExtent,
+            cancellationRequestedOutput,
+            cancellationTasks[],
+            FailureInjection.init,
+            CancellationInjection(4)
+        );
+
+
+    verifyCancelledPrefix(
+        result,
+        3
+    );
+
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        != 0
+    );
 }
 
 
