@@ -12,15 +12,15 @@ dataset.
 The principal architectural relationship is:
 
 ```text
-future imagery-d
+    imagery-d
         |
         v
      raster-d
 ```
 
-A future image engine can therefore reuse raster ownership, layout, streaming
-and execution machinery without making image-domain semantics mandatory for
-other raster consumers.
+The higher-level image library can therefore reuse raster ownership, layout,
+streaming and execution machinery without making image-domain semantics
+mandatory for other raster consumers.
 
 The architecture must support both interactive and throughput-oriented
 consumers while remaining independent of OSM-specific data structures, UI
@@ -262,7 +262,7 @@ docs/architecture/raster-operations.md
 ROADMAP.md
 ```
 
-The wider source/cache/scheduling architecture remains experimental. Image-domain APIs belong to the future `imagery-d`.
+The wider source/cache/scheduling architecture remains experimental. Image-domain APIs belong to the separate `imagery-d` project.
 
 ## 5. Region-first processing
 
@@ -345,8 +345,8 @@ execution/storage backend
 ```
 
 Image-display transforms such as brightness, contrast, gamma, saturation and
-opacity are image-domain operations for the future `imagery-d`; they are not
-reasons to place display semantics in the generic raster API.
+opacity are image-domain operations for `imagery-d`; they are not reasons to
+place display semantics in the generic raster API.
 
 ## 10. Metadata and geospatial boundary
 
@@ -359,9 +359,9 @@ Focused adapters or higher-level consumers may associate such metadata with
 raster resources without changing ownership, layout, region or execution
 semantics.
 
-A future `imagery-d` may own imagery-specific geospatial integration. A focused
-GDAL integration library may expose generic raster transfer where that boundary
-is independently useful.
+The separate `imagery-d` project owns or researches imagery-specific
+geospatial integration. A focused GDAL integration library may expose generic
+raster transfer where that boundary is independently useful.
 
 ## 11. Consumer-derived test corpora
 
@@ -374,14 +374,14 @@ sample conversion and bounded-residency behaviour directly.
 
 Real imagery remains useful as downstream stress-test data. ADR 0002 records
 the historical non-versioned imagery policy. Management of a full imagery
-corpus belongs to the future `imagery-d`.
+corpus belongs to the separate `imagery-d` project.
 
-## 12. Future imagery-d responsibilities
+## 12. imagery-d responsibilities
 
 Image enhancement and interpretation are deliberately outside the generic
 `raster-d` contract.
 
-A future higher-level `imagery-d` may research and implement:
+The higher-level `imagery-d` project researches and may implement:
 
 - blur and sharpening;
 - colour and exposure normalization;
