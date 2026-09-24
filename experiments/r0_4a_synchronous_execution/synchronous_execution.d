@@ -42,6 +42,8 @@ enum WorkUnitError : ubyte
     unsatisfiedContext,
 
     materializationFailed,
+    operationFailed,
+
     sourceContractMismatch,
 
     sampleCountOverflow,
@@ -69,6 +71,72 @@ enum SynchronousExecutionError : ubyte
 
 
 /++
+    High-level request termination state.
+
+    Failure subtype remains available through `error` and `workUnitError`.
+
+    `cancelled` is reserved now so that the later cancellation experiment does
+    not need to redefine request-completion semantics.
++/
+enum TerminationReason : ubyte
+{
+    failed,
+    completed,
+    cancelled
+}
+
+
+/++
+    Deterministic research-only failure injection.
+
+    `workUnitOrdinal` is one-based and counts only non-empty work units.
+
+    This is experiment machinery, not a proposed execution API.
++/
+private enum FailureInjectionKind : ubyte
+{
+    none,
+    materialization,
+    operation
+}
+
+
+private struct FailureInjection
+{
+    FailureInjectionKind kind;
+
+    size_t workUnitOrdinal;
+
+
+    @property
+    bool active() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return kind
+            != FailureInjectionKind.none;
+    }
+
+
+    bool matches(
+        FailureInjectionKind expectedKind,
+        size_t ordinal
+    ) const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return active
+            && kind == expectedKind
+            && workUnitOrdinal == ordinal;
+    }
+}
+
+
+/++
     Lifecycle accounting for the synchronous R0.4a path.
 
     These counters describe only the execution path under test.
@@ -91,6 +159,8 @@ struct SynchronousExecutionAccounting
 
     size_t currentResidentRasterBytes;
     size_t peakResidentRasterBytes;
+
+    size_t completedOutputPixels;
 
     size_t releases;
 }
@@ -135,6 +205,9 @@ struct SynchronousExecutionResult
     SynchronousExecutionError error =
         SynchronousExecutionError.internalFailure;
 
+    TerminationReason termination =
+        TerminationReason.failed;
+
     DecompositionIssue decompositionIssue =
         DecompositionIssue.none;
 
@@ -144,6 +217,16 @@ struct SynchronousExecutionResult
     bool requestCompleted;
 
     ubyte[] output;
+
+    /*
+     * Test/research oracle only.
+     *
+     * One byte per requested output pixel:
+     *
+     *     0 -> no successfully completed work unit produced this pixel
+     *     1 -> a successfully completed work unit produced this pixel
+     */
+    ubyte[] completedCoverage;
 
     SynchronousExecutionAccounting accounting;
 
@@ -459,6 +542,8 @@ private WorkUnitResult executeResidentNeighbourhood(
 private WorkUnitResult executeWorkUnit(
     Region2D logicalExtent,
     Region2D outputTask,
+    size_t workUnitOrdinal,
+    FailureInjection injection,
     ref SynchronousExecutionAccounting accounting
 )
 @safe
@@ -511,6 +596,21 @@ private WorkUnitResult executeWorkUnit(
 
     ++accounting.materializationsStarted;
 
+
+    if (
+        injection.matches(
+            FailureInjectionKind.materialization,
+            workUnitOrdinal
+        )
+    )
+    {
+        result.error =
+            WorkUnitError.materializationFailed;
+
+        return result;
+    }
+
+
     bool acquiredResidentRaster = false;
 
     {
@@ -547,16 +647,30 @@ private WorkUnitResult executeWorkUnit(
 
             ++accounting.operationExecutionsStarted;
 
-            result =
-                executeResidentNeighbourhood(
-                    outputTask,
-                    dependency,
-                    source.materialized
-                );
 
-            if (result.ok)
+            if (
+                injection.matches(
+                    FailureInjectionKind.operation,
+                    workUnitOrdinal
+                )
+            )
             {
-                ++accounting.operationExecutionsCompleted;
+                result.error =
+                    WorkUnitError.operationFailed;
+            }
+            else
+            {
+                result =
+                    executeResidentNeighbourhood(
+                        outputTask,
+                        dependency,
+                        source.materialized
+                    );
+
+                if (result.ok)
+                {
+                    ++accounting.operationExecutionsCompleted;
+                }
             }
         }
     }
@@ -591,10 +705,11 @@ private WorkUnitResult executeWorkUnit(
     separately in this first research implementation: callers construct
     different ordered slices containing the same decomposition members.
 +/
-SynchronousExecutionResult executeSynchronousNeighbourhood(
+private SynchronousExecutionResult executeSynchronousNeighbourhoodImpl(
     Region2D logicalExtent,
     Region2D requestedOutput,
-    scope const(Region2D)[] tasks
+    scope const(Region2D)[] tasks,
+    FailureInjection injection
 )
 @safe
 {
@@ -642,6 +757,9 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
 
         result.requestCompleted = true;
 
+        result.termination =
+            TerminationReason.completed;
+
         result.error =
             SynchronousExecutionError.none;
 
@@ -669,6 +787,9 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
     result.output =
         new ubyte[sampleCount];
 
+    result.completedCoverage =
+        new ubyte[sampleCount];
+
 
     foreach (const task; tasks)
     {
@@ -680,11 +801,16 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
 
         ++result.accounting.workUnitsConsidered;
 
+        const workUnitOrdinal =
+            result.accounting.workUnitsConsidered;
+
 
         auto work =
             executeWorkUnit(
                 logicalExtent,
                 task,
+                workUnitOrdinal,
+                injection,
                 result.accounting
             );
 
@@ -759,6 +885,15 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
 
                 result.output[outputIndex] =
                     work.output[taskIndex];
+
+                assert(
+                    result.completedCoverage[outputIndex]
+                    == 0
+                );
+
+                result.completedCoverage[outputIndex] = 1;
+
+                ++result.accounting.completedOutputPixels;
             }
         }
     }
@@ -773,6 +908,8 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
             != result.accounting.operationExecutionsCompleted
         || result.accounting.releases
             != result.accounting.materializationsCompleted
+        || result.accounting.completedOutputPixels
+            != sampleCount
         || result.accounting.currentResidentRasterBytes
             != 0
     )
@@ -786,10 +923,32 @@ SynchronousExecutionResult executeSynchronousNeighbourhood(
 
     result.requestCompleted = true;
 
+    result.termination =
+        TerminationReason.completed;
+
     result.error =
         SynchronousExecutionError.none;
 
     return result;
+}
+
+
+/++
+    Executes the normal R0.4a synchronous path with no injected failure.
++/
+SynchronousExecutionResult executeSynchronousNeighbourhood(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    scope const(Region2D)[] tasks
+)
+@safe
+{
+    return executeSynchronousNeighbourhoodImpl(
+        logicalExtent,
+        requestedOutput,
+        tasks,
+        FailureInjection.init
+    );
 }
 
 
@@ -1101,6 +1260,359 @@ unittest
 }
 
 
+
+/*
+ * Builds expected completion coverage for a bounded test fixture.
+ *
+ * This is a test oracle only.
+ */
+private ubyte[] expectedCoverage(
+    Region2D requestedOutput,
+    scope const(Region2D)[] completedTasks
+)
+@safe
+{
+    const sampleCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    auto expected =
+        new ubyte[sampleCount];
+
+
+    foreach (const task; completedTasks)
+    {
+        const relativeX =
+            task.x
+            - requestedOutput.x;
+
+        const relativeY =
+            task.y
+            - requestedOutput.y;
+
+
+        foreach (localY; 0 .. task.height)
+        {
+            foreach (localX; 0 .. task.width)
+            {
+                const index =
+                    (relativeY + localY)
+                        * requestedOutput.width
+                    + relativeX
+                    + localX;
+
+                assert(index < expected.length);
+                assert(expected[index] == 0);
+
+                expected[index] = 1;
+            }
+        }
+    }
+
+    return expected;
+}
+
+
+/*
+ * H3 — deterministic materialization failure.
+ *
+ * The third non-empty work unit fails before a usable resident raster exists.
+ *
+ * The first two work units remain completed research state, later work does
+ * not start, the request is not complete and final local residency is zero.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            1000,
+            2000,
+            100,
+            100
+        );
+
+    const requestedOutput =
+        Region2D(
+            1020,
+            2030,
+            8,
+            4
+        );
+
+    const Region2D[4] tasks =
+    [
+        Region2D(1020, 2030, 8, 1),
+        Region2D(1020, 2031, 3, 2),
+        Region2D(1023, 2031, 5, 2),
+        Region2D(1020, 2033, 8, 1)
+    ];
+
+
+    auto result =
+        executeSynchronousNeighbourhoodImpl(
+            logicalExtent,
+            requestedOutput,
+            tasks[],
+            FailureInjection(
+                FailureInjectionKind.materialization,
+                3
+            )
+        );
+
+
+    assert(!result.ok);
+    assert(!result.requestCompleted);
+
+    assert(
+        result.termination
+        == TerminationReason.failed
+    );
+
+    assert(
+        result.error
+        == SynchronousExecutionError.workUnitFailed
+    );
+
+    assert(
+        result.workUnitError
+        == WorkUnitError.materializationFailed
+    );
+
+
+    assert(
+        result.accounting.workUnitsConsidered
+        == 3
+    );
+
+    assert(
+        result.accounting.workUnitsStarted
+        == 3
+    );
+
+    assert(
+        result.accounting.workUnitsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.materializationsStarted
+        == 3
+    );
+
+    assert(
+        result.accounting.materializationsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.operationExecutionsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.operationExecutionsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.releases
+        == 2
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    enum size_t expectedCompletedPixels =
+        8 + 3 * 2;
+
+    assert(
+        result.accounting.completedOutputPixels
+        == expectedCompletedPixels
+    );
+
+
+    const completedPrefix =
+        tasks[0 .. 2];
+
+    assert(
+        result.completedCoverage
+        == expectedCoverage(
+            requestedOutput,
+            completedPrefix
+        )
+    );
+
+
+    foreach (const task; completedPrefix)
+    {
+        assert(
+            taskOutputMatchesR03Oracle(
+                logicalExtent,
+                requestedOutput,
+                task,
+                result.output
+            )
+        );
+    }
+}
+
+
+/*
+ * H4 — deterministic operation failure.
+ *
+ * The third non-empty work unit successfully materializes its source, reaches
+ * the operation boundary and then fails before work-unit completion.
+ *
+ * Its resident raster must still be released.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            1000,
+            2000,
+            100,
+            100
+        );
+
+    const requestedOutput =
+        Region2D(
+            1020,
+            2030,
+            8,
+            4
+        );
+
+    const Region2D[4] tasks =
+    [
+        Region2D(1020, 2030, 8, 1),
+        Region2D(1020, 2031, 3, 2),
+        Region2D(1023, 2031, 5, 2),
+        Region2D(1020, 2033, 8, 1)
+    ];
+
+
+    auto result =
+        executeSynchronousNeighbourhoodImpl(
+            logicalExtent,
+            requestedOutput,
+            tasks[],
+            FailureInjection(
+                FailureInjectionKind.operation,
+                3
+            )
+        );
+
+
+    assert(!result.ok);
+    assert(!result.requestCompleted);
+
+    assert(
+        result.termination
+        == TerminationReason.failed
+    );
+
+    assert(
+        result.error
+        == SynchronousExecutionError.workUnitFailed
+    );
+
+    assert(
+        result.workUnitError
+        == WorkUnitError.operationFailed
+    );
+
+
+    assert(
+        result.accounting.workUnitsConsidered
+        == 3
+    );
+
+    assert(
+        result.accounting.workUnitsStarted
+        == 3
+    );
+
+    assert(
+        result.accounting.workUnitsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.materializationsStarted
+        == 3
+    );
+
+    assert(
+        result.accounting.materializationsCompleted
+        == 3
+    );
+
+
+    assert(
+        result.accounting.operationExecutionsStarted
+        == 3
+    );
+
+    assert(
+        result.accounting.operationExecutionsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.releases
+        == 3
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    enum size_t expectedCompletedPixels =
+        8 + 3 * 2;
+
+    assert(
+        result.accounting.completedOutputPixels
+        == expectedCompletedPixels
+    );
+
+
+    const completedPrefix =
+        tasks[0 .. 2];
+
+    assert(
+        result.completedCoverage
+        == expectedCoverage(
+            requestedOutput,
+            completedPrefix
+        )
+    );
+
+
+    foreach (const task; completedPrefix)
+    {
+        assert(
+            taskOutputMatchesR03Oracle(
+                logicalExtent,
+                requestedOutput,
+                task,
+                result.output
+            )
+        );
+    }
+}
+
+
 /*
  * Empty requested output remains a successful zero-work request.
  */
@@ -1136,7 +1648,13 @@ unittest
     assert(result.ok);
     assert(result.requestCompleted);
 
+    assert(
+        result.termination
+        == TerminationReason.completed
+    );
+
     assert(result.output.length == 0);
+    assert(result.completedCoverage.length == 0);
 
     assert(
         result.accounting
