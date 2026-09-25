@@ -44,6 +44,8 @@ enum PolicyOracleError : ubyte
     duplicateWorkUnitId,
     duplicateReadyOrdinal,
 
+    invalidPolicyConfiguration,
+
     internalFailure
 }
 
@@ -1267,6 +1269,869 @@ unittest
     assert(
         strict.workUnitIds[0]
         == 901
+    );
+}
+
+
+/++
+    Minimal R0.4c-4 state for bounded interactive preference.
+
+    This is deliberately policy-local state.
+
+    No per-work-unit aging or history is retained.
++/
+struct BoundedInteractiveBurstState
+{
+    size_t maxInteractiveBurst;
+
+    size_t consecutiveInteractiveAdmissions;
+}
+
+
+/++
+    One deterministic admission decision for the bounded-burst policy.
++/
+struct BoundedBurstSelection
+{
+    PolicyOracleError error =
+        PolicyOracleError.internalFailure;
+
+    bool hasSelection;
+
+    size_t stableWorkUnitId;
+    size_t readyOrdinal;
+
+    PolicyClass policyClass;
+
+    int priority;
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error
+            == PolicyOracleError.none;
+    }
+}
+
+
+private size_t selectBestInClass(
+    scope const(ReadyWork)[] ready,
+    PolicyClass policyClass
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    size_t selectedIndex =
+        size_t.max;
+
+    int selectedPriority =
+        int.min;
+
+    size_t selectedReadyOrdinal =
+        size_t.max;
+
+
+    foreach (candidateIndex; 0 .. ready.length)
+    {
+        if (
+            ready[candidateIndex].policyClass
+            != policyClass
+        )
+        {
+            continue;
+        }
+
+
+        const candidatePriority =
+            ready[candidateIndex]
+                .priority;
+
+        const candidateReadyOrdinal =
+            ready[candidateIndex]
+                .readyOrdinal;
+
+
+        if (
+            selectedIndex == size_t.max
+            || candidatePriority
+                > selectedPriority
+            || (
+                candidatePriority
+                    == selectedPriority
+                && candidateReadyOrdinal
+                    < selectedReadyOrdinal
+            )
+        )
+        {
+            selectedIndex =
+                candidateIndex;
+
+            selectedPriority =
+                candidatePriority;
+
+            selectedReadyOrdinal =
+                candidateReadyOrdinal;
+        }
+    }
+
+
+    return selectedIndex;
+}
+
+
+/++
+    P2 bounded interactive-burst policy.
+
+    Rule while both classes are ready:
+
+        admit at most maxInteractiveBurst consecutive interactive items
+        then admit one throughput item
+
+    Within the chosen class:
+
+        highest priority first
+        then lowest readyOrdinal
+
+    If throughput is not ready, interactive admissions do not count as bypasses
+    and the burst counter is reset.
+
+    If interactive is not ready, throughput is selected and the burst counter
+    is reset.
+
+    This gives a deterministic progress bound only for continuously ready
+    throughput work. It is not a CPU-time fairness guarantee.
++/
+BoundedBurstSelection selectBoundedInteractiveBurst(
+    scope const(ReadyWork)[] ready,
+    ref BoundedInteractiveBurstState state
+)
+@safe
+{
+    BoundedBurstSelection result;
+
+
+    if (state.maxInteractiveBurst == 0)
+    {
+        result.error =
+            PolicyOracleError.invalidPolicyConfiguration;
+
+        return result;
+    }
+
+
+    const validationError =
+        validateReadySet(
+            ready
+        );
+
+
+    if (
+        validationError
+        != PolicyOracleError.none
+    )
+    {
+        result.error =
+            validationError;
+
+        return result;
+    }
+
+
+    if (ready.length == 0)
+    {
+        state.consecutiveInteractiveAdmissions = 0;
+
+        result.error =
+            PolicyOracleError.none;
+
+        return result;
+    }
+
+
+    const interactiveIndex =
+        selectBestInClass(
+            ready,
+            PolicyClass.interactive
+        );
+
+    const throughputIndex =
+        selectBestInClass(
+            ready,
+            PolicyClass.throughput
+        );
+
+
+    size_t selectedIndex =
+        size_t.max;
+
+
+    if (
+        interactiveIndex == size_t.max
+        && throughputIndex == size_t.max
+    )
+    {
+        result.error =
+            PolicyOracleError.internalFailure;
+
+        return result;
+    }
+
+
+    if (throughputIndex == size_t.max)
+    {
+        /*
+         * No throughput work is being bypassed.
+         */
+        selectedIndex =
+            interactiveIndex;
+
+        state.consecutiveInteractiveAdmissions = 0;
+    }
+    else if (interactiveIndex == size_t.max)
+    {
+        selectedIndex =
+            throughputIndex;
+
+        state.consecutiveInteractiveAdmissions = 0;
+    }
+    else if (
+        state.consecutiveInteractiveAdmissions
+        < state.maxInteractiveBurst
+    )
+    {
+        selectedIndex =
+            interactiveIndex;
+
+        ++state.consecutiveInteractiveAdmissions;
+    }
+    else
+    {
+        selectedIndex =
+            throughputIndex;
+
+        state.consecutiveInteractiveAdmissions = 0;
+    }
+
+
+    if (selectedIndex == size_t.max)
+    {
+        result.error =
+            PolicyOracleError.internalFailure;
+
+        return result;
+    }
+
+
+    result.hasSelection = true;
+
+    result.stableWorkUnitId =
+        ready[selectedIndex]
+            .stableWorkUnitId;
+
+    result.readyOrdinal =
+        ready[selectedIndex]
+            .readyOrdinal;
+
+    result.policyClass =
+        ready[selectedIndex]
+            .policyClass;
+
+    result.priority =
+        ready[selectedIndex]
+            .priority;
+
+    result.error =
+        PolicyOracleError.none;
+
+    return result;
+}
+
+
+/++
+    Deterministic sustained-arrival evidence for P2.
+
+    One throughput work unit remains continuously ready.
+
+    Before every dispatch opportunity one fresh interactive work unit is made
+    ready.
+
+    The returned maximum bypass run therefore measures the exact number of
+    consecutive interactive admissions while throughput remained ready.
++/
+struct BoundedBurstEvidence
+{
+    PolicyOracleError error =
+        PolicyOracleError.internalFailure;
+
+    size_t dispatchOpportunities;
+
+    size_t interactiveAdmissions;
+    size_t throughputAdmissions;
+
+    size_t maxObservedThroughputBypass;
+
+    size_t[] dispatchedWorkUnitIds;
+    PolicyClass[] dispatchedClasses;
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error
+            == PolicyOracleError.none;
+    }
+}
+
+
+BoundedBurstEvidence
+probeBoundedInteractiveBurstSustainedArrivals(
+    size_t maxInteractiveBurst,
+    size_t dispatchOpportunities
+)
+@safe
+{
+    BoundedBurstEvidence result;
+
+    result.dispatchOpportunities =
+        dispatchOpportunities;
+
+    result.dispatchedWorkUnitIds =
+        new size_t[dispatchOpportunities];
+
+    result.dispatchedClasses =
+        new PolicyClass[dispatchOpportunities];
+
+
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst =
+        maxInteractiveBurst;
+
+
+    if (maxInteractiveBurst == 0)
+    {
+        result.error =
+            PolicyOracleError.invalidPolicyConfiguration;
+
+        return result;
+    }
+
+
+    enum size_t throughputWorkUnitId =
+        size_t.max;
+
+    size_t currentBypassRun = 0;
+
+
+    foreach (
+        opportunity;
+        0 .. dispatchOpportunities
+    )
+    {
+        const ReadyWork[2] ready =
+        [
+            ReadyWork(
+                throughputWorkUnitId,
+                0,
+                PolicyClass.throughput,
+                int.min
+            ),
+
+            ReadyWork(
+                opportunity,
+                opportunity + 1,
+                PolicyClass.interactive,
+                int.max
+            )
+        ];
+
+
+        auto selection =
+            selectBoundedInteractiveBurst(
+                ready[],
+                state
+            );
+
+
+        if (
+            !selection.ok
+            || !selection.hasSelection
+        )
+        {
+            result.error =
+                PolicyOracleError.internalFailure;
+
+            return result;
+        }
+
+
+        result.dispatchedWorkUnitIds[
+            opportunity
+        ] =
+            selection.stableWorkUnitId;
+
+        result.dispatchedClasses[
+            opportunity
+        ] =
+            selection.policyClass;
+
+
+        final switch (selection.policyClass)
+        {
+            case PolicyClass.interactive:
+                ++result.interactiveAdmissions;
+                ++currentBypassRun;
+
+                if (
+                    currentBypassRun
+                    > result.maxObservedThroughputBypass
+                )
+                {
+                    result.maxObservedThroughputBypass =
+                        currentBypassRun;
+                }
+
+                break;
+
+            case PolicyClass.throughput:
+                ++result.throughputAdmissions;
+
+                currentBypassRun = 0;
+
+                break;
+        }
+    }
+
+
+    result.error =
+        PolicyOracleError.none;
+
+    return result;
+}
+
+
+/*
+ * R0.4c-4 deterministic bounded-progress evidence.
+ *
+ * For every configured burst N:
+ *
+ *     maxObservedThroughputBypass <= N
+ *
+ * while throughput is continuously ready and a fresh interactive item is also
+ * ready before every dispatch opportunity.
+ */
+unittest
+{
+    const size_t[4] bursts =
+    [
+        1,
+        2,
+        3,
+        8
+    ];
+
+
+    foreach (burst; bursts)
+    {
+        const opportunities =
+            (burst + 1) * 6;
+
+
+        auto evidence =
+            probeBoundedInteractiveBurstSustainedArrivals(
+                burst,
+                opportunities
+            );
+
+
+        assert(evidence.ok);
+
+        assert(
+            evidence.dispatchOpportunities
+            == opportunities
+        );
+
+
+        assert(
+            evidence.maxObservedThroughputBypass
+            == burst
+        );
+
+
+        assert(
+            evidence.throughputAdmissions
+            == 6
+        );
+
+        assert(
+            evidence.interactiveAdmissions
+            == burst * 6
+        );
+
+
+        foreach (
+            cycle;
+            0 .. 6
+        )
+        {
+            foreach (
+                withinBurst;
+                0 .. burst
+            )
+            {
+                const dispatchOrdinal =
+                    cycle * (burst + 1)
+                    + withinBurst;
+
+
+                assert(
+                    evidence.dispatchedClasses[
+                        dispatchOrdinal
+                    ]
+                    == PolicyClass.interactive
+                );
+            }
+
+
+            const throughputOrdinal =
+                cycle * (burst + 1)
+                + burst;
+
+
+            assert(
+                evidence.dispatchedClasses[
+                    throughputOrdinal
+                ]
+                == PolicyClass.throughput
+            );
+        }
+    }
+}
+
+
+/*
+ * P2 retains interactive preference when both classes are ready.
+ *
+ * The first admission after reset is interactive even when throughput has a
+ * numerically higher priority.
+ *
+ * Class preference and numeric priority are therefore separate policy
+ * dimensions in this candidate.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 2;
+
+
+    const ReadyWork[2] ready =
+    [
+        ReadyWork(
+            600,
+            0,
+            PolicyClass.throughput,
+            int.max
+        ),
+
+        ReadyWork(
+            601,
+            1,
+            PolicyClass.interactive,
+            int.min
+        )
+    ];
+
+
+    auto selection =
+        selectBoundedInteractiveBurst(
+            ready[],
+            state
+        );
+
+
+    assert(selection.ok);
+    assert(selection.hasSelection);
+
+    assert(
+        selection.stableWorkUnitId
+        == 601
+    );
+
+    assert(
+        selection.policyClass
+        == PolicyClass.interactive
+    );
+
+    assert(
+        state.consecutiveInteractiveAdmissions
+        == 1
+    );
+}
+
+
+/*
+ * Once the configured interactive burst is exhausted while throughput remains
+ * ready, throughput must be selected even if its numeric priority is lower.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 2;
+
+    state.consecutiveInteractiveAdmissions = 2;
+
+
+    const ReadyWork[2] ready =
+    [
+        ReadyWork(
+            700,
+            0,
+            PolicyClass.throughput,
+            int.min
+        ),
+
+        ReadyWork(
+            701,
+            1,
+            PolicyClass.interactive,
+            int.max
+        )
+    ];
+
+
+    auto selection =
+        selectBoundedInteractiveBurst(
+            ready[],
+            state
+        );
+
+
+    assert(selection.ok);
+    assert(selection.hasSelection);
+
+    assert(
+        selection.stableWorkUnitId
+        == 700
+    );
+
+    assert(
+        selection.policyClass
+        == PolicyClass.throughput
+    );
+
+    assert(
+        state.consecutiveInteractiveAdmissions
+        == 0
+    );
+}
+
+
+/*
+ * Within each selected class, P2 retains strict-priority ordering with FIFO
+ * ready-order tie-breaking.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 3;
+
+
+    const ReadyWork[5] ready =
+    [
+        ReadyWork(
+            800,
+            0,
+            PolicyClass.throughput,
+            1000
+        ),
+
+        ReadyWork(
+            801,
+            1,
+            PolicyClass.interactive,
+            10
+        ),
+
+        ReadyWork(
+            802,
+            2,
+            PolicyClass.interactive,
+            20
+        ),
+
+        ReadyWork(
+            803,
+            3,
+            PolicyClass.interactive,
+            20
+        ),
+
+        ReadyWork(
+            804,
+            4,
+            PolicyClass.throughput,
+            2000
+        )
+    ];
+
+
+    auto first =
+        selectBoundedInteractiveBurst(
+            ready[],
+            state
+        );
+
+
+    assert(first.ok);
+    assert(first.hasSelection);
+
+    assert(
+        first.stableWorkUnitId
+        == 802
+    );
+}
+
+
+/*
+ * When throughput is absent, interactive admissions are not throughput bypasses
+ * and therefore reset the bounded-burst counter.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 2;
+    state.consecutiveInteractiveAdmissions = 2;
+
+
+    const ReadyWork[1] ready =
+    [
+        ReadyWork(
+            900,
+            0,
+            PolicyClass.interactive,
+            0
+        )
+    ];
+
+
+    auto selection =
+        selectBoundedInteractiveBurst(
+            ready[],
+            state
+        );
+
+
+    assert(selection.ok);
+    assert(selection.hasSelection);
+
+    assert(
+        selection.policyClass
+        == PolicyClass.interactive
+    );
+
+    assert(
+        state.consecutiveInteractiveAdmissions
+        == 0
+    );
+}
+
+
+/*
+ * Empty ready state is valid and resets burst history because no throughput
+ * item remained continuously ready through the gap.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 2;
+    state.consecutiveInteractiveAdmissions = 1;
+
+
+    const ReadyWork[] ready;
+
+
+    auto selection =
+        selectBoundedInteractiveBurst(
+            ready,
+            state
+        );
+
+
+    assert(selection.ok);
+    assert(!selection.hasSelection);
+
+    assert(
+        state.consecutiveInteractiveAdmissions
+        == 0
+    );
+}
+
+
+/*
+ * A zero burst is rejected because this candidate is specifically intended to
+ * preserve some interactive preference while bounding throughput bypass.
+ */
+unittest
+{
+    BoundedInteractiveBurstState state;
+
+    state.maxInteractiveBurst = 0;
+
+
+    const ReadyWork[1] ready =
+    [
+        ReadyWork(
+            1000,
+            0,
+            PolicyClass.throughput,
+            0
+        )
+    ];
+
+
+    auto selection =
+        selectBoundedInteractiveBurst(
+            ready[],
+            state
+        );
+
+
+    assert(!selection.ok);
+
+    assert(
+        selection.error
+        == PolicyOracleError.invalidPolicyConfiguration
+    );
+
+
+    auto evidence =
+        probeBoundedInteractiveBurstSustainedArrivals(
+            0,
+            8
+        );
+
+
+    assert(!evidence.ok);
+
+    assert(
+        evidence.error
+        == PolicyOracleError.invalidPolicyConfiguration
     );
 }
 
