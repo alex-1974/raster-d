@@ -510,22 +510,144 @@ R0.4a is complete when the research can state, with supporting evidence:
 
 Completion of R0.4a does not by itself authorize a production API.
 
-## 12. Current open questions
+## 12. Resolved R0.4a questions
 
-The first analysis should resolve these questions before implementation:
+The questions that preceded implementation are resolved by the R0.4a
+experiment.
 
-1. Can the existing R0.3 decomposition/task research already serve as the
-   minimum work-unit model?
-2. Does bounded residency require explicit final-use accounting, or is lexical
-   synchronous lifetime sufficient for the baseline?
-3. Must result publication be represented separately from operation execution?
-4. Which cancellation boundaries are required by semantics rather than merely
-   useful to one scheduler?
-5. Which operation classes require ordering beyond spatial dependencies?
-6. Can the synchronous baseline be expressed entirely with disposable research
-   types?
-7. What evidence would justify promotion of any execution concept into the
-   production raster API?
+### 12.1 Minimum work-unit model
+
+**Decision:** the existing R0.3 concepts are sufficient for the synchronous
+baseline without introducing a new production execution type.
+
+The experiment successfully composed:
+
+```text
+processing/output region
+operation/dependency semantics
+resident materialization
+research orchestration
+```
+
+without a public `ExecutionRequest`, `Task`, graph or scheduler object.
+
+### 12.2 Resident lifetime
+
+**Decision:** work-unit-local lifetime is sufficient for the synchronous
+baseline.
+
+Each non-empty work unit retains its required resident materialization through
+operation execution and releases that local residency before another work unit
+begins.
+
+The experiment records this explicitly rather than inferring correctness from
+lexical scope alone.
+
+No reference-count graph, final-use graph or cache-ownership mechanism is
+required for the synchronous baseline.
+
+Shared, cached and concurrent lifetime remain later research topics.
+
+### 12.3 Output publication
+
+**Decision:** R0.4a does not justify a generic output-publication mechanism.
+
+The experiment distinguishes:
+
+```text
+completed work-unit output
+completed coverage
+request completion
+termination reason
+```
+
+A completed prefix remains observable in research state after a later failure
+or cancellation, while the request itself remains incomplete.
+
+This is sufficient to preserve the semantic distinction required by R0.4a.
+
+The evidence does not require a universal:
+
+```text
+temporary task-output representation
+transactional publication buffer
+copy-on-commit rule
+direct-final-write rule
+```
+
+Operation-specific stronger guarantees remain operation-specific.
+
+### 12.4 Cancellation boundary
+
+**Decision:** the synchronous reference model observes cancellation between
+non-empty work units.
+
+Cancellation is checked before the next work unit begins.
+
+An already executing work unit is not interrupted by the baseline.
+
+The experiment verified cancellation:
+
+```text
+before the first work unit
+after a completed prefix
+immediately before the final work unit
+```
+
+No RasterView, provider or kernel cancellation API was required.
+
+Finer-grained cooperative cancellation remains an optional later
+responsiveness capability rather than a requirement of the R0.4a semantic
+baseline.
+
+### 12.5 Execution ordering
+
+**Decision:** execution order is not part of the semantic result for the
+selected exact local neighbourhood operation with:
+
+```text
+disjoint output regions
+read-only input dependencies
+independent work-unit materialization
+```
+
+The same legal irregular decomposition produced byte-identical output in:
+
+```text
+forward order
+reverse order
+one deterministic permutation
+```
+
+and matched one-work-unit execution of the same request.
+
+This does not establish universal order independence.
+
+Reductions, stateful operations, multi-stage pipelines and other operation
+classes may still require explicit ordering or combine semantics.
+
+### 12.6 Disposable research types
+
+**Decision:** yes.
+
+R0.4a was expressed entirely with experiment-local execution, failure,
+cancellation and accounting machinery.
+
+No experiment type was promoted into `source/raster/`.
+
+### 12.7 Promotion threshold
+
+**Decision:** R0.4a alone does not justify promotion of an execution
+abstraction.
+
+The synchronous reference contract must first survive another execution
+strategy.
+
+The next relevant evidence is bounded parallel region execution.
+
+Any later production proposal still requires the existing promotion review,
+including concrete consumers, ownership/lifetime review, compiler-floor
+verification and public-surface review.
 
 ## 13. Initial evidence analysis
 
@@ -806,107 +928,232 @@ bounded parallel region execution
 
 without changing RasterView semantics or introducing provider/image policy.
 
-## 14. R0.4a evidence still required
+## 14. R0.4a measured evidence
 
-The existing evidence eliminates the need for a broad scheduler prototype.
-
-The remaining R0.4a experiment can be narrow.
-
-It should test one disposable synchronous executor using existing R0.3-style
-geometry and deterministic synthetic input.
-
-### 14.1 Required cases
-
-The experiment should verify:
+The narrow synchronous experiment was implemented under:
 
 ```text
-whole versus decomposed equivalence
-forward task order
-reverse task order
-deterministically permuted task order
-bounded work-unit-local residency
-release work-unit-local residency before processing the next task
-empty output request
+experiments/r0_4a_synchronous_execution/
+```
+
+The experiment reused selected R0.3 research modules directly and unchanged.
+
+Historical R0.3 evidence and production `source/raster/` were not modified.
+
+### 14.1 Reuse feasibility
+
+The sibling-module reuse probe established that R0.4a can compile and consume
+the required R0.3 research primitives without copying their implementations.
+
+The existing R0.3 `executeNeighbourhoodTask()` path is retained as an
+independent success oracle rather than used as the R0.4a lifecycle under test.
+
+Both DMD and LDC passed the reuse probe.
+
+### 14.2 Successful synchronous execution
+
+The success-path experiment used:
+
+```text
 non-zero logical origin
-neighbourhood / halo input
-materialization failure
-operation failure
-cancellation between work units
+exact weighted 3 x 3 neighbourhood operation
+one-work-unit execution
+one irregular six-member decomposition
+forward execution order
+reverse execution order
+one deterministic permutation
 ```
 
-### 14.2 Output-validity questions
-
-The experiment must explicitly distinguish:
+Results were byte-identical:
 
 ```text
-completed work-unit output
-current incomplete work-unit output
-complete requested output
+whole
+==
+forward
+==
+reverse
+==
+deterministic permutation
 ```
 
-It should determine which of these remain valid or observable after:
+Every successful work unit reached an explicit completion boundary.
+
+Work-unit-local resident raster accounting returned to zero before the next
+non-empty work unit.
+
+### 14.3 Materialization failure
+
+A deterministic materialization failure was injected at work-unit ordinal 3
+of a four-member decomposition.
+
+Observed result:
 
 ```text
-materialization failure
-operation failure
-cancellation
+work units considered      = 3
+work units started         = 3
+work units completed       = 2
+materializations started   = 3
+materializations completed = 2
+operations started         = 2
+operations completed       = 2
+releases                   = 2
+request completed          = false
+termination                = failed
+final local residency      = 0
 ```
 
-The experiment must not silently equate a partially completed request with a
-successfully completed request.
+The completed two-work-unit prefix remained observable in the research
+coverage oracle.
 
-### 14.3 What the experiment does not need
+The failing work unit and all later work remained incomplete.
 
-The experiment does not require:
+### 14.4 Operation failure
+
+A deterministic operation failure was injected at work-unit ordinal 3 of the
+same four-member decomposition.
+
+Observed result:
 
 ```text
-threads
-worker pool
-futures
-async I/O
-cache blocks
-provider tiles
-work stealing
-priority
-prefetch
-production scheduler types
+work units considered      = 3
+work units started         = 3
+work units completed       = 2
+materializations started   = 3
+materializations completed = 3
+operations started         = 3
+operations completed       = 2
+releases                   = 3
+request completed          = false
+termination                = failed
+final local residency      = 0
 ```
 
-If the synchronous model cannot be expressed without one of those concepts,
-that is itself evidence that the proposed R0.4a contract is too broad or
-incorrectly factored.
+The failing work unit's source materialization was released even though that
+work unit never reached completion.
 
-## 15. R0.4a working conclusion
+Later work did not start.
 
-The current evidence supports the following provisional execution model:
+### 14.5 Cancellation
+
+Cancellation was observed only before starting the next non-empty work unit.
+
+Three deterministic cases passed:
+
+| Observation point | Completed work units | Request completed | Final local residency |
+| --- | ---: | --- | ---: |
+| before work unit 1 | 0 | false | 0 |
+| before work unit 3 | 2 | false | 0 |
+| before work unit 4 | 3 | false | 0 |
+
+Completed prefix output remained observable in research state.
+
+The not-yet-started work unit was not considered, materialized or executed.
+
+No cancellation observation occurs inside an executing work unit in the
+R0.4a baseline.
+
+### 14.6 Empty output
+
+A valid empty output request completed successfully with:
+
+```text
+zero executable work units
+zero materializations
+zero operation executions
+zero resident raster bytes
+```
+
+No synthetic zero-sized work unit was created.
+
+### 14.7 Compiler verification
+
+At the final R0.4a evidence HEAD, both current compiler families passed the
+complete experiment:
+
+```text
+DMD: 8 modules passed unittests
+LDC: 8 modules passed unittests
+```
+
+This is current-family verification.
+
+It is not a compiler-floor audit.
+
+### 14.8 Success-gate result
+
+All thirteen R0.4a experiment success criteria passed.
+
+No production scheduler, cache, provider, image-domain or cancellation API was
+introduced.
+
+## 15. R0.4a final conclusion
+
+R0.4a establishes a scheduler-independent synchronous reference execution
+model for the tested region-local raster operation:
 
 ```text
 request
     ->
-legal decomposition
+validate legal decomposition
     ->
-for each work unit:
-    observe cancellation
-    derive dependency
-    materialize work-unit input
+for each non-empty work unit:
+    observe cancellation before start
+    derive spatial dependency
+    materialize work-unit-local input
     execute operation
     establish work-unit completion
-    expose/reassemble valid work-unit result
+    expose/reassemble completed work-unit result
     release work-unit-local residency
     ->
 request completion
 ```
 
-This model is intentionally sequential.
+The experiment establishes the following baseline semantics:
 
-Its purpose is to define execution semantics, lifetime and validity before
-parallel scheduling is introduced.
+1. an output request is not a scheduler task;
+2. decomposition membership is distinct from execution order;
+3. spatial dependency is distinct from execution ordering;
+4. successful local work units may execute in different orders when the
+   operation semantics permit it;
+5. work-unit completion is distinct from complete-request success;
+6. completed prefix output may remain internally observable after later
+   failure or cancellation;
+7. failure stops later work and does not mark the failed work unit complete;
+8. cancellation is observed between work units in the synchronous baseline;
+9. an already executing work unit is not interrupted by baseline cancellation;
+10. work-unit-local resident raster state is released on every tested return
+    path;
+11. empty output is successful zero-work execution;
+12. logical placement remains separate from resident descriptor coordinates.
 
-The unresolved research question is no longer whether raster-d needs a
-scheduler abstraction.
+The experiment does **not** establish a universal transactional-output or
+publication-buffer requirement.
 
-The immediate question is narrower:
+It does **not** establish that every raster operation is order-independent.
 
-> Can this synchronous work-unit lifecycle preserve R0.3 correctness and
-> bounded residency while giving failure, cancellation and output validity
-> precise scheduler-independent semantics?
+It does **not** establish shared/cache/concurrent materialization lifetime.
+
+It does **not** define a public scheduler, `WorkUnit`, cancellation token,
+task graph or execution framework.
+
+### 15.1 R0.4a decision
+
+R0.4a is **complete**.
+
+Its synchronous work-unit lifecycle is sufficient as the semantic reference
+for the next execution-research slice.
+
+The next research step may investigate bounded parallel region execution
+against this reference contract.
+
+### 15.2 Promotion decision
+
+**Do not promote the R0.4a research machinery into the production raster API.**
+
+Before any generic execution abstraction is considered for promotion, later
+R0.4 evidence should demonstrate that the semantic contract survives at least
+one additional strategy, specifically bounded parallel execution, without
+changing RasterView semantics or introducing provider/image policy.
+
+The experiment files remain research evidence and disposable implementation
+machinery.

@@ -1,6 +1,6 @@
 # R0.4a Synchronous Execution Experiment
 
-Status: experiment contract
+Status: R0.4a evidence complete
 Date: 2026-09-24
 Tracking issue: #10
 
@@ -8,6 +8,16 @@ Contract baseline:
 
 ```text
 a29d394 research: define R0.4a synchronous execution contract
+```
+
+Evidence commits:
+
+```text
+a44b1d3 research: define R0.4a execution experiment
+1f676c4 research: prove R0.4a reuse of R0.3 modules
+7548de1 research: prove R0.4a synchronous success path
+c65dcec research: prove R0.4a failure semantics
+81db103 research: prove R0.4a cancellation semantics
 ```
 
 Authoritative research document:
@@ -832,61 +842,106 @@ implementation stabilize.
 
 R0.4a correctness must not depend on compiler-specific scheduling behavior.
 
-## 19. Required result matrix
+## 19. Measured result matrix
 
-The completion report should include at least:
+The implemented fixtures produced:
 
-| Case | Expected request result | Completed work | Final local residency |
-| --- | --- | --- | --- |
-| whole reference | success | all | 0 |
-| forward decomposition | success | all | 0 |
-| reverse decomposition | success | all | 0 |
-| deterministic permutation | success | all | 0 |
-| materialization failure | failure | prefix only | 0 |
-| operation failure | failure | prefix only | 0 |
-| cancel before first | cancelled | none | 0 |
-| cancel after prefix | cancelled | prefix only | 0 |
-| cancel before final | cancelled | all prior units | 0 |
-| empty request | success | none required | 0 |
+| Case | Request result | Completed work units | Final local residency |
+| --- | --- | ---: | ---: |
+| whole reference | success | 1 / 1 | 0 |
+| forward decomposition | success | 6 / 6 | 0 |
+| reverse decomposition | success | 6 / 6 | 0 |
+| deterministic permutation | success | 6 / 6 | 0 |
+| materialization failure at unit 3 | failure | 2 / 4 | 0 |
+| operation failure at unit 3 | failure | 2 / 4 | 0 |
+| cancel before unit 1 | cancelled | 0 / 4 | 0 |
+| cancel before unit 3 | cancelled | 2 / 4 | 0 |
+| cancel before unit 4 | cancelled | 3 / 4 | 0 |
+| empty request | success | 0 required | 0 |
 
-The exact numeric fixture results must be recorded after implementation rather
-than invented in advance.
+For the successful decomposition fixtures:
 
-## 20. Success gate
+```text
+whole
+==
+forward
+==
+reverse
+==
+deterministic permutation
+```
 
-R0.4a experimental evidence is sufficient only if all of the following hold:
+byte-for-byte.
 
-1. whole and decomposed successful execution are exactly equivalent;
-2. forward, reverse and deterministic-permutation order are exactly
+For failure and cancellation fixtures, completed-prefix coverage remained
+observable in research state while:
+
+```text
+requestCompleted == false
+```
+
+The final exact-head compiler verification was:
+
+```text
+DMD: 8 modules passed unittests
+LDC: 8 modules passed unittests
+```
+
+## 20. Success gate — PASS
+
+All required R0.4a success criteria passed:
+
+1. **PASS** — whole and decomposed successful execution are exactly
+   equivalent;
+2. **PASS** — forward, reverse and deterministic-permutation order are exactly
    equivalent for the selected local operation;
-3. successful work units have an explicit completion boundary;
-4. failed work units are never reported complete;
-5. failed or cancelled requests are never reported complete;
-6. materialization failure stops later work;
-7. operation failure stops later work;
-8. cancellation is observable between work units without modifying RasterView;
-9. every return path releases work-unit-local residency;
-10. empty output completes successfully without fake work;
-11. non-zero logical origins remain separate from resident coordinates;
-12. no production scheduler/cache/provider/image policy is introduced;
-13. DMD and LDC produce the same deterministic correctness result.
+3. **PASS** — successful work units have an explicit completion boundary;
+4. **PASS** — failed work units are never reported complete;
+5. **PASS** — failed or cancelled requests are never reported complete;
+6. **PASS** — materialization failure stops later work;
+7. **PASS** — operation failure stops later work;
+8. **PASS** — cancellation is observable between work units without modifying
+   RasterView;
+9. **PASS** — every tested return path releases work-unit-local residency;
+10. **PASS** — empty output completes successfully without fake work;
+11. **PASS** — non-zero logical origins remain separate from resident
+    coordinates;
+12. **PASS** — no production scheduler/cache/provider/image policy was
+    introduced;
+13. **PASS** — DMD and LDC pass the same deterministic correctness suite.
 
 ## 21. Decision after the experiment
 
-If the success gate passes, R0.4a may conclude that a synchronous work-unit
-lifecycle is a sufficient semantic reference for later scheduler research.
+R0.4a is complete.
 
-That conclusion would justify proceeding to bounded parallel execution
-research.
+The experiment demonstrates that a synchronous work-unit lifecycle is a
+sufficient semantic reference for later scheduler research.
 
-It would not by itself justify:
+The established reference supports:
+
+```text
+legal decomposition
+scheduler-independent spatial dependency
+explicit work-unit completion
+bounded work-unit-local residency
+failure propagation
+between-work-unit cancellation
+completed-prefix observability
+request-level completion
+```
+
+The next execution-research slice may investigate bounded parallel region
+execution against this reference.
+
+R0.4a does **not** justify promotion of:
 
 - a public scheduler API;
-- a public WorkUnit type;
+- a public `WorkUnit` type;
 - a task graph;
 - a cancellation-token API;
 - an execution framework in `source/raster/`.
 
-If the experiment fails because scheduler-specific concepts are required for
-correctness, the research contract must be revisited before further
-implementation.
+The research implementation remains disposable evidence.
+
+Any future production execution abstraction must survive additional execution
+strategies and the normal raster-d promotion review.
