@@ -2,25 +2,26 @@
 
 Status: active research
 Date: 2026-09-24
-Tracking issue: #10
+Tracking issues: #10 (R0.4a), #14 (R0.4b)
 
 ## 1. Purpose
 
 R0.4 researches the execution layer above raster-d's established raster,
 region and dependency semantics.
 
-The immediate R0.4a question is deliberately narrower than selecting a
-scheduler:
+R0.4a is complete and establishes the scheduler-independent synchronous
+reference lifecycle.
 
-> What is the smallest generic synchronous execution contract that connects an
-> output request, decomposition, dependency derivation, input materialization,
-> operation execution and resource release without embedding scheduler,
-> provider or image-domain policy into the raster model?
+The active R0.4b question remains narrower than selecting a scheduling policy:
 
-The synchronous baseline is intended to become the semantic reference against
-which later parallel execution strategies can be evaluated.
+> What is the smallest bounded-parallel region-execution model that preserves
+> the R0.4a semantic result, completion, failure, cancellation and residency
+> rules while permitting independent work units to execute concurrently?
 
-R0.4a does not imply promotion of any research type into the public production
+The synchronous R0.4a baseline remains the semantic oracle against which
+bounded-parallel execution is evaluated.
+
+R0.4b does not imply promotion of any research type into the public production
 API.
 
 ## 2. Established inputs
@@ -1157,3 +1158,1312 @@ changing RasterView semantics or introducing provider/image policy.
 
 The experiment files remain research evidence and disposable implementation
 machinery.
+
+## 16. R0.4b bounded parallel execution contract
+
+R0.4b tests whether the scheduler-independent semantics established by R0.4a
+survive bounded concurrent execution.
+
+Tracking issue:
+
+```text
+#14 research: prove bounded parallel region execution
+```
+
+R0.4b is not a scheduler-selection exercise.
+
+It is an execution-semantics experiment.
+
+The central question is:
+
+> Which additional execution-side state is required solely because more than
+> one independent work unit may be active at the same time?
+
+The experiment must prefer the smallest disposable research machinery that can
+answer that question.
+
+### 16.1 Inherited R0.4a invariants
+
+R0.4b inherits the following rules unchanged:
+
+```text
+output request != scheduler task
+decomposition != scheduler policy
+spatial dependency != execution ordering
+work-unit completion != request completion
+logical coordinates != resident coordinates
+```
+
+The core correctness requirement remains:
+
+```text
+legal decomposition must not change the semantic result
+```
+
+For operation classes that permit independent work-unit execution, changing
+the execution strategy from synchronous to bounded parallel must not change
+the result.
+
+R0.4b must not weaken:
+
+- RasterView ownership;
+- WritableRasterView ownership;
+- lease lifetime;
+- dependency semantics;
+- halo/context semantics;
+- operation-specific failure guarantees.
+
+### 16.2 Initial operation class
+
+The first R0.4b experiment should deliberately reuse the exact local operation
+already exercised by R0.4a:
+
+```text
+weighted exact 3 x 3 neighbourhood operation
+```
+
+The selected operation has:
+
+- disjoint output regions;
+- read-only input dependencies;
+- independently materializable input regions;
+- exact deterministic output;
+- no cross-work-unit mutable state.
+
+This is intentionally narrower than claiming that every raster operation is
+parallelizable.
+
+The first experiment does not establish parallel semantics for:
+
+```text
+floating-point reductions
+incremental aggregates
+stateful operations
+multi-stage pipelines
+shared mutable kernels
+```
+
+Those operation classes may require additional execution or combination rules.
+
+### 16.3 Research-local work-state vocabulary
+
+R0.4b needs enough vocabulary to observe concurrent execution without
+promoting a public task type.
+
+The first experiment may distinguish research-local work states such as:
+
+```text
+not started
+running
+completed
+failed
+```
+
+These are instrumentation states.
+
+They are not proposed public API states.
+
+A work unit becomes `running` only after the bounded coordinator has admitted
+it for execution.
+
+A work unit becomes `completed` only after its operation succeeds and its
+result satisfies the same completion boundary used by R0.4a.
+
+A failed work unit never becomes completed.
+
+Cancellation is primarily a request/coordinator state in the first experiment.
+
+A work unit that never starts because cancellation or failure closed the
+dispatch gate remains not started rather than becoming a fictitious completed
+or failed unit.
+
+### 16.4 Explicit bounded parallelism
+
+Parallelism must be bounded by an explicit experiment parameter:
+
+```text
+maxActiveWorkUnits
+```
+
+The experiment must make at least the following accounting observable:
+
+```text
+currentActiveWorkUnits
+peakActiveWorkUnits
+workUnitsStarted
+workUnitsCompleted
+```
+
+At every observable point:
+
+```text
+currentActiveWorkUnits <= maxActiveWorkUnits
+```
+
+The experiment must prove that parallel execution actually occurred:
+
+```text
+peakActiveWorkUnits > 1
+```
+
+for parallelism levels greater than one.
+
+The first experiment should test at least two distinct bounds greater than one.
+
+A suitable initial pair is:
+
+```text
+maxActiveWorkUnits = 2
+maxActiveWorkUnits = 3
+```
+
+The decomposition must contain more non-empty work units than either bound.
+
+The experiment must not create one unbounded thread or asynchronous operation
+per decomposition member and call the result bounded execution merely because
+the operating system happens to serialize some work.
+
+### 16.5 Deterministic concurrency evidence
+
+Correctness tests must not depend on wall-clock timing.
+
+In particular, tests must not use assumptions such as:
+
+```text
+sleep 20 ms
+therefore another worker must now be active
+```
+
+Such tests would be scheduler-, machine- and load-dependent.
+
+Research-only synchronization gates, barriers or equivalent deterministic
+coordination may instead be used to prove:
+
+- more than one work unit is concurrently active;
+- a chosen set of work units is already running at a failure/cancellation
+  observation point;
+- a selected completion order differs from decomposition order.
+
+The synchronization mechanism is experiment machinery.
+
+It is not a proposed production scheduler primitive.
+
+### 16.6 Dispatch model
+
+The initial bounded-parallel coordinator may admit new work while:
+
+```text
+request termination has not been observed
+and
+currentActiveWorkUnits < maxActiveWorkUnits
+```
+
+The first experiment needs only enough dispatch machinery to maintain the
+bound and observe lifecycle transitions.
+
+It does not need to define:
+
+- priority;
+- fairness;
+- work stealing;
+- queue affinity;
+- processor affinity;
+- prefetch;
+- dynamic dependency readiness.
+
+The bounded coordinator may use any disposable research-only concurrency
+primitive whose behaviour can be tested deterministically.
+
+The semantic contract must not depend on the identity of that primitive.
+
+### 16.7 Concurrent resident-resource lifetime
+
+R0.4a established work-unit-local resident lifetime for sequential execution.
+
+R0.4b initially extends that rule directly:
+
+> Each running work unit owns or retains every work-unit-local resident
+> materialization required by that unit until the unit no longer needs it.
+
+The first experiment should deliberately avoid shared materialization reuse.
+
+Therefore one running work unit's local residency is independent of another
+running work unit's local residency.
+
+Research accounting must expose at least:
+
+```text
+currentResidentRasterBytes
+peakResidentRasterBytes
+```
+
+where `currentResidentRasterBytes` is the aggregate work-unit-local resident
+raster memory of all currently retained parallel materializations.
+
+The experiment must verify:
+
+```text
+currentResidentRasterBytes >= 0
+peakResidentRasterBytes >= currentResidentRasterBytes
+```
+
+at all observable states, and:
+
+```text
+currentResidentRasterBytes == 0
+```
+
+after every completed request, failed request and cancelled request.
+
+The experiment should also make visible that peak parallel residency can exceed
+the residency of one synchronous work unit.
+
+That is expected and is not itself a violation of bounded residency.
+
+The required invariant is that concurrency and corresponding local residency
+remain explicitly bounded.
+
+### 16.8 Shared lifetime remains deferred
+
+The initial R0.4b experiment does not require:
+
+- cache reuse;
+- one materialization shared by multiple running work units;
+- reference-counted shared input;
+- dependency-consumer counting;
+- cache eviction;
+- prefetch lifetime.
+
+If bounded parallel execution can be proven using independent work-unit-local
+materializations, then those mechanisms remain later cache/execution research.
+
+They must not be introduced merely because concurrency makes them conceivable.
+
+### 16.9 Completion order
+
+Decomposition order and completion order are separate concepts.
+
+For the selected independent local operation:
+
+```text
+decomposition membership
+execution start order
+execution completion order
+semantic output placement
+```
+
+must remain distinguishable.
+
+A work unit's result belongs to its logical output region, not to its position
+in a completion sequence.
+
+The experiment must force at least one deterministic case in which completion
+order differs from decomposition order.
+
+The result must remain exactly equal to the synchronous R0.4a oracle.
+
+### 16.10 Initial result-reassembly rule
+
+The first R0.4b experiment should avoid introducing concurrent mutation of one
+shared output buffer unless that is necessary to answer the research question.
+
+A simple initial research model is:
+
+```text
+worker:
+    execute one work unit
+    produce completed work-unit result
+
+coordinator:
+    observe completion
+    reassemble that result into the request oracle/output state
+```
+
+This isolates concurrent work-unit execution from concurrent result
+publication.
+
+It also avoids conflating:
+
+```text
+parallel execution semantics
+```
+
+with:
+
+```text
+shared-output synchronization strategy
+```
+
+This is an experimental simplification, not a proposed production requirement.
+
+Later research may compare direct disjoint writes if there is a concrete
+reason to do so.
+
+### 16.11 Completed-set semantics
+
+R0.4a failure and cancellation naturally produced a completed prefix because
+execution was sequential.
+
+That prefix property must not be generalized to parallel execution.
+
+With bounded concurrency, a request may terminate after work units such as:
+
+```text
+0
+2
+4
+```
+
+have completed while another lower-index work unit is still running or has
+failed.
+
+R0.4b therefore generalizes research output validity from:
+
+```text
+completed prefix
+```
+
+to:
+
+```text
+completed work-unit set
+completed output coverage
+```
+
+The experiment must record completed coverage independently of request
+completion.
+
+The request is successful only when every required non-empty work unit has
+completed successfully.
+
+### 16.12 Request completion
+
+For the first bounded-parallel model:
+
+```text
+requestCompleted == true
+```
+
+if and only if:
+
+1. every required non-empty work unit completed successfully;
+2. no execution failure terminated the request;
+3. cancellation did not terminate the request;
+4. all work-unit-local resident raster state has been released.
+
+A request with some completed work units is not therefore a completed request.
+
+This rule is unchanged in meaning from R0.4a even though completed work is no
+longer necessarily a prefix.
+
+### 16.13 Failure observation
+
+The first experiment should inject one deterministic failure identified by a
+stable decomposition/work-unit identity.
+
+Failure injection must not depend on nondeterministic completion ordinal.
+
+For example:
+
+```text
+fail decomposition member 3
+```
+
+is suitable.
+
+A rule such as:
+
+```text
+fail whichever work unit happens to complete third
+```
+
+is not suitable for deterministic semantic evidence.
+
+The experiment should separately exercise:
+
+- materialization failure;
+- operation failure.
+
+### 16.14 Failure dispatch rule
+
+When the coordinator observes a failure:
+
+```text
+stop admitting new work
+```
+
+No work unit that is still not started may begin after the failure has been
+observed.
+
+The initial R0.4b experiment does not require forced interruption of work units
+that are already running.
+
+Already-running sibling work units are allowed to reach their ordinary
+operation boundary.
+
+They must then release their work-unit-local residency.
+
+An already-running sibling that succeeds may still become a completed work
+unit even though the overall request is already destined to fail.
+
+Therefore after a parallel failure:
+
+```text
+completed work != completed prefix
+```
+
+and:
+
+```text
+completed work != completed request
+```
+
+The failed request must retain enough research instrumentation to distinguish
+the set/coverage of work that successfully completed.
+
+### 16.15 Failure does not imply rollback
+
+R0.4b must not infer transactional semantics from request failure.
+
+The initial contract does not require:
+
+- rollback of already completed siblings;
+- erasure of completed coverage;
+- interruption of already-running siblings;
+- restoration of prior output bytes;
+- atomic request publication.
+
+Operation-specific stronger guarantees remain possible but are not introduced
+by generic bounded-parallel execution research.
+
+### 16.16 First failure scope
+
+The initial failure experiment should control concurrency so that the set of
+already-running siblings at failure observation is deterministic.
+
+This allows the experiment to answer:
+
+```text
+which work was already running?
+which work was never started?
+which running siblings completed?
+was every local materialization released?
+```
+
+without relying on operating-system timing.
+
+The first experiment does not need to resolve:
+
+- simultaneous independent failures;
+- competing failure reasons;
+- first-error ordering policy;
+- aggregation of multiple errors.
+
+Those questions should be researched only if later execution strategies need
+them.
+
+### 16.17 Cancellation observation
+
+R0.4b preserves the R0.4a principle:
+
+> Cancellation is observed by execution orchestration rather than by
+> RasterView or the raster kernel.
+
+The initial parallel coordinator should observe cancellation at dispatch /
+coordination boundaries.
+
+Once cancellation is observed:
+
+```text
+stop admitting new work
+```
+
+Not-yet-started work remains not started.
+
+Already-running work is not required to be interrupted.
+
+It may reach its ordinary completion boundary and must release its local
+resident resources.
+
+The overall request remains cancelled and therefore incomplete.
+
+### 16.18 Cancellation while work is active
+
+The experiment must include a deterministic case in which:
+
+```text
+peakActiveWorkUnits > 1
+```
+
+and cancellation is observed while a known bounded set of work units is
+already running.
+
+The test must verify:
+
+- no additional work starts after observation;
+- already-running work follows the documented completion rule;
+- completed-set/coverage accounting remains valid;
+- request completion remains false;
+- all local resident raster state is eventually released.
+
+The first experiment must not introduce cancellation checks inside:
+
+- RasterView;
+- materialization primitives;
+- the neighbourhood kernel.
+
+Finer-grained cooperative cancellation remains a later responsiveness topic.
+
+This research must not select a public cancellation-token API.
+
+### 16.19 Empty output
+
+The R0.4a zero-work rule remains unchanged.
+
+A valid empty request must:
+
+```text
+start zero work units
+create zero worker activity
+materialize zero raster data
+execute zero operations
+finish with zero local residency
+complete successfully
+```
+
+No synthetic empty work unit should be submitted merely to exercise the
+parallel machinery.
+
+### 16.20 R0.4b experiment architecture
+
+The first experiment should reuse existing evidence rather than copy it.
+
+Preferred dependency direction:
+
+```text
+R0.4b experiment
+    ->
+R0.4a synchronous reference / selected research helpers
+    ->
+R0.3 region/dependency/neighbourhood research
+    ->
+production raster-d API
+```
+
+Historical R0.3 and R0.4a experiment sources must remain unchanged.
+
+R0.4b may call the R0.4a synchronous execution result as an independent
+semantic oracle.
+
+The bounded-parallel lifecycle itself must be new R0.4b research code.
+
+It must not modify the R0.4a executor in order to make the parallel experiment
+pass.
+
+### 16.21 Initial fixture
+
+A suitable first fixture should retain the R0.4a geometry style:
+
+```text
+non-zero logical origin
+interior requested output
+full 3 x 3 context
+irregular legal decomposition
+deterministic procedural ubyte source
+exact weighted neighbourhood operation
+```
+
+The decomposition must contain enough non-empty members that:
+
+```text
+task count > 3
+```
+
+and therefore exceeds both initial tested parallel bounds.
+
+The synchronous R0.4a result is the exact output oracle.
+
+### 16.22 Proposed evidence slices
+
+R0.4b should proceed in narrow evidence slices.
+
+#### R0.4b-1 — bounded success path
+
+Prove:
+
+```text
+synchronous result == parallel bound 2 result
+synchronous result == parallel bound 3 result
+peak active > 1
+peak active <= configured bound
+final resident bytes == 0
+```
+
+#### R0.4b-2 — out-of-order completion
+
+Use deterministic research synchronization to force completion order different
+from decomposition order.
+
+Prove byte-identical final output.
+
+#### R0.4b-3 — materialization and operation failure
+
+Inject one stable work-unit failure while known siblings are already running.
+
+Prove:
+
+```text
+request incomplete
+failed unit incomplete
+dispatch closes
+not-yet-started work remains unstarted
+already-running siblings follow the documented rule
+all local residency is released
+```
+
+#### R0.4b-4 — cancellation with active work
+
+Observe cancellation while a known bounded set of work units is running.
+
+Prove:
+
+```text
+request cancelled
+dispatch closes
+not-yet-started work remains unstarted
+already-running work follows the documented rule
+all local residency is released
+```
+
+#### R0.4b-5 — empty request
+
+Prove successful zero-work execution through the bounded-parallel entry path.
+
+### 16.23 R0.4b hypotheses
+
+The initial hypotheses are:
+
+**H1 — strategy equivalence**
+
+For the selected exact local operation:
+
+```text
+synchronous == bounded parallel
+```
+
+for at least two parallel bounds greater than one.
+
+**H2 — bounded active work**
+
+Actual overlap occurs, but:
+
+```text
+peakActiveWorkUnits <= maxActiveWorkUnits
+```
+
+always holds.
+
+**H3 — bounded aggregate residency**
+
+Concurrent resident raster state may exceed one synchronous work unit, but it
+remains explicitly measurable, finite and bounded by admitted active work.
+
+Final work-unit-local residency is zero.
+
+**H4 — completion-order independence**
+
+For the selected operation, changing completion order does not change semantic
+output.
+
+**H5 — parallel failure cleanup**
+
+Failure closes dispatch, does not complete the failing work unit, does not make
+the request complete, permits already-running siblings to follow the documented
+rule and eventually releases all work-unit-local residency.
+
+**H6 — parallel cancellation cleanup**
+
+Cancellation closes dispatch, suppresses not-yet-started work, permits
+already-running work to follow the documented rule and eventually releases all
+work-unit-local residency.
+
+**H7 — no richer public abstraction is assumed**
+
+The experiment can be expressed using disposable orchestration and
+instrumentation without changing RasterView or promoting a production
+scheduler/work-unit API.
+
+### 16.24 Questions that evidence must answer
+
+R0.4b must answer:
+
+1. Does concurrent execution require a richer semantic work-unit object than
+   R0.4a?
+2. Is independent work-unit-local retention sufficient for the first bounded
+   parallel model?
+3. What accounting is required to bound aggregate active residency?
+4. Is a coordinator plus bounded workers sufficient for this operation class?
+5. Does completion need an explicit stable work-unit identity?
+6. How should already-running siblings behave after one failure is observed?
+7. How should already-running work behave after cancellation is observed?
+8. Is completed-set/coverage sufficient to represent partial internal validity?
+9. Does output reassembly remain independent of completion order?
+10. Which concepts now have evidence across both synchronous and bounded
+    parallel execution strategies?
+
+### 16.25 Explicit non-goals
+
+R0.4b does not select or implement production policy for:
+
+```text
+priority
+fairness
+work stealing
+pipeline parallelism
+decode/materialize/compute staging
+prefetch
+async I/O
+dynamic dependency readiness
+cache blocks
+shared cache lifetime
+provider/source policy
+imagery scheduling
+GPU execution
+```
+
+It also does not promote:
+
+```text
+public Scheduler
+public WorkUnit
+public Task
+public CancellationToken
+public execution graph
+```
+
+### 16.26 Success gate
+
+R0.4b evidence is sufficient only if all of the following hold:
+
+1. synchronous and bounded-parallel successful output are exactly equivalent
+   for the selected operation;
+2. at least two parallel bounds greater than one are exercised;
+3. actual concurrent overlap is proven without timing assumptions;
+4. active work never exceeds the configured bound;
+5. deterministic out-of-order completion does not change output;
+6. aggregate resident-raster accounting is explicit;
+7. final work-unit-local residency is zero on success;
+8. final work-unit-local residency is zero after materialization failure;
+9. final work-unit-local residency is zero after operation failure;
+10. final work-unit-local residency is zero after cancellation;
+11. failure suppresses not-yet-started work after observation;
+12. cancellation suppresses not-yet-started work after observation;
+13. already-running sibling behaviour is explicit and experimentally verified;
+14. completed work remains distinguishable from completed request state;
+15. empty output remains successful zero-work execution;
+16. non-zero logical coordinates remain separate from resident coordinates;
+17. historical R0.3 and R0.4a evidence remains unchanged;
+18. production `source/raster/` remains unchanged;
+19. no scheduling/cache/provider/image policy is promoted;
+20. DMD and LDC produce the same deterministic correctness result.
+
+### 16.27 Promotion rule after R0.4b
+
+Passing R0.4b would provide evidence that a common semantic contract survives
+two execution strategies:
+
+```text
+synchronous sequential
+bounded parallel
+```
+
+That is stronger promotion evidence than R0.4a alone.
+
+It is still not automatic authorization for a public execution API.
+
+After R0.4b, any proposed production abstraction must be evaluated against:
+
+- concrete raster consumers;
+- stable semantics common to both strategies;
+- ownership and borrow lifetime;
+- aggregate residency requirements;
+- compiler-floor compatibility;
+- public-surface cost;
+- interaction with later scheduling and source research.
+
+If no new public abstraction is required, the correct decision may still be to
+keep execution orchestration internal or research-local.
+
+## 17. R0.4b measured evidence
+
+R0.4b was implemented as disposable research orchestration under:
+
+```text
+experiments/r0_4b_bounded_parallel_execution/
+```
+
+Evidence commits:
+
+```text
+b9f43f5 research: define R0.4b bounded parallel execution contract
+5988188 research: define R0.4b parallel execution experiment
+ff5da8e research: prove R0.4b reuse of prior execution evidence
+b09d75b research: prove R0.4b bounded parallel success
+aaceb24 research: prove R0.4b out-of-order completion
+3bfa813 research: prove R0.4b parallel failure semantics
+6106a32 research: classify R0.4b operation failure explicitly
+4a06bc3 research: prove R0.4b parallel cancellation semantics
+6c5bf93 research: prove R0.4b empty parallel request
+```
+
+Historical R0.3 and R0.4a sources remained unchanged.
+
+Production `source/raster/` remained unchanged.
+
+### 17.1 Strategy-equivalence result
+
+The same exact weighted 3 x 3 region-local operation was executed using the
+R0.4a synchronous reference and R0.4b bounded-parallel execution with explicit
+bounds 2 and 3.
+
+The successful result was:
+
+```text
+R0.4a synchronous
+==
+R0.4b bounded parallel, bound 2
+==
+R0.4b bounded parallel, bound 3
+```
+
+byte-for-byte.
+
+The six-member irregular decomposition contained more work than either tested
+parallel bound.
+
+### 17.2 Concurrent-work result
+
+Research-local barriers established actual concurrent activity without
+wall-clock timing.
+
+The successful fixtures proved:
+
+```text
+bound 2 -> peakActiveWorkUnits == 2
+bound 3 -> peakActiveWorkUnits == 3
+```
+
+and therefore:
+
+```text
+1 < peakActiveWorkUnits <= maxActiveWorkUnits
+```
+
+No `sleep`, timeout or CPU-speed assumption was used to prove overlap.
+
+### 17.3 Concurrent-residency result
+
+The deterministic resident-ready barriers were reached only after each admitted
+worker had successfully materialized its required input.
+
+At that observation point the worker-local resident rasters remained alive.
+
+The experiment therefore established genuine concurrent resident raster
+lifetime rather than merely concurrent thread lifetime.
+
+For the successful parallel fixtures:
+
+```text
+peak parallel resident bytes
+>
+R0.4a synchronous single-work-unit peak resident bytes
+```
+
+and every tested return path ended with:
+
+```text
+currentResidentRasterBytes == 0
+```
+
+R0.4b establishes explicit aggregate residency accounting.
+
+It does **not** establish that a work-count bound is a general byte-budget
+admission policy for heterogeneous future work units.
+
+A later execution/scheduling layer may still require an explicit resident-byte
+budget or admission controller.
+
+### 17.4 Completion-order result
+
+R0.4b-2 forced:
+
+```text
+decomposition order:
+    0, 1
+
+completion/publication order:
+    1, 0
+```
+
+using deterministic synchronization.
+
+The final output remained exactly equal to the synchronous oracle.
+
+Therefore, for the selected operation:
+
+```text
+completion order != semantic output placement
+```
+
+Logical output region determines placement.
+
+### 17.5 Materialization-failure result
+
+The deterministic materialization-failure fixture used four legal work units:
+
+```text
+0 -> already-running resident sibling
+1 -> stable injected materialization failure
+2 -> never started
+3 -> never started
+```
+
+After failure observation:
+
+- dispatch closed;
+- work units 2 and 3 never started;
+- work unit 1 never became completed;
+- work unit 0 was allowed to finish normally;
+- completed sibling coverage remained observable research state;
+- the request remained incomplete/failed;
+- final local residency was zero.
+
+### 17.6 Operation-failure result
+
+The operation-failure fixture used the same stable identities.
+
+Both work units 0 and 1 had resident input before work unit 1 injected the
+operation failure.
+
+After failure observation:
+
+- dispatch closed;
+- work units 2 and 3 never started;
+- work unit 1 never became completed;
+- already-running work unit 0 was allowed to finish normally;
+- both resident materializations were eventually released;
+- the request remained incomplete/failed;
+- final local residency was zero.
+
+### 17.7 Cancellation result
+
+R0.4b-4 admitted exactly two work units and deterministically held both after
+successful materialization.
+
+The coordinator observed cancellation while both were known active and
+resident.
+
+The measured rule was:
+
+```text
+observe cancellation
+    ->
+close dispatch
+    ->
+do not start later work
+    ->
+allow already-running work to reach ordinary completion
+    ->
+release all work-unit-local residency
+    ->
+return cancelled/incomplete request
+```
+
+Both already-running units completed normally.
+
+The two later units never started.
+
+Cancellation remained orchestration state.
+
+No cancellation token was passed into RasterView, materialization primitives
+or the neighbourhood kernel.
+
+### 17.8 Empty-request result
+
+R0.4b-5 established:
+
+```text
+valid empty request
+    ->
+valid empty decomposition
+    ->
+zero batches
+    ->
+zero workers
+    ->
+zero materializations
+    ->
+zero operations
+    ->
+zero resident bytes
+    ->
+successful request completion
+```
+
+No synthetic empty work unit was created.
+
+### 17.9 Compiler evidence
+
+At the final R0.4b experiment HEAD before documentation closure:
+
+```text
+DMD: 9 modules passed unittests
+LDC: 9 modules passed unittests
+```
+
+This is current-family verification.
+
+It is not a compiler-floor audit.
+
+## 18. R0.4b research questions answered
+
+### 18.1 Richer work-unit abstraction
+
+The tested bounded-parallel strategy did **not** require a richer public
+semantic work-unit type.
+
+Concurrency did require stable research-local work identity for deterministic
+failure injection, synchronization and completed-set accounting.
+
+That evidence does not justify a public WorkUnit or Task type.
+
+### 18.2 Ownership and retention
+
+Independent work-unit-local retention was sufficient.
+
+The experiment did not require:
+
+- shared materialization ownership;
+- explicit cross-worker reference counting;
+- cache-consumer counts;
+- cache eviction lifetime.
+
+Those remain later concerns if a concrete strategy needs them.
+
+### 18.3 Active-work and resident-memory bounds
+
+An explicit `maxActiveWorkUnits` plus current/peak active-work accounting was
+sufficient to prove the tested concurrency bound.
+
+Current/peak aggregate resident-raster accounting was sufficient to measure the
+tested memory lifetime.
+
+However:
+
+```text
+bounded work-unit count
+!=
+general resident-byte budget
+```
+
+for arbitrary heterogeneous workloads.
+
+R0.4b therefore does not close the future memory-admission question.
+
+### 18.4 Need for a general scheduler
+
+A general scheduler abstraction was not required.
+
+A coordinator plus bounded disposable workers was sufficient for this
+operation class and evidence goal.
+
+The concrete batch-thread implementation is research machinery, not a selected
+production architecture.
+
+### 18.5 Stable work identity
+
+Stable identity was useful and necessary for deterministic evidence.
+
+It separated:
+
+```text
+decomposition member identity
+from
+execution/completion ordinal
+```
+
+without making identity part of the production raster API.
+
+### 18.6 Failure rule for running siblings
+
+The tested baseline is:
+
+```text
+failure observed
+    ->
+close dispatch
+    ->
+do not start later work
+    ->
+do not forcibly interrupt already-running siblings
+```
+
+An already-running sibling may complete and remain valid completed research
+state even though the request fails.
+
+No rollback is implied.
+
+### 18.7 Cancellation rule for running work
+
+The tested baseline is analogous:
+
+```text
+cancellation observed
+    ->
+close dispatch
+    ->
+suppress not-yet-started work
+    ->
+allow already-running work to complete
+    ->
+request remains cancelled
+```
+
+No RasterView or kernel cancellation mechanism was required.
+
+### 18.8 Partial completion representation
+
+A completed prefix is not a valid general parallel invariant.
+
+The evidence supports:
+
+```text
+completed work-unit set
++
+completed output coverage
+```
+
+as sufficient research representation for the tested partial completion
+semantics.
+
+This is not a public partial-result API.
+
+### 18.9 Reassembly and completion order
+
+For the selected exact local operation, output reassembly remained correct
+under forced out-of-order completion.
+
+The destination was derived from logical output regions rather than completion
+position.
+
+### 18.10 Concepts surviving both execution strategies
+
+Across R0.4a synchronous and R0.4b bounded-parallel execution, the evidence now
+supports these scheduler-neutral distinctions:
+
+```text
+output request != scheduler task
+decomposition != scheduler policy
+spatial dependency != execution order
+work-unit completion != request completion
+logical coordinates != resident coordinates
+```
+
+It also supports:
+
+- explicit work-unit-local resource lifetime;
+- request termination distinct from completed work;
+- completed-set/coverage semantics under parallel termination;
+- orchestration-level cancellation observation;
+- final release of work-unit-local resident raster state.
+
+## 19. R0.4b success gate — PASS
+
+All twenty R0.4b contract gates passed:
+
+1. **PASS** — synchronous and bounded-parallel successful output are exactly
+   equivalent for the selected operation;
+2. **PASS** — parallel bounds 2 and 3 were exercised;
+3. **PASS** — actual concurrent overlap was proven without timing assumptions;
+4. **PASS** — active work never exceeded the configured bound;
+5. **PASS** — deterministic out-of-order completion did not change output;
+6. **PASS** — aggregate resident-raster accounting is explicit;
+7. **PASS** — final local residency is zero on success;
+8. **PASS** — final local residency is zero after materialization failure;
+9. **PASS** — final local residency is zero after operation failure;
+10. **PASS** — final local residency is zero after cancellation;
+11. **PASS** — failure suppressed not-yet-started work after observation;
+12. **PASS** — cancellation suppressed not-yet-started work after observation;
+13. **PASS** — already-running sibling behaviour is explicit and verified;
+14. **PASS** — completed work remains distinguishable from request completion;
+15. **PASS** — empty output remains successful zero-work execution;
+16. **PASS** — non-zero logical coordinates remain distinct from resident
+    coordinates;
+17. **PASS** — historical R0.3 evidence remained unchanged;
+18. **PASS** — historical R0.4a evidence remained unchanged;
+19. **PASS** — production `source/raster/` remained unchanged;
+20. **PASS** — no scheduling/cache/provider/image policy was promoted and DMD
+    and LDC produced the same deterministic correctness result.
+
+The experiment README retains the more granular twenty-one-item gate; the
+contract's final two implementation-boundary/compiler checks are summarized
+together here.
+
+## 20. R0.4b final conclusion
+
+R0.4b is **complete**.
+
+For the selected exact independent region-local raster operation, the
+scheduler-independent semantic contract established by R0.4a survived bounded
+parallel execution.
+
+The experiment established that:
+
+1. bounded parallelism can preserve the synchronous semantic result;
+2. completion order need not be semantic output order;
+3. concurrent work-unit-local resident lifetimes can remain explicit and
+   bounded by admitted active work;
+4. failure and cancellation can close dispatch without forcibly interrupting
+   already-running work;
+5. completed work remains distinct from successful request completion;
+6. parallel partial completion requires completed-set/coverage semantics rather
+   than a completed-prefix assumption;
+7. zero-work requests remain successful without synthetic tasks.
+
+### 20.1 Promotion decision
+
+**Do not promote the R0.4b research machinery into the production raster API.**
+
+R0.4b did not require a public:
+
+- scheduler;
+- WorkUnit/Task type;
+- cancellation token;
+- execution graph;
+- worker pool;
+- cache;
+- provider abstraction.
+
+The batch-local threads, barriers, instrumentation structs, failure fixtures
+and cancellation fixtures remain disposable research evidence.
+
+The stable semantics may inform a later internal or public execution
+abstraction only after additional R0.4 evidence and a concrete consumer justify
+promotion.
+
+### 20.2 Next execution-research boundary
+
+R0.4b answered the bounded-parallel semantic question.
+
+Later R0.4 work may now investigate scheduling policy, including topics such as:
+
+- priority;
+- fairness;
+- interactive versus throughput work;
+- starvation avoidance;
+- more general worker-pool strategies.
+
+Those questions must preserve the R0.4a/R0.4b semantic reference rather than
+retroactively embedding scheduling policy into raster geometry, RasterView or
+operation semantics.
+
