@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0/R0.4d-1 complete; R0.4d-2 implementation — local compiler validation pending
+Status: R0.4d-0/R0.4d-1/R0.4d-2 complete; R0.4d-3 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -16,6 +16,7 @@ Evidence commits:
 ```text
 e9f8665 research: establish R0.4d pipeline vocabulary and reuse
 d76f921 research: prove R0.4d deterministic pipeline state machine
+68b1ccc research: prove R0.4d bounded pipeline stage overlap
 ```
 
 R0.4d-0 local compiler evidence:
@@ -31,6 +32,14 @@ R0.4d-1 local compiler evidence:
 ```text
 DMD: 12 modules passed unittests
 LDC: 12 modules passed unittests
+```
+
+
+R0.4d-2 local compiler evidence:
+
+```text
+DMD: 13 modules passed unittests
+LDC: 13 modules passed unittests
 ```
 
 Authoritative research document:
@@ -463,4 +472,87 @@ research components. It is not a promoted production primitive.
 
 R0.4d-2 still does not introduce a queue, reusable worker pool, dynamic stage
 selection or general pipeline API.
+
+## 17. R0.4d-2 result
+
+R0.4d-2 is complete.
+
+It proved real cross-stage concurrency with explicit synchronization:
+
+```text
+work A: computing
+work B: materializing
+```
+
+at the same observed point.
+
+The proof executed real procedural materialization and the established exact
+weighted 3 x 3 neighbourhood operation.
+
+The assembled result and completed coverage were byte-identical to the R0.4a
+synchronous semantic reference.
+
+Configured active/materialize/compute/handoff bounds were preserved and final
+research-local active, handoff and resident-raster state returned to zero.
+
+No timing assumption was used.
+
+## 18. R0.4d-3 deterministic backpressure
+
+R0.4d-3 isolates the backpressure mechanism from raster arithmetic.
+
+The fixture uses:
+
+```text
+maxActiveWorkUnits = 3
+maxMaterializing  = 2
+maxComputing      = 1
+handoffCapacity   = 2
+```
+
+Two work units are advanced to `readyForCompute`, producing:
+
+```text
+readyForCompute      = 2
+handoffCreditsInUse  = 2
+```
+
+A third otherwise-admissible work unit must then fail specifically with:
+
+```text
+handoffCapacityReached
+```
+
+and the rejected transition must mutate neither the third work state nor global
+accounting.
+
+Next, compute starts for the first ready work unit.
+
+That transition releases exactly one handoff credit.
+
+A dedicated compute-stage worker then enters and remains blocked on an explicit
+barrier so downstream compute is deterministically still in flight.
+
+While that compute stage is held, the exact same third upstream work unit must
+now be admitted into materialization successfully.
+
+This proves:
+
+```text
+full handoff capacity
+    ->
+upstream start blocked
+
+compute start
+    ->
+one handoff credit released
+
+released credit
+    ->
+upstream start resumes
+```
+
+The proof uses no sleep, timeout or wall-clock threshold.
+
+R0.4d-3 still introduces no queue, worker pool or general backpressure API.
 
