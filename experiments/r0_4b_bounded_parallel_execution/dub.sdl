@@ -15,6 +15,7 @@ importPaths "../r0_4a_synchronous_execution"
 importPaths "../r0_3_regions_streaming"
 
 sourceFiles "reuse_probe.d"
+sourceFiles "bounded_parallel_execution.d"
 
 sourceFiles "../r0_4a_synchronous_execution/synchronous_execution.d"
 
