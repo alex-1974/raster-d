@@ -645,7 +645,6 @@ BoundedParallelSuccessResult executeBoundedParallelNeighbourhood(
     if (
         !logicalExtent.hasRepresentableExtent()
         || !requestedOutput.hasRepresentableExtent()
-        || requestedOutput.empty()
     )
     {
         result.error =
@@ -681,6 +680,29 @@ BoundedParallelSuccessResult executeBoundedParallelNeighbourhood(
 
         result.decompositionIssue =
             decompositionIssue;
+
+        return result;
+    }
+
+
+    /*
+     * R0.4b-5 zero-work rule.
+     *
+     * A valid empty output request has no executable work. It must not create
+     * a synthetic worker merely to pass through the parallel machinery.
+     *
+     * The decomposition oracle above has already established that the supplied
+     * member list is a valid decomposition of the empty target.
+     */
+    if (requestedOutput.empty())
+    {
+        result.output = [];
+        result.completedCoverage = [];
+
+        result.requestCompleted = true;
+
+        result.error =
+            BoundedParallelSuccessError.none;
 
         return result;
     }
@@ -3259,5 +3281,170 @@ unittest
             == 0
         );
     }
+}
+
+
+/*
+ * R0.4b-5 empty request through the bounded-parallel entry path.
+ *
+ * The request is valid and empty.
+ *
+ * No synthetic work unit is submitted:
+ *
+ * - zero batches;
+ * - zero workers;
+ * - zero materializations;
+ * - zero operations;
+ * - zero residency;
+ * - successful request completion.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            1000,
+            2000,
+            100,
+            100
+        );
+
+    const requestedOutput =
+        Region2D(
+            1020,
+            2030,
+            0,
+            0
+        );
+
+    const Region2D[] noTasks;
+
+
+    auto synchronous =
+        executeSynchronousNeighbourhood(
+            logicalExtent,
+            requestedOutput,
+            noTasks
+        );
+
+    assert(synchronous.ok);
+    assert(synchronous.requestCompleted);
+
+
+    auto parallel =
+        executeBoundedParallelNeighbourhood(
+            logicalExtent,
+            requestedOutput,
+            noTasks,
+            2
+        );
+
+
+    assert(parallel.ok);
+    assert(parallel.requestCompleted);
+
+    assert(
+        parallel.error
+        == BoundedParallelSuccessError.none
+    );
+
+
+    assert(parallel.output.length == 0);
+    assert(parallel.completedCoverage.length == 0);
+
+    assert(
+        parallel.output
+        == synchronous.output
+    );
+
+    assert(
+        parallel.completedCoverage
+        == synchronous.completedCoverage
+    );
+
+
+    assert(
+        parallel.accounting.maxActiveWorkUnits
+        == 2
+    );
+
+    assert(
+        parallel.accounting.workUnitsRequired
+        == 0
+    );
+
+    assert(
+        parallel.accounting.batchesStarted
+        == 0
+    );
+
+    assert(
+        parallel.accounting.workUnitsStarted
+        == 0
+    );
+
+    assert(
+        parallel.accounting.workUnitsCompleted
+        == 0
+    );
+
+
+    assert(
+        parallel.accounting.materializationsStarted
+        == 0
+    );
+
+    assert(
+        parallel.accounting.materializationsCompleted
+        == 0
+    );
+
+
+    assert(
+        parallel.accounting.operationExecutionsStarted
+        == 0
+    );
+
+    assert(
+        parallel.accounting.operationExecutionsCompleted
+        == 0
+    );
+
+
+    assert(
+        parallel.accounting.currentActiveWorkUnits
+        == 0
+    );
+
+    assert(
+        parallel.accounting.peakActiveWorkUnits
+        == 0
+    );
+
+    assert(
+        parallel.accounting.peakOperationReadyWorkUnits
+        == 0
+    );
+
+
+    assert(
+        parallel.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        parallel.accounting.peakResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        parallel.accounting.completedOutputPixels
+        == 0
+    );
+
+    assert(
+        parallel.accounting.releases
+        == 0
+    );
 }
 
