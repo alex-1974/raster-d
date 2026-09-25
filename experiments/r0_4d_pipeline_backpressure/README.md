@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0 through R0.4d-4 complete; R0.4d-5 implementation — local compiler validation pending
+Status: R0.4d-0 through R0.4d-5 complete; R0.4d-6 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -19,6 +19,7 @@ d76f921 research: prove R0.4d deterministic pipeline state machine
 68b1ccc research: prove R0.4d bounded pipeline stage overlap
 1319838 research: prove R0.4d deterministic backpressure
 c06ae73 research: prove R0.4d stage-order independence
+43196c7 research: prove R0.4d termination cleanup
 ```
 
 R0.4d-0 local compiler evidence:
@@ -58,6 +59,14 @@ R0.4d-4 local compiler evidence:
 ```text
 DMD: 15 modules passed unittests
 LDC: 15 modules passed unittests
+```
+
+
+R0.4d-5 local compiler evidence:
+
+```text
+DMD: 16 modules passed unittests
+LDC: 16 modules passed unittests
 ```
 
 Authoritative research document:
@@ -779,4 +788,89 @@ exists only for retained-work termination cleanup.
 
 R0.4d-5 does not add stage preemption, exceptions, timeouts, worker pools or a
 public cancellation API.
+
+## 24. R0.4d-5 result
+
+R0.4d-5 is complete.
+
+It proved request-local failure/cancellation stage-start closure while
+preserving non-preemption of already-running materialization/compute bodies.
+
+Retained ready-for-compute work can be released without starting compute after
+termination, and all tested termination paths end with zero active, handoff and
+retained resident state.
+
+A running compute may finish and publish partial coverage after cancellation,
+but request completion remains false when required coverage is incomplete.
+
+No timing assumption was used.
+
+## 25. R0.4d-6 raster integration
+
+R0.4d-6 reuses the canonical six-member legal decomposition already used by
+R0.4c integration:
+
+```text
+requestedOutput = Region2D(1020, 2030, 8, 6)
+
+work 0 = Region2D(1020, 2030, 8, 1)
+work 1 = Region2D(1020, 2031, 3, 2)
+work 2 = Region2D(1023, 2031, 5, 2)
+work 3 = Region2D(1020, 2033, 5, 2)
+work 4 = Region2D(1025, 2033, 3, 2)
+work 5 = Region2D(1020, 2035, 8, 1)
+```
+
+The same semantic request is executed by:
+
+```text
+R0.4a synchronous reference
+R0.4b bounded-parallel reference, maxActiveWorkUnits = 2
+R0.4d bounded staged integration
+```
+
+The R0.4d limits are:
+
+```text
+maxActiveWorkUnits = 2
+maxMaterializing  = 1
+maxComputing      = 1
+handoffCapacity   = 1
+```
+
+The staged run primes work 0 by materializing it first.
+
+It then pipelines each adjacent pair:
+
+```text
+compute(i)
+    overlaps
+materialize(i + 1)
+```
+
+using explicit barriers.
+
+With six work units, exactly five cross-stage overlap pairs are observed.
+
+The final work unit drains the pipeline without a successor materialization.
+
+The integration must prove:
+
+- exact output equality across R0.4a, R0.4b and R0.4d;
+- exact completed-coverage equality across all three;
+- R0.4d request completion;
+- R0.4b request completion;
+- R0.4d peak active work equals two and never exceeds its limit;
+- R0.4d materializing peak equals one;
+- R0.4d computing peak equals one;
+- R0.4d handoff-credit peak equals one;
+- five deterministic cross-stage overlap observations;
+- final R0.4d active/handoff state is zero;
+- final R0.4d retained resident bytes are zero;
+- R0.4b final resident bytes are zero.
+
+This is a research-local linear staged raster runner.
+
+It is not promoted as a general executor, worker pool, queue, DAG or workflow
+API.
 

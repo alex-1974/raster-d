@@ -23,6 +23,7 @@ sourceFiles "bounded_pipeline_success.d"
 sourceFiles "deterministic_backpressure.d"
 sourceFiles "stage_order_independence.d"
 sourceFiles "pipeline_termination.d"
+sourceFiles "raster_pipeline_integration.d"
 sourceFiles "reuse_probe.d"
 
 sourceFiles "../r0_4c_scheduling_policy/scheduling_policy_oracle.d"
