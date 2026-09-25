@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0 implementation — local compiler validation pending
+Status: R0.4e-0 complete; R0.4e-1 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -8,12 +8,21 @@ Contract baseline:
 
 ```text
 c04040e research: define R0.4e persistent worker contract
+6029ca3 research: establish R0.4e worker vocabulary and reuse
 ```
 
 Authoritative research document:
 
 ```text
 docs/research/execution.md
+```
+
+
+R0.4e-0 local compiler evidence:
+
+```text
+DMD: 13 modules passed unittests
+LDC: 13 modules passed unittests
 ```
 
 Nothing in this experiment directory is a stable public API.
@@ -211,3 +220,101 @@ against historical references.
 
 Passing any R0.4e slice does not automatically authorize a public WorkerPool,
 Worker, Task, Queue, Executor, Future or ThreadPool API.
+
+## 11. R0.4e-0 result
+
+R0.4e-0 is complete.
+
+It established research-local vocabulary for:
+
+```text
+worker role
+worker lifecycle
+worker identity
+request identity
+stage-queue kind
+stage-queue capacity
+```
+
+and compiled/called the immutable R0.4a/R0.4b/R0.4c/R0.4d references.
+
+The R0.4a and R0.4b output/coverage remained exact-equal.
+
+The R0.4c FIFO oracle retained deterministic order.
+
+The imported R0.4d state machine completed one full lifecycle and returned
+active/handoff accounting to zero.
+
+No worker thread or queue was introduced.
+
+## 12. R0.4e-1 persistent worker loop
+
+R0.4e-1 introduces exactly one persistent OS worker thread.
+
+The proof sequence is:
+
+```text
+thread start
+    ->
+waiting
+    ->
+job 101
+    ->
+waiting
+    ->
+job 202
+    ->
+waiting
+    ->
+shutdown observed
+    ->
+thread return
+    ->
+join
+```
+
+The worker thread is created exactly once.
+
+Both jobs execute inside the same invocation of the persistent worker loop.
+
+The test records:
+
+```text
+runEntries
+waitEntries
+jobsExecuted
+executionTrace
+shutdownObserved
+```
+
+and requires:
+
+```text
+runEntries == 1
+jobsExecuted == 2
+executionTrace == [101, 202]
+```
+
+The worker uses three reusable explicit synchronization gates:
+
+- a waiting gate so the coordinator knows the worker reached the waiting state;
+- a command gate that releases exactly one pending command;
+- a completion gate that reports one command boundary.
+
+These are deterministic research gates.
+
+R0.4e-1 does not implement a stage queue.
+
+No sleep, timeout, polling loop or wall-clock threshold is used.
+
+After shutdown the coordinator joins the one worker thread and records the
+final lifecycle state as:
+
+```text
+joined
+```
+
+R0.4e-1 proves persistent thread reuse only.
+
+Queue bounds and queue-full semantics remain R0.4e-2.
+

@@ -18,6 +18,7 @@ importPaths "../r0_4a_synchronous_execution"
 importPaths "../r0_3_regions_streaming"
 
 sourceFiles "worker_vocabulary.d"
+sourceFiles "persistent_worker_loop.d"
 sourceFiles "reuse_probe.d"
 
 sourceFiles "../r0_4d_pipeline_backpressure/pipeline_vocabulary.d"
