@@ -2135,3 +2135,604 @@ unittest
     );
 }
 
+
+/++
+    R0.4c-5 research-local policy selector identity.
+
+    This exists only so one termination gate can be tested against every
+    candidate policy without duplicating the gate semantics.
++/
+enum SchedulingPolicyKind : ubyte
+{
+    fifo,
+    strictPriority,
+    boundedInteractiveBurst
+}
+
+
+/++
+    Request-level dispatch termination observed by orchestration.
+
+    This is not a public cancellation/failure API.
++/
+enum DispatchTermination : ubyte
+{
+    open,
+    failed,
+    cancelled
+}
+
+
+/++
+    Minimal request-level dispatch gate.
+
+    The first observed terminal reason is retained.
++/
+struct DispatchGateState
+{
+    DispatchTermination termination =
+        DispatchTermination.open;
+
+
+    @property
+    bool closed() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return termination
+            != DispatchTermination.open;
+    }
+
+
+    void observeFailure()
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        if (!closed)
+        {
+            termination =
+                DispatchTermination.failed;
+        }
+    }
+
+
+    void observeCancellation()
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        if (!closed)
+        {
+            termination =
+                DispatchTermination.cancelled;
+        }
+    }
+}
+
+
+/++
+    One policy-selected admission after applying the request-level termination
+    gate.
++/
+struct GatedDispatchSelection
+{
+    PolicyOracleError error =
+        PolicyOracleError.internalFailure;
+
+    bool hasSelection;
+
+    size_t stableWorkUnitId;
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error
+            == PolicyOracleError.none;
+    }
+}
+
+
+/++
+    Applies the request-level termination gate before consulting any scheduling
+    policy.
+
+    Important R0.4c-5 rule:
+
+        closed dispatch
+        ->
+        do not call/validate policy
+        ->
+        no later admission
+
+    Therefore request termination dominates:
+
+    - FIFO ordering;
+    - strict priority;
+    - bounded-burst preference;
+    - ready-set policy validation;
+    - bounded-burst state updates.
+
+    This is a deterministic admission oracle, not a production scheduler.
++/
+GatedDispatchSelection selectWithTerminationGate(
+    SchedulingPolicyKind policy,
+    scope const(ReadyWork)[] ready,
+    scope const(DispatchGateState) gate,
+    ref BoundedInteractiveBurstState boundedBurstState
+)
+@safe
+{
+    GatedDispatchSelection result;
+
+
+    /*
+     * Request termination is checked before policy evaluation.
+     */
+    if (gate.closed)
+    {
+        result.error =
+            PolicyOracleError.none;
+
+        return result;
+    }
+
+
+    final switch (policy)
+    {
+        case SchedulingPolicyKind.fifo:
+        {
+            auto trace =
+                dispatchFifo(
+                    ready
+                );
+
+
+            if (!trace.ok)
+            {
+                result.error =
+                    trace.error;
+
+                return result;
+            }
+
+
+            if (trace.workUnitIds.length != 0)
+            {
+                result.hasSelection = true;
+
+                result.stableWorkUnitId =
+                    trace.workUnitIds[0];
+            }
+
+
+            result.error =
+                PolicyOracleError.none;
+
+            return result;
+        }
+
+
+        case SchedulingPolicyKind.strictPriority:
+        {
+            auto trace =
+                dispatchStrictPriority(
+                    ready
+                );
+
+
+            if (!trace.ok)
+            {
+                result.error =
+                    trace.error;
+
+                return result;
+            }
+
+
+            if (trace.workUnitIds.length != 0)
+            {
+                result.hasSelection = true;
+
+                result.stableWorkUnitId =
+                    trace.workUnitIds[0];
+            }
+
+
+            result.error =
+                PolicyOracleError.none;
+
+            return result;
+        }
+
+
+        case SchedulingPolicyKind.boundedInteractiveBurst:
+        {
+            auto selection =
+                selectBoundedInteractiveBurst(
+                    ready,
+                    boundedBurstState
+                );
+
+
+            if (!selection.ok)
+            {
+                result.error =
+                    selection.error;
+
+                return result;
+            }
+
+
+            result.hasSelection =
+                selection.hasSelection;
+
+            if (selection.hasSelection)
+            {
+                result.stableWorkUnitId =
+                    selection.stableWorkUnitId;
+            }
+
+
+            result.error =
+                PolicyOracleError.none;
+
+            return result;
+        }
+    }
+}
+
+
+/*
+ * Open dispatch still allows each tested policy to select work.
+ */
+unittest
+{
+    const ReadyWork[3] ready =
+    [
+        ReadyWork(
+            1100,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            1101,
+            1,
+            PolicyClass.interactive,
+            100
+        ),
+
+        ReadyWork(
+            1102,
+            2,
+            PolicyClass.throughput,
+            50
+        )
+    ];
+
+
+    foreach (
+        policy;
+        [
+            SchedulingPolicyKind.fifo,
+            SchedulingPolicyKind.strictPriority,
+            SchedulingPolicyKind.boundedInteractiveBurst
+        ]
+    )
+    {
+        DispatchGateState gate;
+
+        BoundedInteractiveBurstState burst;
+
+        burst.maxInteractiveBurst = 2;
+
+
+        auto selection =
+            selectWithTerminationGate(
+                policy,
+                ready[],
+                gate,
+                burst
+            );
+
+
+        assert(selection.ok);
+        assert(selection.hasSelection);
+    }
+}
+
+
+/*
+ * R0.4c-5 failure gate.
+ *
+ * After failure observation, no tested policy may admit later ready work.
+ *
+ * The ready set deliberately remains non-empty.
+ */
+unittest
+{
+    const ReadyWork[3] ready =
+    [
+        ReadyWork(
+            1200,
+            0,
+            PolicyClass.throughput,
+            int.min
+        ),
+
+        ReadyWork(
+            1201,
+            1,
+            PolicyClass.interactive,
+            int.max
+        ),
+
+        ReadyWork(
+            1202,
+            2,
+            PolicyClass.interactive,
+            int.max
+        )
+    ];
+
+
+    foreach (
+        policy;
+        [
+            SchedulingPolicyKind.fifo,
+            SchedulingPolicyKind.strictPriority,
+            SchedulingPolicyKind.boundedInteractiveBurst
+        ]
+    )
+    {
+        DispatchGateState gate;
+
+        gate.observeFailure();
+
+
+        BoundedInteractiveBurstState burst;
+
+        burst.maxInteractiveBurst = 2;
+
+        burst.consecutiveInteractiveAdmissions = 1;
+
+
+        const beforeBurst =
+            burst;
+
+
+        auto selection =
+            selectWithTerminationGate(
+                policy,
+                ready[],
+                gate,
+                burst
+            );
+
+
+        assert(selection.ok);
+        assert(!selection.hasSelection);
+
+        assert(
+            gate.termination
+            == DispatchTermination.failed
+        );
+
+
+        /*
+         * Closed dispatch cannot advance fairness state.
+         */
+        assert(
+            burst.maxInteractiveBurst
+            == beforeBurst.maxInteractiveBurst
+        );
+
+        assert(
+            burst.consecutiveInteractiveAdmissions
+            == beforeBurst.consecutiveInteractiveAdmissions
+        );
+    }
+}
+
+
+/*
+ * R0.4c-5 cancellation gate.
+ *
+ * Cancellation has the same admission effect as failure:
+ *
+ *     no later policy selection
+ */
+unittest
+{
+    const ReadyWork[2] ready =
+    [
+        ReadyWork(
+            1300,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            1301,
+            1,
+            PolicyClass.interactive,
+            1
+        )
+    ];
+
+
+    foreach (
+        policy;
+        [
+            SchedulingPolicyKind.fifo,
+            SchedulingPolicyKind.strictPriority,
+            SchedulingPolicyKind.boundedInteractiveBurst
+        ]
+    )
+    {
+        DispatchGateState gate;
+
+        gate.observeCancellation();
+
+
+        BoundedInteractiveBurstState burst;
+
+        burst.maxInteractiveBurst = 3;
+
+        burst.consecutiveInteractiveAdmissions = 2;
+
+
+        const beforeBurst =
+            burst;
+
+
+        auto selection =
+            selectWithTerminationGate(
+                policy,
+                ready[],
+                gate,
+                burst
+            );
+
+
+        assert(selection.ok);
+        assert(!selection.hasSelection);
+
+        assert(
+            gate.termination
+            == DispatchTermination.cancelled
+        );
+
+
+        assert(
+            burst.maxInteractiveBurst
+            == beforeBurst.maxInteractiveBurst
+        );
+
+        assert(
+            burst.consecutiveInteractiveAdmissions
+            == beforeBurst.consecutiveInteractiveAdmissions
+        );
+    }
+}
+
+
+/*
+ * Termination dominates policy validation.
+ *
+ * Once dispatch is closed, ambiguous ready metadata is no longer consulted.
+ *
+ * This proves that a later policy error cannot reopen or override request
+ * termination.
+ */
+unittest
+{
+    const ReadyWork[2] policyInvalidReady =
+    [
+        ReadyWork(
+            1400,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            1400,
+            0,
+            PolicyClass.interactive,
+            100
+        )
+    ];
+
+
+    foreach (
+        policy;
+        [
+            SchedulingPolicyKind.fifo,
+            SchedulingPolicyKind.strictPriority,
+            SchedulingPolicyKind.boundedInteractiveBurst
+        ]
+    )
+    {
+        DispatchGateState gate;
+
+        gate.observeFailure();
+
+
+        BoundedInteractiveBurstState burst;
+
+        /*
+         * Deliberately invalid P2 configuration as well.
+         *
+         * Closed dispatch must still return no admission without consulting
+         * the policy.
+         */
+        burst.maxInteractiveBurst = 0;
+
+        burst.consecutiveInteractiveAdmissions = 77;
+
+
+        auto selection =
+            selectWithTerminationGate(
+                policy,
+                policyInvalidReady[],
+                gate,
+                burst
+            );
+
+
+        assert(selection.ok);
+        assert(!selection.hasSelection);
+
+        assert(
+            burst.maxInteractiveBurst
+            == 0
+        );
+
+        assert(
+            burst.consecutiveInteractiveAdmissions
+            == 77
+        );
+    }
+}
+
+
+/*
+ * The first observed terminal reason remains stable.
+ */
+unittest
+{
+    DispatchGateState failedFirst;
+
+    failedFirst.observeFailure();
+    failedFirst.observeCancellation();
+
+    assert(
+        failedFirst.termination
+        == DispatchTermination.failed
+    );
+
+
+    DispatchGateState cancelledFirst;
+
+    cancelledFirst.observeCancellation();
+    cancelledFirst.observeFailure();
+
+    assert(
+        cancelledFirst.termination
+        == DispatchTermination.cancelled
+    );
+}
+
