@@ -590,6 +590,87 @@ struct PipelineStateMachine
 
 
     /++
+        Releases one materialized work unit that is waiting for compute.
+
+        This transition exists for request termination cleanup.
+
+        It skips compute deliberately:
+
+            readyForCompute
+                ->
+            released
+
+        The retained handoff credit and active-work ownership end here.
+
+        Resident raster bytes are owned by the caller's retained fixture and
+        must be released by that caller before or together with this semantic
+        transition.
+    +/
+    PipelineTransitionError releaseReadyWithoutCompute(
+        ref PipelineWorkState work
+    )
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        if (!invariantsHold)
+        {
+            return PipelineTransitionError.invalidAccounting;
+        }
+
+
+        if (
+            work.stage
+            != PipelineStage.readyForCompute
+        )
+        {
+            return PipelineTransitionError.wrongStage;
+        }
+
+
+        if (
+            accounting.readyForCompute == 0
+            || accounting.handoffCreditsInUse == 0
+            || accounting.activeWorkUnits == 0
+        )
+        {
+            return PipelineTransitionError.invalidAccounting;
+        }
+
+
+        const previousWork =
+            work;
+
+        const previousAccounting =
+            accounting;
+
+
+        work.stage =
+            PipelineStage.released;
+
+        --accounting.readyForCompute;
+        --accounting.handoffCreditsInUse;
+        --accounting.activeWorkUnits;
+
+
+        if (!invariantsHold)
+        {
+            work =
+                previousWork;
+
+            accounting =
+                previousAccounting;
+
+            return PipelineTransitionError.internalFailure;
+        }
+
+
+        return PipelineTransitionError.none;
+    }
+
+
+    /++
         Releases one successfully completed work unit.
 
         Active-work ownership ends here.

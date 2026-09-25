@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0 through R0.4d-3 complete; R0.4d-4 implementation — local compiler validation pending
+Status: R0.4d-0 through R0.4d-4 complete; R0.4d-5 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -18,6 +18,7 @@ e9f8665 research: establish R0.4d pipeline vocabulary and reuse
 d76f921 research: prove R0.4d deterministic pipeline state machine
 68b1ccc research: prove R0.4d bounded pipeline stage overlap
 1319838 research: prove R0.4d deterministic backpressure
+c06ae73 research: prove R0.4d stage-order independence
 ```
 
 R0.4d-0 local compiler evidence:
@@ -49,6 +50,14 @@ R0.4d-3 local compiler evidence:
 ```text
 DMD: 14 modules passed unittests
 LDC: 14 modules passed unittests
+```
+
+
+R0.4d-4 local compiler evidence:
+
+```text
+DMD: 15 modules passed unittests
+LDC: 15 modules passed unittests
 ```
 
 Authoritative research document:
@@ -677,4 +686,97 @@ The completion trace is evidence only.
 It does not define semantic output order.
 
 No sleep or timing threshold is used.
+
+## 22. R0.4d-4 result
+
+R0.4d-4 is complete.
+
+Two real compute workers were advanced to `computing` simultaneously and then
+forced, using independent explicit barriers, to complete in both orders:
+
+```text
+0 -> 1
+1 -> 0
+```
+
+After the first completion in either run, request completion remained false.
+
+After the second completion, output commit and release, request completion
+became true.
+
+Both forced completion orders produced exact R0.4a output and coverage, and
+both ended with zero active/handoff/resident state.
+
+No timing assumption was used.
+
+## 23. R0.4d-5 termination and cleanup
+
+R0.4d-5 introduces one request-local termination gate with reasons:
+
+```text
+open
+failed
+cancelled
+```
+
+The first terminal reason wins.
+
+The gate is checked before:
+
+```text
+new materialization admission
+new compute start
+```
+
+A closed gate does not preempt a stage body that already started.
+
+### Failure while materializing
+
+A real materialization worker is held in-flight by explicit barriers.
+
+Failure is observed while that stage remains running.
+
+After failure:
+
+- a new work unit cannot enter materialization;
+- the already-running materialization is released and allowed to finish;
+- its resulting resident raster may reach `readyForCompute`;
+- compute start is rejected by the closed gate;
+- retained resident state is released;
+- the state machine uses `readyForCompute -> released` cleanup;
+- final active/handoff/resident state returns to zero.
+
+### Cancellation while computing
+
+Two work units are first materialized.
+
+One starts compute.
+
+The other remains `readyForCompute`.
+
+The running compute worker is then held in-flight by explicit barriers and
+cancellation is observed.
+
+After cancellation:
+
+- the queued ready work unit cannot start compute;
+- a new work unit cannot enter materialization;
+- the already-running compute is allowed to finish;
+- that completed running work may publish its output/coverage;
+- the queued resident raster is released without compute;
+- request completion remains false because coverage is only partial;
+- final active/handoff/resident state returns to zero.
+
+The new state-machine cleanup transition:
+
+```text
+readyForCompute
+    ->
+released
+```
+
+exists only for retained-work termination cleanup.
+
+R0.4d-5 does not add stage preemption, exceptions, timeouts, worker pools or a
+public cancellation API.
 
