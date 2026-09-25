@@ -1704,3 +1704,1048 @@ unittest
     );
 }
 
+
+/*
+ * R0.4b-3 deterministic parallel failure evidence.
+ *
+ * The failure fixtures deliberately start only two stable work units:
+ *
+ *     work unit 0 -> already-running sibling
+ *     work unit 1 -> injected failure
+ *
+ * Work units 2 and 3 remain undispatched after the coordinator observes the
+ * failure. This makes dispatch closure explicit without introducing a general
+ * scheduler or timing-dependent queue race.
+ */
+private enum InjectedParallelFailureKind : ubyte
+{
+    materialization,
+    operation
+}
+
+
+private enum ObservedParallelFailure : ubyte
+{
+    none,
+    materialization,
+    operation,
+    unexpected
+}
+
+
+private struct ParallelFailureAccounting
+{
+    size_t workUnitsRequired;
+    size_t workUnitsStarted;
+    size_t workUnitsCompleted;
+    size_t workUnitsFailed;
+    size_t workUnitsNeverStarted;
+
+    size_t materializationsStarted;
+    size_t materializationsCompleted;
+
+    size_t operationExecutionsStarted;
+    size_t operationExecutionsCompleted;
+
+    size_t peakActiveWorkUnits;
+
+    size_t peakResidentRasterBytes;
+    size_t currentResidentRasterBytes;
+
+    size_t releases;
+
+    bool dispatchClosed;
+}
+
+
+private struct ParallelFailureResult
+{
+    ObservedParallelFailure failure =
+        ObservedParallelFailure.unexpected;
+
+    size_t failedWorkUnitId =
+        size_t.max;
+
+    bool requestCompleted;
+
+    ubyte[] output;
+    ubyte[] completedCoverage;
+    ubyte[] completedWorkUnits;
+
+    ParallelFailureAccounting accounting;
+}
+
+
+/*
+ * Work unit 0.
+ *
+ * It reaches a deterministic resident-ready boundary and remains there until
+ * the coordinator has observed the sibling failure and closed dispatch.
+ *
+ * It is then allowed to execute normally and may become completed even though
+ * the overall request is already failed.
+ */
+private class HeldSiblingWorker
+{
+    Region2D logicalExtent;
+    Region2D outputTask;
+
+    Barrier siblingResidentGate;
+    Barrier releaseSiblingGate;
+
+    ParallelWorkResult result;
+
+
+    this(
+        Region2D logicalExtent,
+        Region2D outputTask,
+        Barrier siblingResidentGate,
+        Barrier releaseSiblingGate
+    )
+    {
+        this.logicalExtent =
+            logicalExtent;
+
+        this.outputTask =
+            outputTask;
+
+        this.siblingResidentGate =
+            siblingResidentGate;
+
+        this.releaseSiblingGate =
+            releaseSiblingGate;
+    }
+
+
+    private void passCoordinatorGates()
+    {
+        siblingResidentGate.wait();
+        releaseSiblingGate.wait();
+    }
+
+
+    void run()
+    {
+        if (
+            !outputTask.hasRepresentableExtent()
+            || outputTask.empty()
+        )
+        {
+            result.error =
+                ParallelWorkError.invalidTask;
+
+            passCoordinatorGates();
+            return;
+        }
+
+
+        ExpandedDependency dependency;
+
+        if (!tryExpandDependency(
+            logicalExtent,
+            outputTask,
+            neighbourhoodMargins(),
+            dependency
+        ))
+        {
+            result.error =
+                ParallelWorkError.dependencyDerivationFailed;
+
+            passCoordinatorGates();
+            return;
+        }
+
+
+        if (
+            dependency.contextDeficit
+            != ContextDeficit.init
+        )
+        {
+            result.error =
+                ParallelWorkError.unsatisfiedContext;
+
+            passCoordinatorGates();
+            return;
+        }
+
+
+        result.materializationStarted = true;
+
+
+        auto source =
+            materializeProcedural(
+                logicalExtent,
+                dependency.validInput
+            );
+
+
+        if (!source.ok)
+        {
+            result.error =
+                ParallelWorkError.materializationFailed;
+
+            passCoordinatorGates();
+            return;
+        }
+
+
+        result.materializationCompleted = true;
+
+        result.residentBytes =
+            source.materialized.residentBytes;
+
+
+        siblingResidentGate.wait();
+
+        /*
+         * The resident source remains alive while the coordinator releases the
+         * failing sibling, observes its failure and closes dispatch.
+         */
+        releaseSiblingGate.wait();
+
+
+        result.operationStarted = true;
+
+
+        ubyte[] output;
+
+        if (!tryExecuteResidentNeighbourhood(
+            outputTask,
+            dependency,
+            source.materialized,
+            output
+        ))
+        {
+            result.error =
+                ParallelWorkError.sampleReadFailed;
+
+            return;
+        }
+
+
+        result.output =
+            output;
+
+        result.operationCompleted = true;
+
+        result.error =
+            ParallelWorkError.none;
+    }
+}
+
+
+/*
+ * Work unit 1.
+ *
+ * Failure is keyed by stable work identity rather than execution or completion
+ * ordinal.
+ *
+ * The worker cannot inject its failure until the coordinator has independently
+ * confirmed that work unit 0 is already running with resident input.
+ */
+private class InjectedFailureWorker
+{
+    Region2D logicalExtent;
+    Region2D outputTask;
+
+    InjectedParallelFailureKind injectionKind;
+
+    Barrier allowFailureGate;
+    Barrier failureObservedGate;
+
+    ParallelWorkResult result;
+
+    ObservedParallelFailure observedFailure =
+        ObservedParallelFailure.unexpected;
+
+
+    this(
+        Region2D logicalExtent,
+        Region2D outputTask,
+        InjectedParallelFailureKind injectionKind,
+        Barrier allowFailureGate,
+        Barrier failureObservedGate
+    )
+    {
+        this.logicalExtent =
+            logicalExtent;
+
+        this.outputTask =
+            outputTask;
+
+        this.injectionKind =
+            injectionKind;
+
+        this.allowFailureGate =
+            allowFailureGate;
+
+        this.failureObservedGate =
+            failureObservedGate;
+    }
+
+
+    private void reportUnexpectedFailure(
+        ParallelWorkError error
+    )
+    {
+        result.error =
+            error;
+
+        observedFailure =
+            ObservedParallelFailure.unexpected;
+
+        allowFailureGate.wait();
+        failureObservedGate.wait();
+    }
+
+
+    void run()
+    {
+        if (
+            !outputTask.hasRepresentableExtent()
+            || outputTask.empty()
+        )
+        {
+            reportUnexpectedFailure(
+                ParallelWorkError.invalidTask
+            );
+
+            return;
+        }
+
+
+        ExpandedDependency dependency;
+
+        if (!tryExpandDependency(
+            logicalExtent,
+            outputTask,
+            neighbourhoodMargins(),
+            dependency
+        ))
+        {
+            reportUnexpectedFailure(
+                ParallelWorkError.dependencyDerivationFailed
+            );
+
+            return;
+        }
+
+
+        if (
+            dependency.contextDeficit
+            != ContextDeficit.init
+        )
+        {
+            reportUnexpectedFailure(
+                ParallelWorkError.unsatisfiedContext
+            );
+
+            return;
+        }
+
+
+        result.materializationStarted = true;
+
+
+        if (
+            injectionKind
+            == InjectedParallelFailureKind.materialization
+        )
+        {
+            /*
+             * Wait until the coordinator has observed the held sibling as
+             * already resident/running.
+             */
+            allowFailureGate.wait();
+
+            result.error =
+                ParallelWorkError.materializationFailed;
+
+            observedFailure =
+                ObservedParallelFailure.materialization;
+
+            failureObservedGate.wait();
+
+            return;
+        }
+
+
+        auto source =
+            materializeProcedural(
+                logicalExtent,
+                dependency.validInput
+            );
+
+
+        if (!source.ok)
+        {
+            reportUnexpectedFailure(
+                ParallelWorkError.materializationFailed
+            );
+
+            return;
+        }
+
+
+        result.materializationCompleted = true;
+
+        result.residentBytes =
+            source.materialized.residentBytes;
+
+
+        /*
+         * For operation failure the source is already resident before the
+         * coordinator releases this gate.
+         */
+        allowFailureGate.wait();
+
+
+        result.operationStarted = true;
+
+        result.error =
+            ParallelWorkError.internalFailure;
+
+        observedFailure =
+            ObservedParallelFailure.operation;
+
+
+        /*
+         * The resident source remains alive until the coordinator has observed
+         * the operation failure.
+         */
+        failureObservedGate.wait();
+    }
+}
+
+
+/*
+ * Publishes exactly one successfully completed sibling result into the
+ * request-local research output/coverage state.
+ */
+private bool tryPublishCompletedSibling(
+    Region2D requestedOutput,
+    Region2D task,
+    scope const(ubyte)[] taskOutput,
+    ref ubyte[] output,
+    ref ubyte[] completedCoverage
+)
+@safe
+{
+    if (
+        task.width != 0
+        && task.height
+            > size_t.max / task.width
+    )
+    {
+        return false;
+    }
+
+
+    if (
+        taskOutput.length
+        != task.width * task.height
+    )
+    {
+        return false;
+    }
+
+
+    if (
+        task.x < requestedOutput.x
+        || task.y < requestedOutput.y
+    )
+    {
+        return false;
+    }
+
+
+    const relativeX =
+        task.x
+        - requestedOutput.x;
+
+    const relativeY =
+        task.y
+        - requestedOutput.y;
+
+
+    foreach (localY; 0 .. task.height)
+    {
+        foreach (localX; 0 .. task.width)
+        {
+            const taskOutputIndex =
+                localY * task.width
+                + localX;
+
+            const requestOutputIndex =
+                (relativeY + localY)
+                    * requestedOutput.width
+                + relativeX
+                + localX;
+
+
+            if (
+                requestOutputIndex >= output.length
+                || requestOutputIndex
+                    >= completedCoverage.length
+                || completedCoverage[
+                    requestOutputIndex
+                ] != 0
+            )
+            {
+                return false;
+            }
+
+
+            output[requestOutputIndex] =
+                taskOutput[
+                    taskOutputIndex
+                ];
+
+            completedCoverage[
+                requestOutputIndex
+            ] = 1;
+        }
+    }
+
+    return true;
+}
+
+
+/*
+ * Executes one deterministic R0.4b-3 failure fixture.
+ *
+ * The legal decomposition contains four work units, but only work units 0 and
+ * 1 are admitted initially.
+ *
+ * Sequence:
+ *
+ * 1. work unit 0 materializes and blocks while resident;
+ * 2. the coordinator confirms that resident sibling;
+ * 3. work unit 1 is released to inject the selected failure;
+ * 4. the coordinator observes failure and closes dispatch;
+ * 5. work units 2 and 3 are never started;
+ * 6. work unit 0 is released and may complete normally;
+ * 7. all acquired resident input is released before return.
+ */
+private ParallelFailureResult executeDeterministicFailureFixture(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    scope const(Region2D)[] tasks,
+    InjectedParallelFailureKind injectionKind
+)
+{
+    ParallelFailureResult result;
+
+    result.accounting.workUnitsRequired =
+        tasks.length;
+
+
+    if (
+        tasks.length != 4
+        || !logicalExtent.hasRepresentableExtent()
+        || !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        return result;
+    }
+
+
+    if (
+        requestedOutput.width != 0
+        && requestedOutput.height
+            > size_t.max / requestedOutput.width
+    )
+    {
+        return result;
+    }
+
+
+    DecompositionIssue decompositionIssue;
+
+    if (!tryValidateDecomposition(
+        requestedOutput,
+        tasks,
+        decompositionIssue
+    ))
+    {
+        return result;
+    }
+
+
+    const sampleCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    result.output =
+        new ubyte[sampleCount];
+
+    result.completedCoverage =
+        new ubyte[sampleCount];
+
+    result.completedWorkUnits =
+        new ubyte[tasks.length];
+
+
+    auto siblingResidentGate =
+        new Barrier(2);
+
+    auto releaseSiblingGate =
+        new Barrier(2);
+
+    auto allowFailureGate =
+        new Barrier(2);
+
+    auto failureObservedGate =
+        new Barrier(2);
+
+
+    auto sibling =
+        new HeldSiblingWorker(
+            logicalExtent,
+            tasks[0],
+            siblingResidentGate,
+            releaseSiblingGate
+        );
+
+    auto failing =
+        new InjectedFailureWorker(
+            logicalExtent,
+            tasks[1],
+            injectionKind,
+            allowFailureGate,
+            failureObservedGate
+        );
+
+
+    auto siblingThread =
+        new Thread(
+            &sibling.run
+        );
+
+    auto failingThread =
+        new Thread(
+            &failing.run
+        );
+
+
+    siblingThread.start();
+    failingThread.start();
+
+    result.accounting.workUnitsStarted = 2;
+    result.accounting.peakActiveWorkUnits = 2;
+
+
+    /*
+     * Work unit 0 is now known to be resident and running.
+     *
+     * Work unit 1 is active but cannot inject failure until allowFailureGate.
+     */
+    siblingResidentGate.wait();
+
+
+    if (!sibling.result.materializationCompleted)
+    {
+        /*
+         * Still release every worker gate so an unexpected fixture failure
+         * cannot deadlock the test runner.
+         */
+        allowFailureGate.wait();
+        failureObservedGate.wait();
+        releaseSiblingGate.wait();
+
+        siblingThread.join();
+        failingThread.join();
+
+        return result;
+    }
+
+
+    /*
+     * For operation failure, the failing worker reaches allowFailureGate only
+     * after its own source has also materialized.
+     *
+     * For materialization failure, it reaches the same gate before acquiring
+     * resident input.
+     */
+    allowFailureGate.wait();
+
+
+    result.accounting.peakResidentRasterBytes =
+        sibling.result.residentBytes
+        + failing.result.residentBytes;
+
+    result.accounting.currentResidentRasterBytes =
+        result.accounting.peakResidentRasterBytes;
+
+
+    /*
+     * Failure is set before the failing worker enters failureObservedGate.
+     */
+    failureObservedGate.wait();
+
+
+    result.failure =
+        failing.observedFailure;
+
+    result.failedWorkUnitId = 1;
+
+    result.accounting.dispatchClosed = true;
+
+    result.accounting.workUnitsFailed = 1;
+
+    result.accounting.workUnitsNeverStarted =
+        tasks.length
+        - result.accounting.workUnitsStarted;
+
+
+    /*
+     * Dispatch is already closed before the held sibling is released.
+     *
+     * No thread is ever created for work units 2 or 3.
+     */
+    releaseSiblingGate.wait();
+
+
+    siblingThread.join();
+    failingThread.join();
+
+
+    if (sibling.result.materializationStarted)
+    {
+        ++result.accounting.materializationsStarted;
+    }
+
+    if (failing.result.materializationStarted)
+    {
+        ++result.accounting.materializationsStarted;
+    }
+
+
+    if (sibling.result.materializationCompleted)
+    {
+        ++result.accounting.materializationsCompleted;
+        ++result.accounting.releases;
+    }
+
+    if (failing.result.materializationCompleted)
+    {
+        ++result.accounting.materializationsCompleted;
+        ++result.accounting.releases;
+    }
+
+
+    if (sibling.result.operationStarted)
+    {
+        ++result.accounting.operationExecutionsStarted;
+    }
+
+    if (failing.result.operationStarted)
+    {
+        ++result.accounting.operationExecutionsStarted;
+    }
+
+
+    if (sibling.result.operationCompleted)
+    {
+        ++result.accounting.operationExecutionsCompleted;
+    }
+
+    if (failing.result.operationCompleted)
+    {
+        ++result.accounting.operationExecutionsCompleted;
+    }
+
+
+    result.accounting.currentResidentRasterBytes = 0;
+
+
+    if (sibling.result.ok)
+    {
+        ++result.accounting.workUnitsCompleted;
+
+        result.completedWorkUnits[0] = 1;
+
+
+        if (!tryPublishCompletedSibling(
+            requestedOutput,
+            tasks[0],
+            sibling.result.output,
+            result.output,
+            result.completedCoverage
+        ))
+        {
+            result.failure =
+                ObservedParallelFailure.unexpected;
+
+            return result;
+        }
+    }
+
+
+    result.requestCompleted = false;
+
+    return result;
+}
+
+
+/*
+ * Shared R0.4b-3 fixture.
+ *
+ * Four horizontal stripes form one exact legal decomposition.
+ *
+ * Work unit 0 is the held sibling.
+ * Work unit 1 is the stable injected-failure identity.
+ * Work units 2 and 3 must remain not started.
+ */
+private enum Region2D failureLogicalExtent =
+    Region2D(
+        1000,
+        2000,
+        100,
+        100
+    );
+
+
+private enum Region2D failureRequestedOutput =
+    Region2D(
+        1020,
+        2030,
+        8,
+        4
+    );
+
+
+private enum Region2D[4] failureTasks =
+[
+    Region2D(1020, 2030, 8, 1),
+    Region2D(1020, 2031, 8, 1),
+    Region2D(1020, 2032, 8, 1),
+    Region2D(1020, 2033, 8, 1)
+];
+
+
+/*
+ * Verifies properties common to both deterministic R0.4b-3 failure modes.
+ */
+private void verifyParallelFailureCommon(
+    ParallelFailureResult result,
+    ObservedParallelFailure expectedFailure,
+    size_t expectedMaterializationsCompleted,
+    size_t expectedOperationsStarted
+)
+@safe
+{
+    assert(
+        result.failure
+        == expectedFailure
+    );
+
+    assert(
+        result.failedWorkUnitId
+        == 1
+    );
+
+    assert(!result.requestCompleted);
+
+
+    assert(
+        result.accounting.workUnitsRequired
+        == failureTasks.length
+    );
+
+    assert(
+        result.accounting.workUnitsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.workUnitsCompleted
+        == 1
+    );
+
+    assert(
+        result.accounting.workUnitsFailed
+        == 1
+    );
+
+    assert(
+        result.accounting.workUnitsNeverStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.dispatchClosed
+    );
+
+    assert(
+        result.accounting.peakActiveWorkUnits
+        == 2
+    );
+
+
+    assert(
+        result.accounting.materializationsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.materializationsCompleted
+        == expectedMaterializationsCompleted
+    );
+
+
+    assert(
+        result.accounting.operationExecutionsStarted
+        == expectedOperationsStarted
+    );
+
+    assert(
+        result.accounting.operationExecutionsCompleted
+        == 1
+    );
+
+
+    assert(
+        result.accounting.releases
+        == expectedMaterializationsCompleted
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        != 0
+    );
+
+
+    assert(
+        result.completedWorkUnits.length
+        == failureTasks.length
+    );
+
+    assert(result.completedWorkUnits[0] == 1);
+    assert(result.completedWorkUnits[1] == 0);
+    assert(result.completedWorkUnits[2] == 0);
+    assert(result.completedWorkUnits[3] == 0);
+
+
+    /*
+     * The successfully finishing already-running sibling remains valid
+     * research state even though the request as a whole failed.
+     */
+    auto siblingOracle =
+        executeSynchronousNeighbourhood(
+            failureLogicalExtent,
+            failureTasks[0],
+            failureTasks[0 .. 1]
+        );
+
+    assert(siblingOracle.ok);
+
+
+    foreach (localX; 0 .. failureTasks[0].width)
+    {
+        assert(
+            result.output[localX]
+            == siblingOracle.output[localX]
+        );
+
+        assert(
+            result.completedCoverage[localX]
+            == 1
+        );
+    }
+
+
+    foreach (
+        index;
+        failureTasks[0].width
+            .. result.completedCoverage.length
+    )
+    {
+        assert(
+            result.completedCoverage[index]
+            == 0
+        );
+    }
+}
+
+
+/*
+ * R0.4b-3 materialization failure with an already-running sibling.
+ *
+ * Work unit 0 is resident before work unit 1 is allowed to inject its
+ * materialization failure.
+ *
+ * After failure observation:
+ *
+ * - dispatch closes;
+ * - work units 2 and 3 never start;
+ * - work unit 0 is allowed to finish normally;
+ * - request completion remains false;
+ * - final work-unit-local residency is zero.
+ */
+unittest
+{
+    auto result =
+        executeDeterministicFailureFixture(
+            failureLogicalExtent,
+            failureRequestedOutput,
+            failureTasks[],
+            InjectedParallelFailureKind.materialization
+        );
+
+
+    verifyParallelFailureCommon(
+        result,
+        ObservedParallelFailure.materialization,
+        1,
+        1
+    );
+
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        > 0
+    );
+}
+
+
+/*
+ * R0.4b-3 operation failure with an already-running sibling.
+ *
+ * Both work units 0 and 1 have resident source materializations before work
+ * unit 1 is allowed to inject its operation failure.
+ *
+ * The failing work unit never completes, but both resident sources are
+ * released before return.
+ */
+unittest
+{
+    auto result =
+        executeDeterministicFailureFixture(
+            failureLogicalExtent,
+            failureRequestedOutput,
+            failureTasks[],
+            InjectedParallelFailureKind.operation
+        );
+
+
+    verifyParallelFailureCommon(
+        result,
+        ObservedParallelFailure.operation,
+        2,
+        2
+    );
+
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        > failureTasks[0].width
+    );
+}
+
