@@ -111,6 +111,7 @@ private enum ParallelWorkError : ubyte
     dependencyDerivationFailed,
     unsatisfiedContext,
     materializationFailed,
+    operationFailed,
     sampleReadFailed,
 
     internalFailure
@@ -2103,7 +2104,7 @@ private class InjectedFailureWorker
         result.operationStarted = true;
 
         result.error =
-            ParallelWorkError.internalFailure;
+            ParallelWorkError.operationFailed;
 
         observedFailure =
             ObservedParallelFailure.operation;
