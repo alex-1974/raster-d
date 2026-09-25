@@ -406,6 +406,14 @@ private class SuccessWorker
     Barrier residentReleaseGate;
     Barrier operationReadyGate;
 
+    /*
+     * Optional R0.4b-2 deterministic completion-order controls.
+     *
+     * Null means that the ordinary R0.4b-1 success path is unchanged.
+     */
+    Barrier preOperationGate;
+    Barrier postCompletionGate;
+
     ParallelWorkResult result;
 
 
@@ -414,7 +422,9 @@ private class SuccessWorker
         Region2D outputTask,
         Barrier residentReadyGate,
         Barrier residentReleaseGate,
-        Barrier operationReadyGate
+        Barrier operationReadyGate,
+        Barrier preOperationGate = null,
+        Barrier postCompletionGate = null
     )
     {
         this.logicalExtent =
@@ -431,6 +441,12 @@ private class SuccessWorker
 
         this.operationReadyGate =
             operationReadyGate;
+
+        this.preOperationGate =
+            preOperationGate;
+
+        this.postCompletionGate =
+            postCompletionGate;
     }
 
 
@@ -439,6 +455,16 @@ private class SuccessWorker
         residentReadyGate.wait();
         residentReleaseGate.wait();
         operationReadyGate.wait();
+
+        if (preOperationGate !is null)
+        {
+            preOperationGate.wait();
+        }
+
+        if (postCompletionGate !is null)
+        {
+            postCompletionGate.wait();
+        }
     }
 
 
@@ -522,6 +548,12 @@ private class SuccessWorker
         operationReadyGate.wait();
 
 
+        if (preOperationGate !is null)
+        {
+            preOperationGate.wait();
+        }
+
+
         ubyte[] output;
 
         if (!tryExecuteResidentNeighbourhood(
@@ -545,6 +577,12 @@ private class SuccessWorker
 
         result.error =
             ParallelWorkError.none;
+
+
+        if (postCompletionGate !is null)
+        {
+            postCompletionGate.wait();
+        }
     }
 }
 
@@ -1223,3 +1261,446 @@ unittest
         );
     }
 }
+
+
+/*
+ * R0.4b-2 research result for one deterministically forced out-of-order pair.
+ *
+ * This fixture is deliberately separate from the general bounded-success
+ * executor. It exists only to prove that completion/publication order may
+ * differ from decomposition order without changing semantic output.
+ */
+private struct ForcedOutOfOrderResult
+{
+    bool ok;
+
+    ubyte[] output;
+    ubyte[] completedCoverage;
+
+    size_t[2] completionOrder;
+
+    size_t peakActiveWorkUnits;
+    size_t peakResidentRasterBytes;
+
+    size_t currentResidentRasterBytes;
+
+    size_t releases;
+}
+
+
+/*
+ * Executes exactly two legal work units with deterministic completion order:
+ *
+ *     work unit 1 completes first
+ *     work unit 0 completes second
+ *
+ * Both workers still materialize concurrently before either operation runs.
+ *
+ * No wall-clock timing is used.
+ */
+private ForcedOutOfOrderResult executeForcedOutOfOrderPair(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    scope const(Region2D)[] tasks
+)
+{
+    ForcedOutOfOrderResult result;
+
+
+    if (
+        tasks.length != 2
+        || !logicalExtent.hasRepresentableExtent()
+        || !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        return result;
+    }
+
+
+    if (
+        requestedOutput.width != 0
+        && requestedOutput.height
+            > size_t.max / requestedOutput.width
+    )
+    {
+        return result;
+    }
+
+
+    DecompositionIssue decompositionIssue;
+
+    if (!tryValidateDecomposition(
+        requestedOutput,
+        tasks,
+        decompositionIssue
+    ))
+    {
+        return result;
+    }
+
+
+    const sampleCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    result.output =
+        new ubyte[sampleCount];
+
+    result.completedCoverage =
+        new ubyte[sampleCount];
+
+
+    auto residentReadyGate =
+        new Barrier(3);
+
+    auto residentReleaseGate =
+        new Barrier(3);
+
+    auto operationReadyGate =
+        new Barrier(3);
+
+
+    /*
+     * Worker 0 is held before operation execution.
+     *
+     * Worker 1 has no pre-operation hold and signals the coordinator only
+     * after it has fully completed its operation.
+     */
+    auto releaseWorkUnit0Gate =
+        new Barrier(2);
+
+    auto workUnit1CompletedGate =
+        new Barrier(2);
+
+    auto workUnit0CompletedGate =
+        new Barrier(2);
+
+
+    auto worker0 =
+        new SuccessWorker(
+            logicalExtent,
+            tasks[0],
+            residentReadyGate,
+            residentReleaseGate,
+            operationReadyGate,
+            releaseWorkUnit0Gate,
+            workUnit0CompletedGate
+        );
+
+    auto worker1 =
+        new SuccessWorker(
+            logicalExtent,
+            tasks[1],
+            residentReadyGate,
+            residentReleaseGate,
+            operationReadyGate,
+            null,
+            workUnit1CompletedGate
+        );
+
+
+    auto thread0 =
+        new Thread(
+            &worker0.run
+        );
+
+    auto thread1 =
+        new Thread(
+            &worker1.run
+        );
+
+
+    thread0.start();
+    thread1.start();
+
+
+    /*
+     * Both workers now hold their independent resident materializations.
+     */
+    residentReadyGate.wait();
+
+
+    if (
+        worker0.result.materializationCompleted
+        && worker1.result.materializationCompleted
+    )
+    {
+        result.peakActiveWorkUnits = 2;
+
+        result.peakResidentRasterBytes =
+            worker0.result.residentBytes
+            + worker1.result.residentBytes;
+
+        result.currentResidentRasterBytes =
+            result.peakResidentRasterBytes;
+    }
+
+
+    residentReleaseGate.wait();
+
+    operationReadyGate.wait();
+
+
+    /*
+     * Worker 0 is blocked at releaseWorkUnit0Gate.
+     *
+     * Worker 1 runs its real neighbourhood operation and cannot leave its
+     * function until the coordinator observes workUnit1CompletedGate.
+     */
+    workUnit1CompletedGate.wait();
+
+    result.completionOrder[0] = 1;
+
+
+    /*
+     * Only after work unit 1 has completed do we allow work unit 0 to run.
+     */
+    releaseWorkUnit0Gate.wait();
+
+    workUnit0CompletedGate.wait();
+
+    result.completionOrder[1] = 0;
+
+
+    thread0.join();
+    thread1.join();
+
+
+    if (worker0.result.materializationCompleted)
+    {
+        ++result.releases;
+    }
+
+    if (worker1.result.materializationCompleted)
+    {
+        ++result.releases;
+    }
+
+    result.currentResidentRasterBytes = 0;
+
+
+    if (
+        !worker0.result.ok
+        || !worker1.result.ok
+        || result.releases != 2
+    )
+    {
+        return result;
+    }
+
+
+    SuccessWorker[2] workers =
+    [
+        worker0,
+        worker1
+    ];
+
+
+    /*
+     * Reassemble in observed completion order, not decomposition order.
+     *
+     * Logical region placement determines the destination pixels.
+     */
+    foreach (completionPosition; 0 .. result.completionOrder.length)
+    {
+        const workUnitId =
+            result.completionOrder[
+                completionPosition
+            ];
+
+        const task =
+            tasks[workUnitId];
+
+        const worker =
+            workers[workUnitId];
+
+
+        if (
+            task.width != 0
+            && task.height
+                > size_t.max / task.width
+        )
+        {
+            return ForcedOutOfOrderResult.init;
+        }
+
+
+        if (
+            worker.result.output.length
+            != task.width * task.height
+        )
+        {
+            return ForcedOutOfOrderResult.init;
+        }
+
+
+        const relativeX =
+            task.x
+            - requestedOutput.x;
+
+        const relativeY =
+            task.y
+            - requestedOutput.y;
+
+
+        foreach (localY; 0 .. task.height)
+        {
+            foreach (localX; 0 .. task.width)
+            {
+                const taskOutputIndex =
+                    localY * task.width
+                    + localX;
+
+                const requestOutputIndex =
+                    (relativeY + localY)
+                        * requestedOutput.width
+                    + relativeX
+                    + localX;
+
+
+                if (
+                    requestOutputIndex
+                    >= result.output.length
+                    || result.completedCoverage[
+                        requestOutputIndex
+                    ] != 0
+                )
+                {
+                    return ForcedOutOfOrderResult.init;
+                }
+
+
+                result.output[requestOutputIndex] =
+                    worker.result.output[
+                        taskOutputIndex
+                    ];
+
+                result.completedCoverage[
+                    requestOutputIndex
+                ] = 1;
+            }
+        }
+    }
+
+
+    result.ok = true;
+
+    return result;
+}
+
+
+/*
+ * R0.4b-2 deterministic out-of-order completion.
+ *
+ * Decomposition order is:
+ *
+ *     0, 1
+ *
+ * Forced completion/publication order is:
+ *
+ *     1, 0
+ *
+ * The final output must still equal the synchronous R0.4a oracle exactly.
+ */
+unittest
+{
+    const logicalExtent =
+        Region2D(
+            1000,
+            2000,
+            100,
+            100
+        );
+
+    const requestedOutput =
+        Region2D(
+            1020,
+            2030,
+            8,
+            3
+        );
+
+
+    const Region2D[2] tasks =
+    [
+        Region2D(
+            1020,
+            2030,
+            3,
+            3
+        ),
+
+        Region2D(
+            1023,
+            2030,
+            5,
+            3
+        )
+    ];
+
+
+    auto synchronous =
+        executeSynchronousNeighbourhood(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+    assert(synchronous.ok);
+
+
+    auto forced =
+        executeForcedOutOfOrderPair(
+            logicalExtent,
+            requestedOutput,
+            tasks[]
+        );
+
+
+    assert(forced.ok);
+
+    assert(
+        forced.completionOrder[0]
+        == 1
+    );
+
+    assert(
+        forced.completionOrder[1]
+        == 0
+    );
+
+
+    assert(
+        forced.output
+        == synchronous.output
+    );
+
+    assert(
+        forced.completedCoverage
+        == synchronous.completedCoverage
+    );
+
+
+    assert(
+        forced.peakActiveWorkUnits
+        == 2
+    );
+
+    assert(
+        forced.peakResidentRasterBytes
+        > synchronous.accounting
+            .peakResidentRasterBytes
+    );
+
+    assert(
+        forced.currentResidentRasterBytes
+        == 0
+    );
+
+    assert(
+        forced.releases
+        == 2
+    );
+}
+
