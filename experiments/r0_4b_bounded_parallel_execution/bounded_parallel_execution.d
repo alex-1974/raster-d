@@ -2750,3 +2750,514 @@ unittest
     );
 }
 
+
+/*
+ * R0.4b-4 deterministic cancellation evidence.
+ *
+ * Cancellation remains a request/coordinator state.
+ *
+ * No cancellation token is passed into RasterView, materialization or the
+ * neighbourhood kernel.
+ */
+private struct ParallelCancellationAccounting
+{
+    size_t workUnitsRequired;
+    size_t workUnitsStarted;
+    size_t workUnitsCompleted;
+    size_t workUnitsNeverStarted;
+
+    size_t materializationsStarted;
+    size_t materializationsCompleted;
+
+    size_t operationExecutionsStarted;
+    size_t operationExecutionsCompleted;
+
+    size_t peakActiveWorkUnits;
+
+    size_t peakResidentRasterBytes;
+    size_t currentResidentRasterBytes;
+
+    size_t releases;
+
+    bool cancellationObserved;
+    bool dispatchClosed;
+}
+
+
+private struct ParallelCancellationResult
+{
+    bool cancelled;
+    bool requestCompleted;
+
+    ubyte[] output;
+    ubyte[] completedCoverage;
+    ubyte[] completedWorkUnits;
+
+    ParallelCancellationAccounting accounting;
+}
+
+
+/*
+ * Executes the deterministic active-work cancellation fixture.
+ *
+ * The legal decomposition contains four work units.
+ *
+ * Only work units 0 and 1 are initially admitted.
+ *
+ * Sequence:
+ *
+ * 1. work units 0 and 1 independently materialize their required input;
+ * 2. both block at one shared resident-ready barrier;
+ * 3. the coordinator observes cancellation while both are known active and
+ *    resident;
+ * 4. dispatch closes before any later work is admitted;
+ * 5. work units 2 and 3 therefore never start;
+ * 6. the already-running work units are released and may finish normally;
+ * 7. all work-unit-local resident resources are released before return.
+ */
+private ParallelCancellationResult executeDeterministicCancellationFixture(
+    Region2D logicalExtent,
+    Region2D requestedOutput,
+    scope const(Region2D)[] tasks
+)
+{
+    ParallelCancellationResult result;
+
+    result.accounting.workUnitsRequired =
+        tasks.length;
+
+
+    if (
+        tasks.length != 4
+        || !logicalExtent.hasRepresentableExtent()
+        || !requestedOutput.hasRepresentableExtent()
+        || requestedOutput.empty()
+    )
+    {
+        return result;
+    }
+
+
+    if (
+        requestedOutput.width != 0
+        && requestedOutput.height
+            > size_t.max / requestedOutput.width
+    )
+    {
+        return result;
+    }
+
+
+    DecompositionIssue decompositionIssue;
+
+    if (!tryValidateDecomposition(
+        requestedOutput,
+        tasks,
+        decompositionIssue
+    ))
+    {
+        return result;
+    }
+
+
+    const sampleCount =
+        requestedOutput.width
+        * requestedOutput.height;
+
+    result.output =
+        new ubyte[sampleCount];
+
+    result.completedCoverage =
+        new ubyte[sampleCount];
+
+    result.completedWorkUnits =
+        new ubyte[tasks.length];
+
+
+    /*
+     * Two workers plus the coordinator participate in each gate.
+     */
+    auto activeResidentGate =
+        new Barrier(3);
+
+    auto releaseActiveGate =
+        new Barrier(3);
+
+
+    auto worker0 =
+        new HeldSiblingWorker(
+            logicalExtent,
+            tasks[0],
+            activeResidentGate,
+            releaseActiveGate
+        );
+
+    auto worker1 =
+        new HeldSiblingWorker(
+            logicalExtent,
+            tasks[1],
+            activeResidentGate,
+            releaseActiveGate
+        );
+
+
+    auto thread0 =
+        new Thread(
+            &worker0.run
+        );
+
+    auto thread1 =
+        new Thread(
+            &worker1.run
+        );
+
+
+    thread0.start();
+    thread1.start();
+
+    result.accounting.workUnitsStarted = 2;
+    result.accounting.peakActiveWorkUnits = 2;
+
+
+    /*
+     * Returning from this barrier proves that both workers reached the
+     * resident-ready boundary.
+     *
+     * On the valid fixture, both source materializations are still alive.
+     */
+    activeResidentGate.wait();
+
+
+    if (
+        !worker0.result.materializationCompleted
+        || !worker1.result.materializationCompleted
+    )
+    {
+        /*
+         * Release the second gate before joining so an unexpected fixture
+         * failure cannot deadlock the test runner.
+         */
+        releaseActiveGate.wait();
+
+        thread0.join();
+        thread1.join();
+
+        return result;
+    }
+
+
+    result.accounting.materializationsStarted = 2;
+    result.accounting.materializationsCompleted = 2;
+
+    result.accounting.peakResidentRasterBytes =
+        worker0.result.residentBytes
+        + worker1.result.residentBytes;
+
+    result.accounting.currentResidentRasterBytes =
+        result.accounting.peakResidentRasterBytes;
+
+
+    /*
+     * Cancellation is observed by the coordinator while both work units are
+     * known active and their resident sources are retained.
+     *
+     * Dispatch closes here.
+     *
+     * No thread is ever created for work units 2 or 3.
+     */
+    result.cancelled = true;
+
+    result.accounting.cancellationObserved = true;
+    result.accounting.dispatchClosed = true;
+
+    result.accounting.workUnitsNeverStarted =
+        tasks.length
+        - result.accounting.workUnitsStarted;
+
+
+    /*
+     * Already-running work is not interrupted.
+     *
+     * The two admitted workers are released to their ordinary operation
+     * boundary and allowed to finish.
+     */
+    releaseActiveGate.wait();
+
+
+    thread0.join();
+    thread1.join();
+
+
+    if (worker0.result.operationStarted)
+    {
+        ++result.accounting.operationExecutionsStarted;
+    }
+
+    if (worker1.result.operationStarted)
+    {
+        ++result.accounting.operationExecutionsStarted;
+    }
+
+
+    if (worker0.result.operationCompleted)
+    {
+        ++result.accounting.operationExecutionsCompleted;
+    }
+
+    if (worker1.result.operationCompleted)
+    {
+        ++result.accounting.operationExecutionsCompleted;
+    }
+
+
+    if (worker0.result.materializationCompleted)
+    {
+        ++result.accounting.releases;
+    }
+
+    if (worker1.result.materializationCompleted)
+    {
+        ++result.accounting.releases;
+    }
+
+
+    /*
+     * Both worker functions have returned, so both work-unit-local retained
+     * sources have left lexical scope.
+     */
+    result.accounting.currentResidentRasterBytes = 0;
+
+
+    HeldSiblingWorker[2] workers =
+    [
+        worker0,
+        worker1
+    ];
+
+
+    foreach (workUnitId; 0 .. workers.length)
+    {
+        const worker =
+            workers[workUnitId];
+
+
+        if (!worker.result.ok)
+        {
+            return result;
+        }
+
+
+        ++result.accounting.workUnitsCompleted;
+
+        result.completedWorkUnits[
+            workUnitId
+        ] = 1;
+
+
+        if (!tryPublishCompletedSibling(
+            requestedOutput,
+            tasks[workUnitId],
+            worker.result.output,
+            result.output,
+            result.completedCoverage
+        ))
+        {
+            return result;
+        }
+    }
+
+
+    /*
+     * Cancellation is request termination even though already-running work
+     * completed successfully afterward.
+     */
+    result.requestCompleted = false;
+
+    return result;
+}
+
+
+/*
+ * R0.4b-4 cancellation while two known work units are already active.
+ *
+ * The same four-stripe geometry used by R0.4b-3 provides:
+ *
+ *     work units 0 and 1 -> admitted before cancellation
+ *     work units 2 and 3 -> never started after dispatch closes
+ *
+ * Both admitted work units are allowed to complete normally after cancellation
+ * observation.
+ */
+unittest
+{
+    auto result =
+        executeDeterministicCancellationFixture(
+            failureLogicalExtent,
+            failureRequestedOutput,
+            failureTasks[]
+        );
+
+
+    assert(result.cancelled);
+    assert(!result.requestCompleted);
+
+
+    assert(
+        result.accounting.cancellationObserved
+    );
+
+    assert(
+        result.accounting.dispatchClosed
+    );
+
+
+    assert(
+        result.accounting.workUnitsRequired
+        == failureTasks.length
+    );
+
+    assert(
+        result.accounting.workUnitsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.workUnitsCompleted
+        == 2
+    );
+
+    assert(
+        result.accounting.workUnitsNeverStarted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.peakActiveWorkUnits
+        == 2
+    );
+
+
+    assert(
+        result.accounting.materializationsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.materializationsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.operationExecutionsStarted
+        == 2
+    );
+
+    assert(
+        result.accounting.operationExecutionsCompleted
+        == 2
+    );
+
+
+    assert(
+        result.accounting.releases
+        == 2
+    );
+
+    assert(
+        result.accounting.peakResidentRasterBytes
+        > 0
+    );
+
+    assert(
+        result.accounting.currentResidentRasterBytes
+        == 0
+    );
+
+
+    assert(
+        result.completedWorkUnits.length
+        == failureTasks.length
+    );
+
+    assert(result.completedWorkUnits[0] == 1);
+    assert(result.completedWorkUnits[1] == 1);
+    assert(result.completedWorkUnits[2] == 0);
+    assert(result.completedWorkUnits[3] == 0);
+
+
+    /*
+     * Both already-running siblings completed ordinary valid work after
+     * cancellation observation.
+     *
+     * Their completed coverage remains observable research state.
+     */
+    foreach (workUnitId; 0 .. 2)
+    {
+        auto oracle =
+            executeSynchronousNeighbourhood(
+                failureLogicalExtent,
+                failureTasks[workUnitId],
+                failureTasks[
+                    workUnitId
+                        .. workUnitId + 1
+                ]
+            );
+
+        assert(oracle.ok);
+
+
+        const task =
+            failureTasks[workUnitId];
+
+        const relativeY =
+            task.y
+            - failureRequestedOutput.y;
+
+
+        foreach (localY; 0 .. task.height)
+        {
+            foreach (localX; 0 .. task.width)
+            {
+                const requestIndex =
+                    (relativeY + localY)
+                        * failureRequestedOutput.width
+                    + localX;
+
+                const oracleIndex =
+                    localY * task.width
+                    + localX;
+
+
+                assert(
+                    result.output[requestIndex]
+                    == oracle.output[oracleIndex]
+                );
+
+                assert(
+                    result.completedCoverage[
+                        requestIndex
+                    ] == 1
+                );
+            }
+        }
+    }
+
+
+    /*
+     * Work units 2 and 3 were never admitted after cancellation.
+     */
+    foreach (
+        index;
+        failureRequestedOutput.width * 2
+            .. result.completedCoverage.length
+    )
+    {
+        assert(
+            result.completedCoverage[index]
+            == 0
+        );
+    }
+}
+
