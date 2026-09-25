@@ -484,3 +484,503 @@ unittest
         == PolicyOracleError.duplicateReadyOrdinal
     );
 }
+
+
+/++
+    P1 strict-priority policy.
+
+    Selection rule:
+
+        highest priority first
+        then lowest readyOrdinal
+
+    policyClass remains descriptive metadata in R0.4c-2.
+
+    Strict priority deliberately contains no aging, quota or fairness state.
+    Starvation behaviour is investigated separately in R0.4c-3.
++/
+DispatchTrace dispatchStrictPriority(
+    scope const(ReadyWork)[] ready
+)
+@safe
+{
+    DispatchTrace result;
+
+
+    const validationError =
+        validateReadySet(
+            ready
+        );
+
+
+    if (
+        validationError
+        != PolicyOracleError.none
+    )
+    {
+        result.error =
+            validationError;
+
+        return result;
+    }
+
+
+    result.workUnitIds =
+        new size_t[ready.length];
+
+    result.readyOrdinals =
+        new size_t[ready.length];
+
+
+    if (ready.length == 0)
+    {
+        result.error =
+            PolicyOracleError.none;
+
+        return result;
+    }
+
+
+    auto selected =
+        new bool[ready.length];
+
+
+    foreach (dispatchOrdinal; 0 .. ready.length)
+    {
+        size_t selectedIndex =
+            size_t.max;
+
+        int selectedPriority =
+            int.min;
+
+        size_t selectedReadyOrdinal =
+            size_t.max;
+
+
+        foreach (candidateIndex; 0 .. ready.length)
+        {
+            if (selected[candidateIndex])
+            {
+                continue;
+            }
+
+
+            const candidatePriority =
+                ready[candidateIndex]
+                    .priority;
+
+            const candidateReadyOrdinal =
+                ready[candidateIndex]
+                    .readyOrdinal;
+
+
+            if (
+                selectedIndex == size_t.max
+                || candidatePriority
+                    > selectedPriority
+                || (
+                    candidatePriority
+                        == selectedPriority
+                    && candidateReadyOrdinal
+                        < selectedReadyOrdinal
+                )
+            )
+            {
+                selectedIndex =
+                    candidateIndex;
+
+                selectedPriority =
+                    candidatePriority;
+
+                selectedReadyOrdinal =
+                    candidateReadyOrdinal;
+            }
+        }
+
+
+        if (selectedIndex == size_t.max)
+        {
+            result.error =
+                PolicyOracleError.internalFailure;
+
+            return result;
+        }
+
+
+        selected[selectedIndex] = true;
+
+
+        result.workUnitIds[dispatchOrdinal] =
+            ready[selectedIndex]
+                .stableWorkUnitId;
+
+        result.readyOrdinals[dispatchOrdinal] =
+            ready[selectedIndex]
+                .readyOrdinal;
+    }
+
+
+    result.error =
+        PolicyOracleError.none;
+
+    return result;
+}
+
+
+/*
+ * R0.4c-2 strict-priority preference.
+ *
+ * Input array order and ready order deliberately conflict with priority order.
+ *
+ * The highest numeric priority must dispatch first.
+ */
+unittest
+{
+    const ReadyWork[6] ready =
+    [
+        ReadyWork(
+            200,
+            0,
+            PolicyClass.throughput,
+            10
+        ),
+
+        ReadyWork(
+            201,
+            1,
+            PolicyClass.interactive,
+            100
+        ),
+
+        ReadyWork(
+            202,
+            2,
+            PolicyClass.throughput,
+            30
+        ),
+
+        ReadyWork(
+            203,
+            3,
+            PolicyClass.interactive,
+            80
+        ),
+
+        ReadyWork(
+            204,
+            4,
+            PolicyClass.throughput,
+            -20
+        ),
+
+        ReadyWork(
+            205,
+            5,
+            PolicyClass.interactive,
+            50
+        )
+    ];
+
+
+    auto trace =
+        dispatchStrictPriority(
+            ready[]
+        );
+
+
+    assert(trace.ok);
+
+
+    const size_t[6] expected =
+    [
+        201,
+        203,
+        205,
+        202,
+        200,
+        204
+    ];
+
+
+    assert(
+        trace.workUnitIds
+        == expected[]
+    );
+}
+
+
+/*
+ * Equal priority uses readyOrdinal as the stable FIFO tie-break.
+ *
+ * Array order and policy class must not disturb that order.
+ */
+unittest
+{
+    const ReadyWork[5] ready =
+    [
+        ReadyWork(
+            304,
+            4,
+            PolicyClass.interactive,
+            42
+        ),
+
+        ReadyWork(
+            301,
+            1,
+            PolicyClass.throughput,
+            42
+        ),
+
+        ReadyWork(
+            303,
+            3,
+            PolicyClass.throughput,
+            42
+        ),
+
+        ReadyWork(
+            300,
+            0,
+            PolicyClass.interactive,
+            42
+        ),
+
+        ReadyWork(
+            302,
+            2,
+            PolicyClass.interactive,
+            42
+        )
+    ];
+
+
+    auto trace =
+        dispatchStrictPriority(
+            ready[]
+        );
+
+
+    assert(trace.ok);
+
+
+    const size_t[5] expected =
+    [
+        300,
+        301,
+        302,
+        303,
+        304
+    ];
+
+
+    assert(
+        trace.workUnitIds
+        == expected[]
+    );
+}
+
+
+/*
+ * Higher priority wins even when it became ready later.
+ *
+ * This distinguishes P1 from the FIFO baseline directly.
+ */
+unittest
+{
+    const ReadyWork[3] ready =
+    [
+        ReadyWork(
+            400,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            401,
+            1,
+            PolicyClass.throughput,
+            1
+        ),
+
+        ReadyWork(
+            402,
+            2,
+            PolicyClass.interactive,
+            1000
+        )
+    ];
+
+
+    auto fifo =
+        dispatchFifo(
+            ready[]
+        );
+
+    auto strict =
+        dispatchStrictPriority(
+            ready[]
+        );
+
+
+    assert(fifo.ok);
+    assert(strict.ok);
+
+
+    assert(
+        fifo.workUnitIds[0]
+        == 400
+    );
+
+    assert(
+        strict.workUnitIds[0]
+        == 402
+    );
+}
+
+
+/*
+ * Strict priority accepts the full int priority domain.
+ */
+unittest
+{
+    const ReadyWork[3] ready =
+    [
+        ReadyWork(
+            500,
+            0,
+            PolicyClass.throughput,
+            int.min
+        ),
+
+        ReadyWork(
+            501,
+            1,
+            PolicyClass.interactive,
+            int.max
+        ),
+
+        ReadyWork(
+            502,
+            2,
+            PolicyClass.throughput,
+            0
+        )
+    ];
+
+
+    auto trace =
+        dispatchStrictPriority(
+            ready[]
+        );
+
+
+    assert(trace.ok);
+
+
+    const size_t[3] expected =
+    [
+        501,
+        502,
+        500
+    ];
+
+
+    assert(
+        trace.workUnitIds
+        == expected[]
+    );
+}
+
+
+/*
+ * Strict priority shares the same ready-set validity contract as FIFO.
+ */
+unittest
+{
+    const ReadyWork[2] duplicateId =
+    [
+        ReadyWork(
+            77,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            77,
+            1,
+            PolicyClass.interactive,
+            100
+        )
+    ];
+
+
+    auto duplicateIdTrace =
+        dispatchStrictPriority(
+            duplicateId[]
+        );
+
+
+    assert(!duplicateIdTrace.ok);
+
+    assert(
+        duplicateIdTrace.error
+        == PolicyOracleError.duplicateWorkUnitId
+    );
+
+
+    const ReadyWork[2] duplicateReadyOrdinal =
+    [
+        ReadyWork(
+            77,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            78,
+            0,
+            PolicyClass.interactive,
+            100
+        )
+    ];
+
+
+    auto duplicateReadyTrace =
+        dispatchStrictPriority(
+            duplicateReadyOrdinal[]
+        );
+
+
+    assert(!duplicateReadyTrace.ok);
+
+    assert(
+        duplicateReadyTrace.error
+        == PolicyOracleError.duplicateReadyOrdinal
+    );
+}
+
+
+/*
+ * Empty ready set remains a valid zero-dispatch state under P1.
+ */
+unittest
+{
+    const ReadyWork[] ready;
+
+
+    auto trace =
+        dispatchStrictPriority(
+            ready
+        );
+
+
+    assert(trace.ok);
+
+    assert(trace.workUnitIds.length == 0);
+    assert(trace.readyOrdinals.length == 0);
+}
+
