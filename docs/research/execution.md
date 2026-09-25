@@ -2,7 +2,7 @@
 
 Status: active research
 Date: 2026-09-24
-Tracking issues: #10 (R0.4a), #14 (R0.4b)
+Tracking issues: #10 (R0.4a), #14 (R0.4b), #16 (R0.4c)
 
 ## 1. Purpose
 
@@ -2467,3 +2467,900 @@ Those questions must preserve the R0.4a/R0.4b semantic reference rather than
 retroactively embedding scheduling policy into raster geometry, RasterView or
 operation semantics.
 
+## 21. R0.4c scheduling policy contract
+
+R0.4c researches dispatch/admission policy above the execution semantics already
+established by R0.4a and R0.4b.
+
+Tracking issue:
+
+```text
+#16 research: define R0.4c scheduling policy semantics
+```
+
+R0.4c does not redefine execution correctness.
+
+Its central separation is:
+
+```text
+what work is semantically required
+!=
+which ready work is admitted next
+```
+
+The first R0.4c question is:
+
+> What is the smallest deterministic scheduling-policy model that can choose
+> among multiple ready raster work units while preserving R0.4a/R0.4b
+> semantics and making priority, fairness, interactive responsiveness and
+> starvation behaviour explicit and measurable?
+
+### 21.1 Inherited semantic baseline
+
+R0.4c inherits the following R0.4a/R0.4b distinctions unchanged:
+
+```text
+output request != scheduler task
+decomposition != scheduler policy
+spatial dependency != execution order
+work-unit completion != request completion
+logical coordinates != resident coordinates
+```
+
+It also inherits:
+
+- work-unit-local resident ownership/lifetime;
+- bounded active work;
+- completed-set/coverage semantics under parallel termination;
+- failure/cancellation closing dispatch;
+- already-running work not being forcibly interrupted;
+- empty-request zero-work success;
+- final release of work-unit-local resident state.
+
+Scheduling policy must not weaken or reinterpret any of those semantics.
+
+### 21.2 Policy scope
+
+R0.4c policy may influence:
+
+- which already-ready work unit is selected next;
+- stable ordering among equivalent ready work;
+- class/priority preference;
+- fairness between ready classes;
+- starvation prevention.
+
+R0.4c policy must not change:
+
+- logical output regions;
+- dependency expansion;
+- halo/context semantics;
+- operation result;
+- stable work identity;
+- request-completion definition;
+- failure/cancellation termination;
+- ownership/lifetime rules.
+
+### 21.3 Ready-work-only model
+
+The first R0.4c experiment operates only on work that is already semantically
+ready.
+
+It does not need to model:
+
+- dependency graphs becoming ready dynamically;
+- pipeline-stage readiness;
+- asynchronous I/O readiness;
+- provider/decode readiness;
+- prefetch readiness.
+
+Those remain later R0.4 questions.
+
+The initial scheduling-policy oracle may therefore receive a deterministic
+research-local ready set directly.
+
+### 21.4 Research-local policy metadata
+
+The first experiment may use research-local metadata such as:
+
+```text
+stableWorkUnitId
+readyOrdinal
+policyClass
+priority
+```
+
+These fields are evidence machinery.
+
+They are not proposed raster API fields.
+
+In particular, priority/class information must not be added to:
+
+- Region2D;
+- RasterView;
+- WritableRasterView;
+- dependency structures;
+- raster operation signatures.
+
+### 21.5 Stable identity and stable readiness order
+
+Stable work identity remains distinct from ready-order position.
+
+The experiment must distinguish:
+
+```text
+stableWorkUnitId
+readyOrdinal
+dispatchOrdinal
+completionOrdinal
+```
+
+A policy may choose a different dispatch order without changing work identity
+or semantic output placement.
+
+For equal policy metadata, a deterministic policy should preserve a documented
+stable tie-break.
+
+The initial tie-break should use ready order rather than pointer identity,
+thread identity or hash-table iteration order.
+
+### 21.6 Candidate P0 — FIFO
+
+P0 is the policy baseline.
+
+Definition:
+
+> Among ready work, admit the lowest ready ordinal first.
+
+The experiment must verify:
+
+- stable ordering;
+- deterministic equal-class behaviour;
+- no hidden priority effect.
+
+P0 is a reference policy, not automatically a production recommendation.
+
+### 21.7 Candidate P1 — strict priority
+
+P1 always prefers the highest-priority ready work.
+
+For equal priority, the first experiment should preserve FIFO-ready order.
+
+P1 exists to answer two separate questions:
+
+1. how strongly can policy prefer higher-priority/interactive work?
+2. what starvation behaviour follows from strict preference?
+
+The experiment must not assume that strict priority is acceptable merely
+because it is simple.
+
+### 21.8 Interactive and throughput classes
+
+The first experiment should model at least two research-local policy classes:
+
+```text
+interactive
+throughput
+```
+
+The class names are descriptive test metadata.
+
+They do not imply a production enum.
+
+Interactive work should be able to receive preferential admission.
+
+The experiment must also determine whether continuously ready throughput work
+can still make progress under sustained interactive arrivals.
+
+### 21.9 Starvation workload
+
+At least one deterministic adversarial workload must keep higher-priority work
+continuously ready while one or more lower-priority work units remain ready.
+
+Under strict priority, the experiment should make starvation directly
+observable.
+
+The evidence should distinguish:
+
+```text
+priority preference
+from
+bounded waiting
+from
+unbounded starvation
+```
+
+No wall-clock time is needed.
+
+### 21.10 Fairness metric
+
+The first fairness metric should be based on deterministic dispatch
+opportunities rather than elapsed time.
+
+Suitable measurements include:
+
+```text
+number of dispatch opportunities bypassed
+service count per class
+maximum consecutive admissions from one class
+stable order within one class
+```
+
+The experiment must not claim CPU-time fairness from work-unit counts.
+
+Work units may have heterogeneous future costs.
+
+Therefore:
+
+```text
+dispatch fairness
+!=
+CPU-time fairness
+```
+
+unless later evidence explicitly models execution cost.
+
+### 21.11 Candidate P2 — starvation-resistant preference
+
+R0.4c must compare one deliberately small starvation-resistant policy with P0
+and P1.
+
+Candidate mechanisms include:
+
+- bounded priority burst/quota;
+- weighted round-robin between ready classes;
+- aging.
+
+The first implementation should select the simplest mechanism that can answer
+the research question deterministically.
+
+Selection for experiment use is not a production-policy decision.
+
+### 21.12 Initial P2 preference
+
+For the first experiment, a bounded priority burst is the preferred candidate
+because it can be described and verified with minimal state.
+
+One possible research-local form is:
+
+```text
+allow at most N consecutive interactive admissions
+while throughput work remains continuously ready
+then admit one throughput work unit
+```
+
+The exact N remains experiment configuration.
+
+The important property is that the maximum bypass count is explicit and
+testable.
+
+If this model proves insufficient, the experiment may compare another
+candidate without promoting the first one.
+
+### 21.13 Fairness state
+
+R0.4c should determine whether the starvation-resistant policy needs:
+
+- per-work-unit state;
+- per-class state;
+- both.
+
+The bounded-burst candidate is expected to need only:
+
+- stable work metadata;
+- small per-policy/per-class counters.
+
+That hypothesis must be tested rather than assumed.
+
+### 21.14 Deterministic policy oracle
+
+The first policy evidence should prefer a deterministic oracle/simulation over
+real thread timing.
+
+A suitable model is:
+
+```text
+ready set
+    ->
+policy select
+    ->
+record dispatch
+    ->
+deterministic synthetic arrival/update
+    ->
+repeat
+```
+
+This allows starvation/fairness properties to be tested exactly.
+
+No `sleep`, timeout or OS scheduler behaviour may be used as evidence.
+
+### 21.15 Non-preemption
+
+R0.4c initially researches admission order only.
+
+Once work is admitted/running, the R0.4b non-preemption baseline remains:
+
+> Running work is not forcibly interrupted by scheduling policy.
+
+R0.4c therefore does not research:
+
+- preemptive worker suspension;
+- time slicing;
+- OS thread priority;
+- kernel interruption.
+
+### 21.16 Active-work bound
+
+Policy selection must respect the execution-side active-work bound:
+
+```text
+currentActiveWorkUnits <= maxActiveWorkUnits
+```
+
+Policy does not create permission to exceed that bound.
+
+The first deterministic policy oracle may model one admission opportunity at a
+time.
+
+A later integration probe must demonstrate that policy-selected work can feed a
+bounded executor without changing the bound.
+
+### 21.17 Resident-memory boundary
+
+R0.4c preserves the R0.4b distinction:
+
+```text
+bounded active-work count
+!=
+general resident-byte budget
+```
+
+Scheduling preference alone is not a memory-budget controller.
+
+The first policy experiment should not silently turn priority/fairness metadata
+into memory-admission policy.
+
+If later evidence requires a byte-budget admission controller, that must be
+introduced as a separate research concern.
+
+### 21.18 Failure and cancellation
+
+R0.4b request-termination semantics remain authoritative.
+
+Once failure or cancellation is observed:
+
+```text
+dispatch closes
+```
+
+No policy may select/admit later ready work after that point.
+
+The experiment must verify that this rule holds for:
+
+- FIFO;
+- strict priority;
+- starvation-resistant policy.
+
+Priority must never override request termination.
+
+### 21.19 Completion and output semantics
+
+Policy may change dispatch/completion order.
+
+It must not change:
+
+- logical output placement;
+- exact result for the selected deterministic operation;
+- request completion rules;
+- completed-set/coverage meaning.
+
+At least one integration probe should schedule an exact R0.4b-compatible raster
+operation using two or more distinct policy orders and verify byte-identical
+output.
+
+### 21.20 Policy experiment phases
+
+R0.4c should proceed in narrow evidence slices.
+
+#### R0.4c-0 — policy vocabulary and reuse probe
+
+Prove that the experiment can reuse R0.4a/R0.4b research evidence without
+modifying historical sources.
+
+No policy implementation beyond minimal metadata.
+
+#### R0.4c-1 — FIFO baseline
+
+Prove deterministic stable ready-order dispatch.
+
+#### R0.4c-2 — strict priority
+
+Prove deterministic higher-priority preference and stable tie-breaking.
+
+#### R0.4c-3 — starvation evidence
+
+Use sustained higher-priority arrivals to demonstrate deterministic starvation
+or unbounded bypass under strict priority.
+
+#### R0.4c-4 — starvation-resistant candidate
+
+Implement one minimal bounded-wait alternative and prove an explicit bypass
+bound while retaining interactive preference.
+
+#### R0.4c-5 — termination gate
+
+Prove that failure/cancellation closes dispatch independently of policy.
+
+#### R0.4c-6 — raster integration
+
+Feed policy-selected work into an exact R0.4b-compatible execution fixture and
+prove that policy order does not change semantic output or active-work bounds.
+
+### 21.21 Initial result matrix
+
+The final experiment should report at least:
+
+| Case | Policy | Required evidence |
+| --- | --- | --- |
+| equal-class ready work | FIFO | stable ready order |
+| mixed priority | strict priority | high priority preferred |
+| sustained high-priority arrivals | strict priority | starvation/bypass observable |
+| sustained interactive arrivals | starvation-resistant | throughput progress bounded |
+| equal policy metadata | all candidates | deterministic tie-break |
+| termination after ready work exists | all candidates | no later dispatch |
+| raster integration | at least two policy orders | byte-identical output |
+| bounded integration | selected policy | active bound preserved |
+
+### 21.22 Initial hypotheses
+
+**H1 — policy remains orthogonal to raster semantics**
+
+Scheduling policy can operate on research-local ready-work metadata without
+changing Region2D, RasterView, dependency or operation APIs.
+
+**H2 — FIFO is a useful deterministic baseline**
+
+Stable ready-order selection provides a policy reference without priority
+effects.
+
+**H3 — strict priority exposes starvation**
+
+Under sustained higher-priority arrivals, continuously ready lower-priority
+work can be bypassed without a finite policy bound.
+
+**H4 — bounded preference can preserve progress**
+
+A small starvation-resistant policy can prefer interactive work while providing
+a deterministic upper bound on throughput bypass opportunities.
+
+**H5 — fairness can initially be measured without time**
+
+Dispatch-opportunity metrics are sufficient for first-order scheduler-policy
+evidence.
+
+**H6 — request termination dominates policy**
+
+Failure/cancellation closes dispatch regardless of policy preference.
+
+**H7 — policy order does not change semantic raster output**
+
+For the selected exact independent raster operation, different legal dispatch
+orders remain byte-identical.
+
+**H8 — no production scheduler API is yet required**
+
+The required evidence can be obtained with disposable research policy types and
+oracles.
+
+### 21.23 Questions R0.4c must answer
+
+1. What is the smallest policy input beyond stable work identity?
+2. Is a two-class interactive/throughput model sufficient for first evidence?
+3. Is FIFO stability useful as a scheduler-neutral baseline?
+4. How severe is deterministic starvation under strict priority?
+5. What is the simplest starvation-resistant policy that preserves preference?
+6. How should fairness be measured without wall-clock timing?
+7. Does fairness require per-work-unit state, per-class state, or both?
+8. Can policy remain independent of raster geometry/dependency types?
+9. Can request termination close admission independently of policy?
+10. Does policy integration preserve exact R0.4b semantic output?
+11. Does any scheduler-policy abstraction deserve promotion?
+
+### 21.24 Explicit non-goals
+
+R0.4c does not select or implement:
+
+```text
+work stealing
+pipeline parallelism
+decode/materialize/compute staging
+async I/O
+dynamic dependency readiness
+prefetch
+cache replacement
+provider/source policy
+preemptive execution
+OS thread priority
+CPU affinity
+GPU scheduling
+imagery-specific scheduling
+```
+
+It also does not promote:
+
+```text
+public Scheduler
+public Priority
+public WorkClass
+public FairnessPolicy
+public Task
+public WorkUnit
+```
+
+### 21.25 Success gate
+
+R0.4c evidence is sufficient only if all of the following hold:
+
+1. FIFO ready-order behaviour is deterministic;
+2. strict priority deterministically prefers higher-priority ready work;
+3. strict-priority starvation/bypass is demonstrated under adversarial sustained load;
+4. one starvation-resistant policy provides an explicit deterministic progress bound;
+5. interactive work retains measurable preference under that policy;
+6. throughput work still progresses under sustained interactive arrivals;
+7. equal-policy metadata has a deterministic stable tie-break;
+8. fairness/starvation evidence uses dispatch opportunities rather than wall-clock assumptions;
+9. request termination suppresses later dispatch for every tested policy;
+10. policy metadata remains research-local and outside raster geometry/view APIs;
+11. bounded execution still respects `maxActiveWorkUnits`;
+12. policy order does not change exact raster output in the integration probe;
+13. historical R0.3/R0.4a/R0.4b evidence remains unchanged;
+14. production `source/raster/` remains unchanged;
+15. no pipeline/work-stealing/prefetch/provider/image policy is promoted;
+16. DMD and LDC produce the same deterministic correctness results.
+
+### 21.26 Promotion rule after R0.4c
+
+Passing R0.4c would show that scheduling policy can vary while the same
+execution semantics remain stable.
+
+That is not automatic authorization for a public scheduler-policy API.
+
+Any production promotion must still require:
+
+- a concrete raster consumer;
+- evidence that the abstraction is reusable beyond the experiment;
+- stable semantics across more than one policy;
+- compatibility with later worker-pool/pipeline/source research;
+- clear ownership/lifetime boundaries;
+- compiler-floor compatibility;
+- acceptable public-surface cost.
+
+If those conditions are not met, policy machinery remains internal or
+research-local.
+
+## 22. R0.4c measured evidence
+
+R0.4c was implemented as deterministic research policy machinery under:
+
+```text
+experiments/r0_4c_scheduling_policy/
+```
+
+Evidence commits:
+
+```text
+189cf56 research: define R0.4c scheduling policy contract
+d81ea80 research: prove R0.4c reuse of execution evidence
+f490bb2 research: prove R0.4c FIFO scheduling baseline
+083e9de research: prove R0.4c strict priority scheduling
+bfdcbef research: prove R0.4c strict priority starvation
+fe1dd02 research: prove R0.4c bounded interactive preference
+8f2d3e2 research: prove R0.4c termination admission gate
+dbed0dd research: prove R0.4c raster policy integration
+```
+
+Historical R0.3, R0.4a and R0.4b experiment sources remained unchanged.
+
+Production `source/raster/` remained unchanged.
+
+### 22.1 Reuse result
+
+R0.4c-0 compiled and executed the immutable R0.4a synchronous and R0.4b
+bounded-parallel references against the same legal decomposition.
+
+The result was exact output equality and final local resident bytes of zero.
+
+### 22.2 FIFO result
+
+P0 FIFO established:
+
+```text
+lowest readyOrdinal first
+```
+
+`priority` and `policyClass` do not influence FIFO selection.
+
+Equal policy metadata therefore has a stable deterministic ready-order
+tie-break.
+
+### 22.3 Strict-priority result
+
+P1 established:
+
+```text
+highest numeric priority first
+then lowest readyOrdinal
+```
+
+No fairness, quota or aging state is present in P1.
+
+### 22.4 Strict-priority starvation result
+
+One lower-priority throughput item remained continuously ready while a fresh
+higher-priority interactive item became ready before every dispatch
+opportunity.
+
+Across horizons:
+
+```text
+1, 2, 8, 32, 128
+```
+
+the measured result was:
+
+```text
+bypassedOpportunities == dispatchOpportunities
+lowerPriorityDispatched == false
+```
+
+Therefore strict priority supplies no finite bypass bound of its own.
+
+This is deterministic dispatch-opportunity evidence, not a wall-clock claim.
+
+### 22.5 Starvation-resistant bounded-burst result
+
+P2 introduced:
+
+```text
+maxInteractiveBurst
+consecutiveInteractiveAdmissions
+```
+
+while throughput remained continuously ready.
+
+For tested burst sizes:
+
+```text
+1, 2, 3, 8
+```
+
+the measured bound was:
+
+```text
+maxObservedThroughputBypass == maxInteractiveBurst
+```
+
+and throughput received repeated service under sustained interactive arrivals.
+
+Interactive preference remained explicit.
+
+Within the chosen class, selection remained strict-priority plus ready-order
+tie-breaking.
+
+This establishes dispatch fairness only:
+
+```text
+dispatch fairness != CPU-time fairness
+```
+
+### 22.6 Termination-gate result
+
+R0.4c-5 established a policy-independent gate:
+
+```text
+request termination observed
+    ->
+dispatch closed
+    ->
+no policy evaluation
+    ->
+no later admission
+```
+
+The rule was verified for FIFO, strict priority and bounded burst.
+
+Closed dispatch also leaves bounded-burst fairness state unchanged.
+
+Termination dominates policy validation.
+
+### 22.7 Raster-integration result
+
+The same six legal R0.4b decomposition members were scheduled in three
+different orders:
+
+```text
+FIFO             0, 1, 2, 3, 4, 5
+strict priority  3, 5, 1, 4, 2, 0
+bounded burst    3, 5, 4, 1, 2, 0
+```
+
+Every order was passed to the immutable R0.4b bounded executor with:
+
+```text
+maxActiveWorkUnits = 2
+```
+
+For every policy:
+
+```text
+output == R0.4a synchronous output
+completedCoverage == R0.4a completedCoverage
+peakActiveWorkUnits <= maxActiveWorkUnits
+currentResidentRasterBytes == 0
+```
+
+Therefore policy order did not become semantic raster output order.
+
+### 22.8 Compiler evidence
+
+At the final R0.4c experiment HEAD before documentation closure:
+
+```text
+DMD: 11 modules passed unittests
+LDC: 11 modules passed unittests
+```
+
+This is current-family verification.
+
+It is not a compiler-floor audit.
+
+## 23. R0.4c research questions answered
+
+### 23.1 Smallest useful policy input
+
+The tested research vocabulary is:
+
+```text
+stableWorkUnitId
+readyOrdinal
+policyClass
+priority
+```
+
+Policies consume only the subset they need.
+
+FIFO needs stable ready order. Strict priority adds numeric priority.
+Bounded-burst preference additionally uses policy class and small class-level
+state.
+
+### 23.2 Two-class model
+
+Interactive and throughput classes were sufficient for the first starvation
+and bounded-progress evidence.
+
+This is not evidence that a future production scheduler needs exactly two
+classes.
+
+### 23.3 FIFO baseline
+
+FIFO proved useful as a deterministic policy baseline with no hidden priority
+effect.
+
+### 23.4 Strict-priority starvation
+
+Strict priority had no finite bypass bound under sustained higher-priority
+arrivals.
+
+### 23.5 Starvation-resistant candidate
+
+A bounded interactive burst was sufficient for first evidence.
+
+It preserved interactive preference and bounded throughput bypass using only
+small policy/class-level state.
+
+It is not selected as production policy.
+
+### 23.6 Fairness metric
+
+Dispatch opportunities and service counts were sufficient for first-order
+policy evidence without wall-clock timing.
+
+No CPU-time fairness claim was made.
+
+### 23.7 Required fairness state
+
+The bounded-burst candidate did not require per-work-unit aging.
+
+It used only:
+
+```text
+maxInteractiveBurst
+consecutiveInteractiveAdmissions
+```
+
+### 23.8 Geometry independence
+
+Policy remained independent of Region2D, RasterView, dependency structures and
+operation signatures.
+
+### 23.9 Termination independence
+
+Failure/cancellation closed admission before policy evaluation for every tested
+policy.
+
+### 23.10 Semantic-output preservation
+
+Three distinct legal policy orders produced the exact R0.4a result through the
+immutable R0.4b bounded executor.
+
+### 23.11 Promotion
+
+No scheduler-policy abstraction deserves public promotion yet.
+
+The evidence supports internal semantic boundaries, not a stable public
+Scheduler/Priority/WorkClass/FairnessPolicy API.
+
+## 24. R0.4c success gate — PASS
+
+All sixteen contract gates passed:
+
+1. **PASS** — FIFO ready-order behaviour is deterministic;
+2. **PASS** — strict priority prefers higher-priority ready work deterministically;
+3. **PASS** — strict-priority starvation/bypass is demonstrated under sustained load;
+4. **PASS** — one starvation-resistant policy provides an explicit deterministic progress bound;
+5. **PASS** — interactive work retains measurable preference;
+6. **PASS** — throughput work progresses under sustained interactive arrivals;
+7. **PASS** — equal policy metadata has a stable deterministic ready-order tie-break;
+8. **PASS** — fairness/starvation evidence uses dispatch opportunities rather than wall-clock assumptions;
+9. **PASS** — request termination suppresses later dispatch for every tested policy;
+10. **PASS** — policy metadata remains research-local and outside raster geometry/view APIs;
+11. **PASS** — bounded execution respects `maxActiveWorkUnits`;
+12. **PASS** — policy order does not change exact raster output;
+13. **PASS** — historical R0.3/R0.4a/R0.4b evidence remained unchanged;
+14. **PASS** — production `source/raster/` remained unchanged;
+15. **PASS** — no pipeline/work-stealing/prefetch/provider/image policy was promoted;
+16. **PASS** — DMD and LDC produced the same deterministic correctness result.
+
+## 25. R0.4c final conclusion
+
+R0.4c is **complete**.
+
+The experiment establishes that ready-work scheduling policy can vary without
+changing the execution semantics established by R0.4a/R0.4b for the selected
+exact independent raster operation.
+
+The evidence now supports:
+
+```text
+semantic work != policy metadata
+ready order != priority order
+dispatch preference != fairness guarantee
+dispatch fairness != CPU-time fairness
+request termination > policy preference
+policy order != semantic raster output
+```
+
+### 25.1 Promotion decision
+
+**Do not promote the R0.4c scheduling-policy machinery into the production raster API.**
+
+Keep the following as research-local evidence:
+
+- ReadyWork policy metadata;
+- FIFO oracle;
+- strict-priority oracle;
+- bounded interactive-burst state/policy;
+- termination-gate types;
+- policy integration helpers.
+
+R0.4c did not require a public Scheduler, Priority, WorkClass, FairnessPolicy,
+Task or WorkUnit API.
+
+### 25.2 Next execution-research boundary
+
+R0.4d may now investigate pipeline parallelism and backpressure across stages
+such as decode/materialize/compute.
+
+That later research must preserve the R0.4a/R0.4b/R0.4c reference semantics
+rather than embedding stage policy into raster geometry, RasterView or
+operation correctness.
