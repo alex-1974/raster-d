@@ -2,26 +2,33 @@
 
 Status: active research
 Date: 2026-09-24
-Tracking issues: #10 (R0.4a), #14 (R0.4b), #16 (R0.4c)
+Tracking issues: #10 (R0.4a), #14 (R0.4b), #16 (R0.4c), #18 (R0.4d, active)
 
 ## 1. Purpose
 
 R0.4 researches the execution layer above raster-d's established raster,
 region and dependency semantics.
 
-R0.4a is complete and establishes the scheduler-independent synchronous
-reference lifecycle.
+R0.4a, R0.4b and R0.4c are complete as research evidence.
 
-The active R0.4b question remains narrower than selecting a scheduling policy:
+They establish, respectively:
 
-> What is the smallest bounded-parallel region-execution model that preserves
-> the R0.4a semantic result, completion, failure, cancellation and residency
-> rules while permitting independent work units to execute concurrently?
+- scheduler-independent synchronous reference semantics;
+- bounded parallel execution semantics;
+- deterministic ready-work scheduling-policy semantics.
 
-The synchronous R0.4a baseline remains the semantic oracle against which
-bounded-parallel execution is evaluated.
+The active R0.4d question is:
 
-R0.4b does not imply promotion of any research type into the public production
+> What is the smallest bounded staged raster-execution model that allows
+> different work units to occupy different execution stages concurrently while
+> preserving the R0.4a/R0.4b/R0.4c semantic reference and making inter-stage
+> backpressure, stage ownership and termination cleanup explicit and testable?
+
+The R0.4a synchronous result remains the semantic oracle. R0.4b remains the
+bounded-parallel execution reference. R0.4c remains the policy-separation
+reference.
+
+R0.4d does not imply promotion of any research type into the public production
 API.
 
 ## 2. Established inputs
@@ -3364,3 +3371,449 @@ such as decode/materialize/compute.
 That later research must preserve the R0.4a/R0.4b/R0.4c reference semantics
 rather than embedding stage policy into raster geometry, RasterView or
 operation correctness.
+
+## 26. R0.4d contract — bounded pipeline backpressure
+
+Tracking issue: #18
+
+### 26.1 Central question
+
+R0.4d asks:
+
+> What is the smallest bounded staged raster-execution model that allows
+> different raster work units to occupy different execution stages
+> concurrently while preserving the R0.4a/R0.4b/R0.4c semantic reference and
+> making inter-stage backpressure, stage ownership and termination cleanup
+> explicit and testable?
+
+The central separation is:
+
+```text
+semantic work
+!=
+pipeline stage
+!=
+stage admission / backpressure
+```
+
+### 26.2 Raster-d scope boundary
+
+R0.4d researches **bounded staged raster execution**.
+
+It does not research a general-purpose:
+
+```text
+pipeline framework
+DAG executor
+workflow engine
+async task framework
+```
+
+A stage belongs in R0.4d only when it exists because of a generic raster
+execution requirement.
+
+Use this boundary test:
+
+```text
+Would the abstraction still make sense if the raster represented
+elevation, temperature or another scientific grid instead of an image?
+
+YES  -> candidate raster-d mechanism
+NO   -> higher-level consumer / adapter concern
+```
+
+R0.4d may know about:
+
+```text
+raster work units
+regions
+dependency / halo
+resident raster resources
+work-unit lifecycle
+bounded stage slots
+handoff / backpressure
+residency accounting
+termination
+```
+
+R0.4d must not know about:
+
+```text
+JPEG / TIFF codec semantics
+GDALDataset
+COG / HTTP / WMS / WMTS policy
+RGB / Lab / ICC semantics
+alpha interpretation
+radiometry
+sensor or acquisition metadata
+CRS / geotransform / GSD
+imagery mosaicking policy
+image-specific enhancement semantics
+OSM or application workflow semantics
+```
+
+Therefore:
+
+```text
+generic raster execution mechanism
+!=
+image / source / application processing policy
+```
+
+A generic Graph/Node/Edge/Workflow abstraction must not be introduced merely
+because staged execution needs ordering or handoff.
+
+If a reusable graph executor becomes necessary, it requires separate evidence
+that a linear bounded raster pipeline is insufficient and that the graph domain
+is independently coherent.
+
+### 26.3 Initial staged lifecycle
+
+R0.4d starts with already-known semantic raster work.
+
+The initial per-work-unit lifecycle is:
+
+```text
+not admitted
+    ->
+materializing
+    ->
+ready for compute
+    ->
+computing
+    ->
+completed / released
+```
+
+The first pipeline does not add real codec, decoder, file or network I/O.
+
+Materialization continues to reuse deterministic procedural source mechanics
+already established in R0.3/R0.4a/R0.4b.
+
+### 26.4 Inherited semantics
+
+R0.4d inherits unchanged:
+
+- R0.4a exact synchronous semantic result;
+- R0.4b bounded active-work semantics;
+- R0.4b completed-set/coverage semantics;
+- R0.4b non-preemption of already-running work after failure/cancellation;
+- R0.4c separation of semantic work from scheduling-policy metadata;
+- R0.4c rule that request termination dominates later admission;
+- work-unit-local ownership and lifetime;
+- final release of resident raster state;
+- decomposition-independent exact output for the selected operation.
+
+Historical R0.3/R0.4a/R0.4b/R0.4c experiment sources remain immutable.
+
+Production `source/raster/` remains unchanged unless a later explicit
+promotion decision is justified.
+
+### 26.5 Initial bounded resources
+
+The first model uses research-local bounds equivalent to:
+
+```text
+maxActiveWorkUnits
+maxMaterializing
+maxComputing
+handoffCapacity
+```
+
+Definitions:
+
+- **active work unit** — admitted to the pipeline and not yet terminal/released;
+- **materializing** — currently executing the materialization stage;
+- **ready for compute** — materialization completed and resident state retained
+  while waiting for compute;
+- **computing** — currently executing the operation stage;
+- **handoff credit** — capacity reserved before materialization begins so that
+  completed materialization always has bounded downstream holding capacity.
+
+The initial handoff invariant is:
+
+```text
+materializing + readyForCompute <= handoffCapacity
+```
+
+Execution must also preserve:
+
+```text
+activeWorkUnits <= maxActiveWorkUnits
+materializing <= maxMaterializing
+computing <= maxComputing
+```
+
+These are work-count/resource-slot bounds.
+
+They do not establish a general byte budget:
+
+```text
+bounded pipeline slots
+!=
+bounded resident bytes
+```
+
+### 26.6 Backpressure rule
+
+Materialization may start only after obtaining handoff credit.
+
+If no handoff credit is available:
+
+```text
+upstream materialization admission stops
+```
+
+even if additional semantic work is otherwise ready.
+
+When compute begins for one ready-for-compute item, its handoff credit is
+released and upstream materialization may resume.
+
+This reservation-before-materialization rule prevents a fast upstream stage
+from completing resident work that has nowhere bounded to wait downstream.
+
+Backpressure correctness evidence must be deterministic.
+
+Do not use:
+
+```text
+sleep
+wall-clock delays
+timeouts
+OS scheduler timing
+machine speed
+```
+
+as semantic evidence.
+
+### 26.7 Stage ordering
+
+For one work unit:
+
+```text
+materialization completion
+    before
+compute start
+    before
+successful work-unit completion
+```
+
+Different work units may occupy different stages concurrently.
+
+Global stage completion order is not semantic output order.
+
+### 26.8 Termination
+
+Request failure/cancellation closes:
+
+- admission of new work units;
+- start of later stages for queued/not-running work.
+
+Already-running materialization or compute is not forcibly interrupted.
+
+If materialization finishes after termination, its resident result is released
+instead of starting compute.
+
+If a work unit is already ready for compute when termination is observed, it
+must not start compute and its retained resident state must be released.
+
+Already-running compute may finish and may contribute completed output/coverage
+according to the R0.4b completed-set semantics.
+
+Final cleanup must return all research-local active/resident counters to zero.
+
+### 26.9 Initial stage-selection policy
+
+Use deterministic FIFO/stable work identity within each stage for the first
+R0.4d evidence.
+
+R0.4d is not another scheduling-policy selection experiment.
+
+R0.4c policy machinery remains research-local and is not promoted into the
+pipeline contract.
+
+### 26.10 Evidence slices
+
+#### R0.4d-0 — vocabulary and reuse
+
+- establish stage and backpressure vocabulary;
+- compile/reuse immutable R0.4a/R0.4b/R0.4c references where useful;
+- no threaded pipeline yet.
+
+#### R0.4d-1 — deterministic pipeline state machine
+
+Prove:
+
+- legal per-work-unit transitions;
+- active/materialize/compute/handoff bounds;
+- explicit handoff-credit reservation/release;
+- zero-work request behaviour.
+
+No wall-clock timing.
+
+#### R0.4d-2 — bounded pipeline success
+
+Introduce bounded concurrent stage execution and prove:
+
+- materialize/compute overlap across different work units;
+- exact output equality with R0.4a;
+- all configured count bounds;
+- final release.
+
+#### R0.4d-3 — deterministic backpressure
+
+Hold downstream progress with explicit synchronization.
+
+Prove:
+
+- handoff capacity becomes fully reserved/occupied;
+- additional materialization cannot start;
+- upstream admission resumes after compute consumes/releases handoff credit.
+
+#### R0.4d-4 — stage-order independence
+
+Force deterministic out-of-order stage completion across work units and prove:
+
+- exact output unchanged;
+- coverage semantics unchanged;
+- request completion independent of stage completion order.
+
+#### R0.4d-5 — failure/cancellation cleanup
+
+Inject termination at controlled stage boundaries.
+
+Prove:
+
+- no new work-unit admission after termination;
+- queued ready-for-compute work does not start compute;
+- already-running stages may finish;
+- abandoned resident state is released;
+- final counters/residency return to zero.
+
+#### R0.4d-6 — raster integration
+
+Run the exact neighbourhood operation through the bounded pipeline and compare
+against both:
+
+- R0.4a synchronous reference;
+- R0.4b bounded-parallel reference.
+
+### 26.11 Explicit non-goals
+
+R0.4d does not select or implement:
+
+```text
+real asynchronous file/network I/O
+codec/decode backends
+provider/source policy
+dynamic dependency discovery
+work stealing
+prefetch
+cache replacement
+general resident-byte budgeting
+preemptive stage interruption
+OS thread priority
+CPU affinity
+GPU execution
+imagery-specific pipelines
+public scheduler/pipeline APIs
+general DAG/workflow execution
+```
+
+### 26.12 Initial hypotheses
+
+**H1 — pipeline stages remain orthogonal to raster semantics**
+
+Stage state can remain execution-local without changing Region2D, RasterView,
+dependency or operation semantics.
+
+**H2 — handoff credits are sufficient for first backpressure evidence**
+
+Reservation before materialization can provide deterministic bounded upstream
+admission without a general byte-budget controller.
+
+**H3 — stage overlap preserves exact output**
+
+Different work units can overlap materialization and compute while preserving
+the exact semantic result.
+
+**H4 — backpressure does not require wall-clock evidence**
+
+Explicit synchronization and counters are sufficient.
+
+**H5 — termination remains stronger than stage progress**
+
+Failure/cancellation can prevent later stage starts while already-running stage
+work retains R0.4b non-preemption semantics.
+
+**H6 — slot bounds remain distinct from byte budgets**
+
+Bounded stage counts do not imply a general resident-memory-byte guarantee.
+
+**H7 — no public pipeline API is yet required**
+
+Disposable research stage/queue/backpressure types are sufficient for the
+evidence.
+
+### 26.13 Questions R0.4d must answer
+
+1. What is the minimum useful staged lifecycle for generic raster execution?
+2. Is a linear materialize/compute pipeline sufficient for first evidence?
+3. Is reservation-before-materialization the right handoff/backpressure model?
+4. Which counters are semantic evidence and which are implementation detail?
+5. Can stage overlap be proven deterministically without timing assumptions?
+6. Can termination prevent later stage starts without preempting running work?
+7. Can resident state always be released after success, failure and cancellation?
+8. Does exact raster output remain independent of stage overlap/completion order?
+9. Does the model stay inside raster-d rather than becoming a general workflow engine?
+10. Does any pipeline/backpressure abstraction deserve promotion?
+
+### 26.14 Success gate
+
+R0.4d evidence is sufficient only if:
+
+1. stage vocabulary is explicit and deterministic;
+2. per-work-unit stage order is enforced;
+3. at least two different work units demonstrably overlap different stages;
+4. `activeWorkUnits <= maxActiveWorkUnits`;
+5. `materializing <= maxMaterializing`;
+6. `computing <= maxComputing`;
+7. handoff credit use never exceeds `handoffCapacity`;
+8. full handoff capacity deterministically blocks additional upstream materialization;
+9. upstream progress resumes after handoff credit is released;
+10. backpressure evidence uses no wall-clock/sleep assumption;
+11. failure/cancellation closes new work-unit admission;
+12. queued/not-running later stages do not start after termination;
+13. all retained resident state is released on success/failure/cancellation;
+14. pipeline execution remains byte-identical to the exact semantic reference;
+15. historical evidence and production `source/raster/` remain unchanged and
+    the raster-d scope gate is not crossed;
+16. DMD and LDC produce the same deterministic correctness results.
+
+### 26.15 Promotion rule
+
+Passing R0.4d does not authorize a public:
+
+```text
+Pipeline
+Stage
+Queue
+BackpressureController
+Executor
+Graph
+Workflow
+```
+
+API.
+
+Promotion requires a concrete raster consumer and evidence that the abstraction:
+
+- remains generic across non-image raster domains;
+- survives later source/I/O and worker-pool research;
+- does not collapse into provider/image/application policy;
+- has clear ownership/lifetime semantics;
+- is worth the public-surface cost.
+
+Until then, all R0.4d stage/queue/backpressure machinery remains disposable
+research evidence.
+
