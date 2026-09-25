@@ -1,0 +1,38 @@
+name "r0-4d-pipeline-backpressure"
+description "R0.4d bounded pipeline/backpressure research for raster-d"
+authors "Alexander Bernardi"
+license "MIT"
+
+targetType "library"
+targetPath ".dub"
+
+dflags "-preview=dip1000"
+
+dependency "raster-d" path="../.."
+
+importPaths "."
+importPaths "../r0_4c_scheduling_policy"
+importPaths "../r0_4b_bounded_parallel_execution"
+importPaths "../r0_4a_synchronous_execution"
+importPaths "../r0_3_regions_streaming"
+
+sourceFiles "pipeline_vocabulary.d"
+sourceFiles "pipeline_state_machine.d"
+sourceFiles "pipeline_raster_fixture.d"
+sourceFiles "bounded_pipeline_success.d"
+sourceFiles "deterministic_backpressure.d"
+sourceFiles "stage_order_independence.d"
+sourceFiles "pipeline_termination.d"
+sourceFiles "raster_pipeline_integration.d"
+sourceFiles "reuse_probe.d"
+
+sourceFiles "../r0_4c_scheduling_policy/scheduling_policy_oracle.d"
+sourceFiles "../r0_4b_bounded_parallel_execution/bounded_parallel_execution.d"
+sourceFiles "../r0_4a_synchronous_execution/synchronous_execution.d"
+
+sourceFiles "../r0_3_regions_streaming/region_algebra.d"
+sourceFiles "../r0_3_regions_streaming/dependency.d"
+sourceFiles "../r0_3_regions_streaming/decomposition_oracle.d"
+sourceFiles "../r0_3_regions_streaming/procedural_source.d"
+sourceFiles "../r0_3_regions_streaming/neighbourhood_kernel.d"
+sourceFiles "../r0_3_regions_streaming/neighbourhood_task_execution.d"
