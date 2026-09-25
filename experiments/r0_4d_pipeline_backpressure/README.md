@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0 implementation — local compiler validation pending
+Status: R0.4d-0 complete; R0.4d-1 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -8,6 +8,20 @@ Contract baseline:
 
 ```text
 52b7df0 research: define R0.4d pipeline backpressure contract
+```
+
+
+Evidence commits:
+
+```text
+e9f8665 research: establish R0.4d pipeline vocabulary and reuse
+```
+
+R0.4d-0 local compiler evidence:
+
+```text
+DMD: 11 modules passed unittests
+LDC: 11 modules passed unittests
 ```
 
 Authoritative research document:
@@ -281,3 +295,92 @@ BackpressureController, Executor, Graph or Workflow API.
 
 Until a separate production promotion decision is justified, every R0.4d type
 remains disposable research machinery.
+
+## 13. R0.4d-0 result
+
+R0.4d-0 is complete.
+
+It proved that the new experiment can compile and execute the immutable R0.4a
+and R0.4b references, compile/call the immutable R0.4c FIFO oracle, preserve
+exact output/coverage equality, preserve the R0.4b active-work bound and finish
+with zero local raster residency.
+
+No pipeline execution semantics were introduced in R0.4d-0.
+
+## 14. R0.4d-1 deterministic state machine
+
+R0.4d-1 introduces research-local, single-threaded transition semantics.
+
+The first legal success path is:
+
+```text
+notAdmitted
+    ->
+materializing
+    ->
+readyForCompute
+    ->
+computing
+    ->
+completed
+    ->
+released
+```
+
+Starting materialization is also pipeline admission and must reserve one handoff
+credit.
+
+The credit remains reserved across:
+
+```text
+materializing
+readyForCompute
+```
+
+and is released only when compute starts.
+
+The accounting model tracks:
+
+```text
+activeWorkUnits
+materializing
+readyForCompute
+computing
+completedPendingRelease
+handoffCreditsInUse
+```
+
+with exact accounting identities:
+
+```text
+activeWorkUnits
+==
+materializing
++ readyForCompute
++ computing
++ completedPendingRelease
+```
+
+and:
+
+```text
+handoffCreditsInUse
+==
+materializing
++ readyForCompute
+```
+
+The configured bounds remain:
+
+```text
+activeWorkUnits <= maxActiveWorkUnits
+materializing <= maxMaterializing
+computing <= maxComputing
+handoffCreditsInUse <= handoffCapacity
+```
+
+A rejected transition must not mutate either work-unit stage or global
+accounting.
+
+R0.4d-1 remains single-threaded. It does not prove concurrent execution.
+
