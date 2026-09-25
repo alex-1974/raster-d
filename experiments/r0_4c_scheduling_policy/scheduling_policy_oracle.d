@@ -984,3 +984,289 @@ unittest
     assert(trace.readyOrdinals.length == 0);
 }
 
+
+/++
+    Deterministic R0.4c-3 evidence for strict-priority starvation/bypass.
+
+    One lower-priority throughput work unit remains continuously ready while a
+    fresh higher-priority interactive work unit is made ready before every
+    dispatch opportunity.
+
+    The probe executes a caller-selected finite number of opportunities.
+
+    If strict priority has no starvation-prevention state, the continuously
+    ready lower-priority work unit is bypassed once per opportunity.
++/
+struct StrictPriorityStarvationEvidence
+{
+    PolicyOracleError error =
+        PolicyOracleError.internalFailure;
+
+    size_t dispatchOpportunities;
+    size_t bypassedOpportunities;
+
+    bool lowerPriorityDispatched;
+
+    size_t[] dispatchedWorkUnitIds;
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error
+            == PolicyOracleError.none;
+    }
+}
+
+
+/++
+    Simulates sustained higher-priority arrivals for a fixed number of
+    deterministic dispatch opportunities.
+
+    This is not a time simulation.
+
+    At each opportunity:
+
+    - work unit size_t.max is the same continuously ready throughput item;
+    - one fresh interactive item is ready at higher priority;
+    - strict priority chooses exactly one next admission;
+    - the throughput item remains ready if it was not chosen.
+
+    The function intentionally has no fairness, aging or quota state.
++/
+StrictPriorityStarvationEvidence
+probeStrictPrioritySustainedHigherPriority(
+    size_t dispatchOpportunities
+)
+@safe
+{
+    StrictPriorityStarvationEvidence result;
+
+    result.dispatchOpportunities =
+        dispatchOpportunities;
+
+    result.dispatchedWorkUnitIds =
+        new size_t[dispatchOpportunities];
+
+
+    enum size_t lowerPriorityWorkUnitId =
+        size_t.max;
+
+    enum int lowerPriority =
+        0;
+
+    enum int higherPriority =
+        1;
+
+
+    foreach (
+        opportunity;
+        0 .. dispatchOpportunities
+    )
+    {
+        /*
+         * The lower-priority item has been continuously ready since ordinal 0.
+         *
+         * A fresh higher-priority item arrives before this dispatch
+         * opportunity.
+         */
+        const ReadyWork[2] ready =
+        [
+            ReadyWork(
+                lowerPriorityWorkUnitId,
+                0,
+                PolicyClass.throughput,
+                lowerPriority
+            ),
+
+            ReadyWork(
+                opportunity,
+                opportunity + 1,
+                PolicyClass.interactive,
+                higherPriority
+            )
+        ];
+
+
+        auto trace =
+            dispatchStrictPriority(
+                ready[]
+            );
+
+
+        if (
+            !trace.ok
+            || trace.workUnitIds.length != 2
+        )
+        {
+            result.error =
+                PolicyOracleError.internalFailure;
+
+            return result;
+        }
+
+
+        const selectedWorkUnitId =
+            trace.workUnitIds[0];
+
+        result.dispatchedWorkUnitIds[
+            opportunity
+        ] =
+            selectedWorkUnitId;
+
+
+        if (
+            selectedWorkUnitId
+            == lowerPriorityWorkUnitId
+        )
+        {
+            result.lowerPriorityDispatched = true;
+
+            result.error =
+                PolicyOracleError.internalFailure;
+
+            return result;
+        }
+
+
+        ++result.bypassedOpportunities;
+    }
+
+
+    result.error =
+        PolicyOracleError.none;
+
+    return result;
+}
+
+
+/*
+ * R0.4c-3 strict-priority starvation evidence.
+ *
+ * The test deliberately evaluates several finite observation horizons.
+ *
+ * For every requested horizon:
+ *
+ *     bypassedOpportunities == dispatchOpportunities
+ *
+ * Therefore strict priority provides no finite bypass bound of its own.
+ *
+ * This is stronger and more precise than a wall-clock statement such as
+ * "the throughput item waited a long time".
+ */
+unittest
+{
+    const size_t[5] horizons =
+    [
+        1,
+        2,
+        8,
+        32,
+        128
+    ];
+
+
+    foreach (horizon; horizons)
+    {
+        auto evidence =
+            probeStrictPrioritySustainedHigherPriority(
+                horizon
+            );
+
+
+        assert(evidence.ok);
+
+        assert(
+            evidence.dispatchOpportunities
+            == horizon
+        );
+
+        assert(
+            evidence.bypassedOpportunities
+            == horizon
+        );
+
+        assert(
+            !evidence.lowerPriorityDispatched
+        );
+
+        assert(
+            evidence.dispatchedWorkUnitIds.length
+            == horizon
+        );
+
+
+        foreach (
+            dispatchOrdinal;
+            0 .. horizon
+        )
+        {
+            assert(
+                evidence.dispatchedWorkUnitIds[
+                    dispatchOrdinal
+                ]
+                == dispatchOrdinal
+            );
+        }
+    }
+}
+
+
+/*
+ * The same two-item ready state distinguishes FIFO progress from strict
+ * priority bypass without any timing assumption.
+ *
+ * FIFO services the continuously ready older throughput item first.
+ *
+ * Strict priority services the newer higher-priority interactive item first.
+ */
+unittest
+{
+    const ReadyWork[2] ready =
+    [
+        ReadyWork(
+            900,
+            0,
+            PolicyClass.throughput,
+            0
+        ),
+
+        ReadyWork(
+            901,
+            1,
+            PolicyClass.interactive,
+            1
+        )
+    ];
+
+
+    auto fifo =
+        dispatchFifo(
+            ready[]
+        );
+
+    auto strict =
+        dispatchStrictPriority(
+            ready[]
+        );
+
+
+    assert(fifo.ok);
+    assert(strict.ok);
+
+
+    assert(
+        fifo.workUnitIds[0]
+        == 900
+    );
+
+    assert(
+        strict.workUnitIds[0]
+        == 901
+    );
+}
+
