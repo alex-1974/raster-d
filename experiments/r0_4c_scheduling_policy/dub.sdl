@@ -17,6 +17,7 @@ importPaths "../r0_3_regions_streaming"
 
 sourceFiles "reuse_probe.d"
 sourceFiles "scheduling_policy_oracle.d"
+sourceFiles "raster_policy_integration.d"
 
 sourceFiles "../r0_4b_bounded_parallel_execution/bounded_parallel_execution.d"
 sourceFiles "../r0_4a_synchronous_execution/synchronous_execution.d"
