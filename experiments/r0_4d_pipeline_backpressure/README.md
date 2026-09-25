@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0/R0.4d-1/R0.4d-2 complete; R0.4d-3 implementation — local compiler validation pending
+Status: R0.4d-0 through R0.4d-3 complete; R0.4d-4 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -17,6 +17,7 @@ Evidence commits:
 e9f8665 research: establish R0.4d pipeline vocabulary and reuse
 d76f921 research: prove R0.4d deterministic pipeline state machine
 68b1ccc research: prove R0.4d bounded pipeline stage overlap
+1319838 research: prove R0.4d deterministic backpressure
 ```
 
 R0.4d-0 local compiler evidence:
@@ -40,6 +41,14 @@ R0.4d-2 local compiler evidence:
 ```text
 DMD: 13 modules passed unittests
 LDC: 13 modules passed unittests
+```
+
+
+R0.4d-3 local compiler evidence:
+
+```text
+DMD: 14 modules passed unittests
+LDC: 14 modules passed unittests
 ```
 
 Authoritative research document:
@@ -555,4 +564,117 @@ upstream start resumes
 The proof uses no sleep, timeout or wall-clock threshold.
 
 R0.4d-3 still introduces no queue, worker pool or general backpressure API.
+
+## 19. R0.4d-3 result
+
+R0.4d-3 is complete.
+
+It proved deterministic handoff backpressure:
+
+```text
+handoff full
+    ->
+otherwise-admissible upstream start rejected
+
+compute start
+    ->
+one handoff credit released
+
+same upstream work unit
+    ->
+admitted successfully while compute remains in flight
+```
+
+The blocked attempt was mutation-free.
+
+The configured limits were reached but never exceeded, and final accounting
+returned to zero.
+
+No sleep, timeout or wall-clock threshold was used.
+
+## 20. Shared R0.4d raster-stage fixture
+
+Before R0.4d-4, the retained procedural-source fixture and exact resident
+neighbourhood compute orchestration are factored into:
+
+```text
+pipeline_raster_fixture.d
+```
+
+This is a research-local refactor only.
+
+It prevents later R0.4d slices from copying the same logical-to-resident
+mapping and retained-source lifetime code.
+
+R0.4d-2 is changed only to consume this shared experiment-local fixture.
+
+Nothing is promoted into `source/raster/`.
+
+## 21. R0.4d-4 stage-order independence
+
+R0.4d-4 runs the same two-work-unit exact raster request twice.
+
+Both work units are first advanced to:
+
+```text
+computing
+computing
+```
+
+with:
+
+```text
+maxActiveWorkUnits = 2
+maxMaterializing  = 2
+maxComputing      = 2
+handoffCapacity   = 2
+```
+
+Two real compute workers enter a common start barrier.
+
+Each worker then has its own explicit release and completion barriers.
+
+Run A forces:
+
+```text
+work 0 compute completion
+before
+work 1 compute completion
+```
+
+Run B forces:
+
+```text
+work 1 compute completion
+before
+work 0 compute completion
+```
+
+After the first forced completion:
+
+```text
+requestCompleted == false
+```
+
+because one work unit is still active and coverage is incomplete.
+
+Only after the second completion, semantic output commit and explicit release:
+
+```text
+requestCompleted == true
+```
+
+Both forced completion orders must produce:
+
+- byte-identical output to each other;
+- byte-identical output to R0.4a;
+- identical completed coverage;
+- final zero active/handoff state;
+- final zero retained fixture residency.
+
+The completion trace is evidence only.
+
+It does not define semantic output order.
+
+No sleep or timing threshold is used.
 

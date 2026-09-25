@@ -18,8 +18,10 @@ importPaths "../r0_3_regions_streaming"
 
 sourceFiles "pipeline_vocabulary.d"
 sourceFiles "pipeline_state_machine.d"
+sourceFiles "pipeline_raster_fixture.d"
 sourceFiles "bounded_pipeline_success.d"
 sourceFiles "deterministic_backpressure.d"
+sourceFiles "stage_order_independence.d"
 sourceFiles "reuse_probe.d"
 
 sourceFiles "../r0_4c_scheduling_policy/scheduling_policy_oracle.d"
