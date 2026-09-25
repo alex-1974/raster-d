@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0 complete; R0.4d-1 implementation — local compiler validation pending
+Status: R0.4d-0/R0.4d-1 complete; R0.4d-2 implementation — local compiler validation pending
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -15,6 +15,7 @@ Evidence commits:
 
 ```text
 e9f8665 research: establish R0.4d pipeline vocabulary and reuse
+d76f921 research: prove R0.4d deterministic pipeline state machine
 ```
 
 R0.4d-0 local compiler evidence:
@@ -22,6 +23,14 @@ R0.4d-0 local compiler evidence:
 ```text
 DMD: 11 modules passed unittests
 LDC: 11 modules passed unittests
+```
+
+
+R0.4d-1 local compiler evidence:
+
+```text
+DMD: 12 modules passed unittests
+LDC: 12 modules passed unittests
 ```
 
 Authoritative research document:
@@ -383,4 +392,75 @@ A rejected transition must not mutate either work-unit stage or global
 accounting.
 
 R0.4d-1 remains single-threaded. It does not prove concurrent execution.
+
+## 15. R0.4d-1 result
+
+R0.4d-1 is complete.
+
+The single-threaded state machine proved:
+
+- exact per-work-unit success-stage ordering;
+- admission and active-work limits;
+- materialization-stage limits;
+- compute-stage limits;
+- reservation-before-materialization handoff semantics;
+- handoff credit retention across `materializing -> readyForCompute`;
+- handoff credit release at compute start;
+- explicit completed-but-not-yet-released ownership;
+- exact accounting identities;
+- mutation-free rejected transitions;
+- zero-capacity/zero-work consistency.
+
+No concurrency claim was made by R0.4d-1.
+
+## 16. R0.4d-2 bounded pipeline success
+
+R0.4d-2 introduces real OS-thread concurrency for one narrow success fixture.
+
+The configured limits are deliberately:
+
+```text
+maxActiveWorkUnits = 2
+maxMaterializing  = 1
+maxComputing      = 1
+handoffCapacity   = 1
+```
+
+The deterministic overlap sequence is:
+
+```text
+A materialize
+A readyForCompute
+A start compute
+    -> releases the only handoff credit
+B start materialize
+    ->
+A computing && B materializing
+```
+
+Two worker threads then enter those different active stage bodies and wait on
+explicit shared barriers.
+
+The coordinator reaches the same barrier only after both workers have entered.
+
+Therefore overlap evidence does not depend on sleep, elapsed time or OS
+scheduler luck.
+
+After the coordinator records the overlap state, a second barrier releases both
+stage bodies.
+
+R0.4d-2 performs real raster work:
+
+- A computes the established exact weighted 3 x 3 neighbourhood operation
+  against an already materialized procedural source;
+- B simultaneously materializes its procedural source;
+- B later computes the same operation;
+- both task outputs are assembled into the requested output;
+- the complete result is compared byte-for-byte with R0.4a.
+
+The resident compute helper is R0.4d-local orchestration over established public
+research components. It is not a promoted production primitive.
+
+R0.4d-2 still does not introduce a queue, reusable worker pool, dynamic stage
+selection or general pipeline API.
 
