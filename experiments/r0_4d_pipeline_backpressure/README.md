@@ -1,0 +1,283 @@
+# R0.4d Bounded Pipeline Backpressure Experiment
+
+Status: R0.4d-0 implementation — local compiler validation pending
+Date: 2026-09-25
+Tracking issue: #18
+
+Contract baseline:
+
+```text
+52b7df0 research: define R0.4d pipeline backpressure contract
+```
+
+Authoritative research document:
+
+```text
+docs/research/execution.md
+```
+
+Nothing in this experiment directory is a stable public API.
+
+## 1. Purpose
+
+R0.4d researches bounded staged raster execution above the semantic references
+already established by R0.4a, R0.4b and R0.4c.
+
+The central separation is:
+
+```text
+semantic work
+!=
+pipeline stage
+!=
+stage admission / backpressure
+```
+
+R0.4d does not research a general-purpose pipeline, DAG, workflow or async task
+framework.
+
+Every stage admitted to this experiment must exist because of a generic raster
+execution requirement.
+
+## 2. Raster-d scope gate
+
+Use this boundary test throughout R0.4d:
+
+```text
+Would the abstraction still make sense if the raster represented
+elevation, temperature or another scientific grid instead of an image?
+
+YES  -> candidate raster-d mechanism
+NO   -> higher-level consumer / adapter concern
+```
+
+The experiment may know about:
+
+```text
+raster work units
+regions
+dependency / halo
+resident raster resources
+work-unit lifecycle
+bounded stage slots
+handoff / backpressure
+residency accounting
+termination
+```
+
+It must not know about:
+
+```text
+JPEG / TIFF codec semantics
+GDALDataset
+COG / HTTP / WMS / WMTS policy
+RGB / Lab / ICC semantics
+alpha interpretation
+radiometry
+sensor/acquisition metadata
+CRS / geotransform / GSD
+imagery mosaicking policy
+image-specific enhancement semantics
+OSM/application workflow semantics
+```
+
+## 3. Historical evidence boundary
+
+R0.4d must not modify:
+
+```text
+source/raster/
+experiments/r0_3_regions_streaming/
+experiments/r0_4a_synchronous_execution/
+experiments/r0_4b_bounded_parallel_execution/
+experiments/r0_4c_scheduling_policy/
+```
+
+Those sources are immutable evidence for this research slice.
+
+R0.4d may compile and call selected historical research modules.
+
+## 4. Initial stage vocabulary
+
+The research-local lifecycle vocabulary is:
+
+```text
+notAdmitted
+materializing
+readyForCompute
+computing
+completed
+released
+```
+
+R0.4d-0 defines only names and resource-limit vocabulary.
+
+It does not yet implement stage transitions.
+
+Per-work-unit transition legality belongs to R0.4d-1.
+
+## 5. Initial bounded-resource vocabulary
+
+The first pipeline model uses:
+
+```text
+maxActiveWorkUnits
+maxMaterializing
+maxComputing
+handoffCapacity
+```
+
+The intended later invariants are:
+
+```text
+activeWorkUnits <= maxActiveWorkUnits
+materializing <= maxMaterializing
+computing <= maxComputing
+materializing + readyForCompute <= handoffCapacity
+```
+
+R0.4d-0 does not yet implement or claim those counters.
+
+The distinction remains explicit:
+
+```text
+bounded pipeline slots
+!=
+bounded resident bytes
+```
+
+## 6. Handoff-credit vocabulary
+
+A handoff credit is downstream holding capacity reserved before materialization
+starts.
+
+The later intended rule is:
+
+```text
+reserve handoff credit
+    before
+start materialization
+```
+
+and:
+
+```text
+compute starts
+    ->
+release that work unit's handoff credit
+```
+
+This prevents upstream materialization from producing resident work with no
+bounded place to wait.
+
+R0.4d-0 defines this vocabulary only.
+
+Reservation/release mechanics belong to R0.4d-1 and later evidence.
+
+## 7. R0.4d-0 reuse objective
+
+The first executable slice proves only that the new experiment can:
+
+1. compile the R0.4d vocabulary;
+2. compile and call the immutable R0.4a synchronous reference;
+3. compile and call the immutable R0.4b bounded-parallel reference;
+4. compile and call the immutable R0.4c FIFO policy oracle;
+5. run R0.4a and R0.4b against the same legal decomposition;
+6. obtain exact output and coverage equality;
+7. observe final zero local raster residency;
+8. preserve the R0.4b active-work bound;
+9. preserve deterministic R0.4c FIFO order.
+
+R0.4d-0 does not prove pipeline execution.
+
+## 8. Initial implementation shape
+
+```text
+experiments/r0_4d_pipeline_backpressure/
+    README.md
+    dub.sdl
+    pipeline_vocabulary.d
+    reuse_probe.d
+```
+
+No queue, worker pool, semaphore, barrier or thread belongs in R0.4d-0.
+
+## 9. Determinism
+
+R0.4d correctness evidence must not depend on:
+
+- sleep;
+- elapsed time;
+- timeout races;
+- operating-system scheduling order;
+- machine speed;
+- pointer identity;
+- unordered hash iteration.
+
+Later concurrency slices may use explicit synchronization to force states and
+ordering.
+
+## 10. R0.4d evidence slices
+
+### R0.4d-0 — vocabulary and reuse
+
+Compile historical references and establish stage/backpressure terminology.
+
+### R0.4d-1 — deterministic state machine
+
+Prove legal stage transitions and bounded counter/credit mechanics without
+threads.
+
+### R0.4d-2 — bounded pipeline success
+
+Prove real materialize/compute overlap across different work units while
+preserving exact raster output and configured bounds.
+
+### R0.4d-3 — deterministic backpressure
+
+Use explicit synchronization to prove a full handoff bound blocks upstream
+materialization and released credit resumes progress.
+
+### R0.4d-4 — stage-order independence
+
+Force out-of-order stage completion and prove output/coverage invariance.
+
+### R0.4d-5 — failure/cancellation cleanup
+
+Prove dispatch/stage closure and release semantics at controlled stage
+boundaries.
+
+### R0.4d-6 — raster integration
+
+Compare the final bounded pipeline against the exact R0.4a and bounded R0.4b
+references.
+
+## 11. Explicit non-goals
+
+R0.4d does not implement:
+
+```text
+real asynchronous file/network I/O
+codec/decode backends
+provider/source policy
+dynamic dependency discovery
+work stealing
+prefetch
+cache replacement
+general resident-byte budgeting
+preemptive stage interruption
+OS thread priority
+CPU affinity
+GPU execution
+imagery-specific pipelines
+public scheduler/pipeline APIs
+general DAG/workflow execution
+```
+
+## 12. Promotion rule
+
+Passing R0.4d will not automatically authorize a public Pipeline, Stage, Queue,
+BackpressureController, Executor, Graph or Workflow API.
+
+Until a separate production promotion decision is justified, every R0.4d type
+remains disposable research machinery.
