@@ -1,0 +1,28 @@
+name "r0-4c-scheduling-policy"
+description "R0.4c scheduling policy research for raster-d"
+authors "Alexander Bernardi"
+license "MIT"
+
+targetType "library"
+targetPath ".dub"
+
+dflags "-preview=dip1000"
+
+dependency "raster-d" path="../.."
+
+importPaths "."
+importPaths "../r0_4b_bounded_parallel_execution"
+importPaths "../r0_4a_synchronous_execution"
+importPaths "../r0_3_regions_streaming"
+
+sourceFiles "reuse_probe.d"
+
+sourceFiles "../r0_4b_bounded_parallel_execution/bounded_parallel_execution.d"
+sourceFiles "../r0_4a_synchronous_execution/synchronous_execution.d"
+
+sourceFiles "../r0_3_regions_streaming/region_algebra.d"
+sourceFiles "../r0_3_regions_streaming/dependency.d"
+sourceFiles "../r0_3_regions_streaming/decomposition_oracle.d"
+sourceFiles "../r0_3_regions_streaming/procedural_source.d"
+sourceFiles "../r0_3_regions_streaming/neighbourhood_kernel.d"
+sourceFiles "../r0_3_regions_streaming/neighbourhood_task_execution.d"
