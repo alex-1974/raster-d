@@ -3817,3 +3817,400 @@ Promotion requires a concrete raster consumer and evidence that the abstraction:
 Until then, all R0.4d stage/queue/backpressure machinery remains disposable
 research evidence.
 
+## 27. R0.4d measured evidence
+
+R0.4d evidence commits:
+
+```text
+e9f8665  vocabulary and historical-reference reuse
+d76f921  deterministic pipeline state machine
+68b1ccc  bounded real stage overlap
+1319838  deterministic backpressure
+c06ae73  stage-order independence
+43196c7  termination cleanup
+ff86c02  raster pipeline integration
+```
+
+### 27.1 Vocabulary and state-machine result
+
+The tested success lifecycle is:
+
+```text
+notAdmitted
+    ->
+materializing
+    ->
+readyForCompute
+    ->
+computing
+    ->
+completed
+    ->
+released
+```
+
+Termination cleanup additionally permits:
+
+```text
+readyForCompute
+    ->
+released
+```
+
+without compute.
+
+The exact accounting identities are:
+
+```text
+activeWorkUnits
+==
+materializing
++ readyForCompute
++ computing
++ completedPendingRelease
+```
+
+and:
+
+```text
+handoffCreditsInUse
+==
+materializing
++ readyForCompute
+```
+
+### 27.2 Cross-stage overlap result
+
+With:
+
+```text
+maxActiveWorkUnits = 2
+maxMaterializing  = 1
+maxComputing      = 1
+handoffCapacity   = 1
+```
+
+real raster execution reached the observed state:
+
+```text
+work A: computing
+work B: materializing
+```
+
+while both stages were held by explicit barriers.
+
+The assembled output and coverage were exact-equal to R0.4a.
+
+### 27.3 Backpressure result
+
+With handoff capacity two:
+
+```text
+readyForCompute      = 2
+handoffCreditsInUse  = 2
+```
+
+an otherwise-admissible third materialization start failed specifically with:
+
+```text
+handoffCapacityReached
+```
+
+without mutation.
+
+Starting compute for one ready item released one handoff credit.
+
+The same third work unit then entered materialization successfully while compute
+remained in flight.
+
+### 27.4 Completion-order result
+
+Two real compute stages were forced to complete in both orders:
+
+```text
+0 -> 1
+1 -> 0
+```
+
+Both runs produced exact R0.4a output and coverage.
+
+After only the first completion:
+
+```text
+requestCompleted == false
+```
+
+After complete required coverage and release:
+
+```text
+requestCompleted == true
+```
+
+### 27.5 Termination result
+
+Failure while materialization was already running proved:
+
+```text
+failure observed
+    ->
+new admission closed
+    ->
+running materialization may finish
+    ->
+later compute start blocked
+    ->
+retained resident state released
+```
+
+Cancellation while compute was already running proved:
+
+```text
+cancellation observed
+    ->
+queued ready compute blocked
+    ->
+new admission closed
+    ->
+running compute may finish
+    ->
+partial completed coverage may publish
+    ->
+queued retained work released without compute
+```
+
+All tested termination paths ended with zero active/handoff/resident state.
+
+### 27.6 Final raster-integration result
+
+The canonical six-member legal decomposition was executed through:
+
+```text
+R0.4a synchronous
+R0.4b bounded parallel
+R0.4d bounded staged pipeline
+```
+
+The R0.4d runner observed five deterministic adjacent cross-stage overlaps:
+
+```text
+compute(i) || materialize(i + 1)
+```
+
+For R0.4d:
+
+```text
+peakActiveWorkUnits       = 2
+peakMaterializing         = 1
+peakComputing             = 1
+peakHandoffCreditsInUse   = 1
+```
+
+and:
+
+```text
+output == R0.4a output
+output == R0.4b output
+completedCoverage == R0.4a completedCoverage
+completedCoverage == R0.4b completedCoverage
+currentResidentRasterBytes == 0
+```
+
+R0.4b also ended with zero resident raster bytes.
+
+### 27.7 Compiler evidence
+
+At the final R0.4d experiment HEAD before documentation closure:
+
+```text
+DMD: 17 modules passed unittests
+LDC: 17 modules passed unittests
+```
+
+This is current-family verification.
+
+It is not a compiler-floor audit.
+
+## 28. R0.4d research questions answered
+
+### 28.1 Minimum useful staged lifecycle
+
+The tested lifecycle is:
+
+```text
+notAdmitted
+materializing
+readyForCompute
+computing
+completed
+released
+```
+
+plus `readyForCompute -> released` for termination cleanup.
+
+### 28.2 Linear pipeline sufficiency
+
+A linear materialize/compute pipeline was sufficient for first generic raster
+stage-overlap and backpressure evidence.
+
+No DAG/general workflow model was required.
+
+### 28.3 Handoff reservation model
+
+Reservation before materialization was sufficient for deterministic upstream
+backpressure.
+
+Compute start releases the retained handoff credit.
+
+### 28.4 Evidence counters
+
+The useful first-order counters were:
+
+```text
+activeWorkUnits
+materializing
+readyForCompute
+computing
+completedPendingRelease
+handoffCreditsInUse
+```
+
+plus peak values.
+
+They remain research evidence, not public API.
+
+### 28.5 Deterministic overlap
+
+Explicit barriers were sufficient to prove cross-stage overlap without
+wall-clock assumptions.
+
+### 28.6 Termination without preemption
+
+Request closure prevented later stage starts while already-running
+materialization/compute remained non-preemptive.
+
+### 28.7 Resident cleanup
+
+All tested success/failure/cancellation paths returned retained resident state
+to zero.
+
+### 28.8 Output-order independence
+
+Forced compute completion order did not alter exact output, coverage or final
+request completion.
+
+### 28.9 Raster-d boundary
+
+The experiment remained generic raster execution research.
+
+It did not introduce image, codec, CRS, provider, network, OSM or application
+semantics.
+
+It also did not require a general Graph/Workflow abstraction.
+
+### 28.10 Promotion
+
+No pipeline/backpressure type deserves production promotion yet.
+
+## 29. R0.4d success gate — PASS
+
+All sixteen contract gates passed:
+
+1. **PASS** — stage vocabulary is explicit and deterministic;
+2. **PASS** — per-work-unit stage order is enforced;
+3. **PASS** — at least two different work units overlap different stages;
+4. **PASS** — `activeWorkUnits <= maxActiveWorkUnits`;
+5. **PASS** — `materializing <= maxMaterializing`;
+6. **PASS** — `computing <= maxComputing`;
+7. **PASS** — handoff usage never exceeds `handoffCapacity`;
+8. **PASS** — full handoff capacity deterministically blocks upstream materialization;
+9. **PASS** — upstream progress resumes after handoff-credit release;
+10. **PASS** — backpressure correctness uses no wall-clock/sleep assumption;
+11. **PASS** — failure/cancellation closes new work-unit admission;
+12. **PASS** — queued/not-running later stages do not start after termination;
+13. **PASS** — retained resident state is released on success/failure/cancellation;
+14. **PASS** — pipeline execution is byte-identical to exact semantic references;
+15. **PASS** — historical evidence and production `source/raster/` remain unchanged and the raster-d scope gate was not crossed;
+16. **PASS** — DMD and LDC produced the same deterministic correctness result.
+
+## 30. R0.4d final conclusion
+
+R0.4d is **complete**.
+
+The evidence establishes:
+
+```text
+semantic work
+!=
+pipeline stage
+!=
+stage admission / backpressure
+
+bounded pipeline slots
+!=
+general resident-byte budget
+
+stage completion order
+!=
+semantic raster output
+
+request termination
+>
+later stage admission
+
+running stage
+!=
+preemptible stage
+```
+
+A bounded staged raster execution model can overlap materialization and compute
+while preserving the exact semantic result established by R0.4a/R0.4b.
+
+Reservation-before-materialization handoff credits are sufficient for first
+deterministic backpressure evidence.
+
+Termination can close later stage starts without preempting already-running
+work, while retained resident state is still released completely.
+
+### 30.1 Promotion decision
+
+**Do not promote the R0.4d pipeline/backpressure machinery into the production raster API.**
+
+Keep these research-local:
+
+- stage enum/vocabulary;
+- stage limits and accounting;
+- deterministic state machine;
+- handoff-credit bookkeeping;
+- termination gate;
+- ready-without-compute cleanup transition;
+- barrier-based proof workers;
+- shared experiment raster fixture;
+- integrated linear pipeline runner.
+
+R0.4d did not justify a public Pipeline, Stage, Queue, BackpressureController,
+Executor, Graph, Workflow or CancellationToken API.
+
+### 30.2 Next execution-research boundary
+
+R0.4e may investigate advanced execution questions only where independently
+justified.
+
+Possible later topics include:
+
+```text
+worker pools
+work stealing
+prefetch
+deeper resource control
+other advanced execution mechanisms
+```
+
+They must not be retroactively folded into R0.4d.
+
+Real codec/decode/file/network source execution remains outside R0.4d and must
+preserve the raster-d scope boundary.
+
+Any later execution abstraction must preserve the R0.4a/R0.4b/R0.4c/R0.4d
+semantic references rather than embedding execution policy into raster
+geometry, views or operation correctness.
+

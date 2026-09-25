@@ -1,6 +1,6 @@
 # R0.4d Bounded Pipeline Backpressure Experiment
 
-Status: R0.4d-0 through R0.4d-5 complete; R0.4d-6 implementation — local compiler validation pending
+Status: R0.4d evidence complete
 Date: 2026-09-25
 Tracking issue: #18
 
@@ -20,6 +20,7 @@ d76f921 research: prove R0.4d deterministic pipeline state machine
 1319838 research: prove R0.4d deterministic backpressure
 c06ae73 research: prove R0.4d stage-order independence
 43196c7 research: prove R0.4d termination cleanup
+ff86c02 research: prove R0.4d raster pipeline integration
 ```
 
 R0.4d-0 local compiler evidence:
@@ -67,6 +68,14 @@ R0.4d-5 local compiler evidence:
 ```text
 DMD: 16 modules passed unittests
 LDC: 16 modules passed unittests
+```
+
+
+R0.4d-6 local compiler evidence:
+
+```text
+DMD: 17 modules passed unittests
+LDC: 17 modules passed unittests
 ```
 
 Authoritative research document:
@@ -873,4 +882,290 @@ This is a research-local linear staged raster runner.
 
 It is not promoted as a general executor, worker pool, queue, DAG or workflow
 API.
+
+## 26. R0.4d-6 result
+
+R0.4d-6 is complete.
+
+The canonical six-member legal decomposition was executed by:
+
+```text
+R0.4a synchronous
+R0.4b bounded parallel
+R0.4d bounded staged pipeline
+```
+
+The R0.4d integration observed exactly five adjacent cross-stage overlaps:
+
+```text
+compute(i) || materialize(i + 1)
+```
+
+and produced exact output and completed coverage equal to both historical
+references.
+
+The configured R0.4d limits were exercised exactly:
+
+```text
+peakActiveWorkUnits        = 2
+peakMaterializing          = 1
+peakComputing              = 1
+peakHandoffCreditsInUse    = 1
+```
+
+Final R0.4d active, handoff and retained resident state returned to zero.
+
+R0.4b also ended with zero resident raster bytes.
+
+## 27. R0.4d measured evidence
+
+| Slice | Evidence |
+|---|---|
+| d0 | R0.4a/R0.4b/R0.4c reuse + stage vocabulary |
+| d1 | deterministic stage state machine and exact accounting identities |
+| d2 | real cross-stage raster overlap |
+| d3 | deterministic handoff saturation and upstream resumption |
+| d4 | forced completion-order independence |
+| d5 | failure/cancellation closure and retained-state cleanup |
+| d6 | six-work-unit integration against R0.4a and R0.4b |
+
+Final local compiler evidence:
+
+```text
+DMD: 17 modules passed unittests
+LDC: 17 modules passed unittests
+```
+
+This is current-family verification.
+
+It is not a compiler-floor audit.
+
+## 28. R0.4d research questions answered
+
+### 28.1 Minimum useful staged lifecycle
+
+The minimum lifecycle needed by the evidence was:
+
+```text
+notAdmitted
+materializing
+readyForCompute
+computing
+completed
+released
+```
+
+plus one termination cleanup edge:
+
+```text
+readyForCompute
+    ->
+released
+```
+
+The cleanup edge exists only to release retained ready work after request
+termination.
+
+### 28.2 Linear pipeline sufficiency
+
+A linear two-stage execution model was sufficient for the first generic raster
+pipeline evidence:
+
+```text
+materialize
+    ->
+compute
+```
+
+No DAG or general workflow abstraction was required.
+
+### 28.3 Handoff reservation model
+
+Reservation before materialization was sufficient for deterministic first
+backpressure evidence.
+
+The tested invariant was:
+
+```text
+handoffCreditsInUse
+==
+materializing + readyForCompute
+```
+
+and remained bounded by `handoffCapacity`.
+
+### 28.4 Useful evidence counters
+
+The experiment needed:
+
+```text
+activeWorkUnits
+materializing
+readyForCompute
+computing
+completedPendingRelease
+handoffCreditsInUse
+```
+
+plus their peak values.
+
+These counters were useful as research evidence.
+
+They are not yet justified as public API.
+
+### 28.5 Deterministic stage overlap
+
+Real materialization and compute overlap was proven using explicit barriers.
+
+No sleep, elapsed-time threshold or scheduler-luck assumption was required.
+
+### 28.6 Termination semantics
+
+Failure/cancellation can close later stage starts without preempting already
+running stage bodies.
+
+This preserves the R0.4b non-preemption rule.
+
+### 28.7 Resident-state cleanup
+
+All tested success/failure/cancellation paths returned retained resident state
+to zero.
+
+A ready-for-compute item may be released without compute after termination.
+
+### 28.8 Completion-order independence
+
+Forced completion traces:
+
+```text
+0 -> 1
+1 -> 0
+```
+
+produced identical exact output and coverage.
+
+Request completion remained false after the first work-unit completion and true
+only after full required coverage plus release of all active work.
+
+### 28.9 Raster-d boundary
+
+The experiment remained generic across raster domains.
+
+It used no image-specific, codec, CRS, provider, OSM or application semantics.
+
+No general-purpose Graph/Workflow abstraction was required.
+
+### 28.10 Promotion
+
+No R0.4d pipeline/backpressure abstraction deserves production promotion yet.
+
+The evidence supports semantic boundaries and internal execution concepts, not a
+stable public Pipeline/Stage/Queue/Executor API.
+
+## 29. R0.4d success gate — PASS
+
+All sixteen contract gates passed:
+
+1. **PASS** — stage vocabulary is explicit and deterministic;
+2. **PASS** — per-work-unit stage order is enforced;
+3. **PASS** — different work units demonstrably overlap different stages;
+4. **PASS** — `activeWorkUnits <= maxActiveWorkUnits`;
+5. **PASS** — `materializing <= maxMaterializing`;
+6. **PASS** — `computing <= maxComputing`;
+7. **PASS** — handoff use never exceeds `handoffCapacity`;
+8. **PASS** — full handoff capacity deterministically blocks additional upstream materialization;
+9. **PASS** — upstream progress resumes after handoff credit release;
+10. **PASS** — backpressure evidence uses no wall-clock/sleep assumption;
+11. **PASS** — failure/cancellation closes new work-unit admission;
+12. **PASS** — queued/not-running later stages do not start after termination;
+13. **PASS** — retained resident state is released on success/failure/cancellation;
+14. **PASS** — pipeline execution remains byte-identical to exact semantic references;
+15. **PASS** — historical evidence and production `source/raster/` remain unchanged and the raster-d scope gate was not crossed;
+16. **PASS** — DMD and LDC produced the same deterministic correctness result.
+
+## 30. R0.4d final conclusion
+
+R0.4d is **complete**.
+
+The evidence establishes:
+
+```text
+semantic work
+!=
+pipeline stage
+!=
+stage admission / backpressure
+
+bounded stage slots
+!=
+general resident-byte budget
+
+stage completion order
+!=
+semantic output order
+
+request termination
+>
+later stage admission
+
+running stage
+!=
+preemptible stage
+```
+
+A bounded staged raster execution model can overlap materialization and compute
+without changing the exact semantic result established by R0.4a/R0.4b.
+
+Reservation-before-materialization handoff credits provide deterministic
+first-order backpressure.
+
+Request termination can close later stage starts while preserving
+non-preemption of already-running work and guaranteed retained-state cleanup.
+
+### 30.1 Promotion decision
+
+**Do not promote the R0.4d pipeline/backpressure machinery into the production raster API.**
+
+Keep the following research-local:
+
+- `PipelineStage`;
+- `PipelineLimits`;
+- `PipelineStateMachine`;
+- `PipelineAccounting`;
+- handoff-credit bookkeeping;
+- stage-start termination gate;
+- experiment-local raster fixtures;
+- barrier-based proof workers;
+- integrated linear pipeline runner.
+
+R0.4d did not justify a public:
+
+```text
+Pipeline
+Stage
+Queue
+BackpressureController
+Executor
+Graph
+Workflow
+CancellationToken
+```
+
+API.
+
+### 30.2 Next execution-research boundary
+
+R0.4e may now investigate later/advanced execution questions only where they are
+independently justified.
+
+Candidate topics include worker-pool architecture, work stealing, prefetch,
+deeper resource control or other advanced execution mechanisms.
+
+Those topics must not be folded into R0.4d retroactively.
+
+Real source/decode/network I/O remains outside this experiment and must keep the
+raster-d boundary explicit.
+
+Any future execution abstraction must preserve the semantic references
+established by R0.4a through R0.4d.
 
