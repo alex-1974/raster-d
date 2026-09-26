@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0/R0.4e-1 complete; R0.4e-2 implementation — local compiler validation pending
+Status: R0.4e-0/R0.4e-1/R0.4e-2 complete; R0.4e-3 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -461,3 +461,59 @@ R0.4e-2 still does not execute the raster pipeline.
 
 That begins in R0.4e-3.
 
+
+
+## 15. R0.4e-3 persistent raster pipeline
+
+R0.4e-3 combines the already-proven persistent-worker and bounded-mailbox
+mechanics with real staged raster work.
+
+The first integration candidate uses exactly:
+
+```text
+one persistent materialization worker
+one persistent compute worker
+one capacity-one materialization mailbox
+one capacity-one compute mailbox
+```
+
+Both worker threads are created and started once for the request and execute all
+six canonical raster work units without per-work-unit thread creation.
+
+The real raster mechanics are imported unchanged from the immutable R0.4d
+fixture:
+
+```text
+dependency preparation
+procedural materialization
+logical-to-resident mapping
+weighted 3x3 neighbourhood compute
+task-output commit
+resident release
+```
+
+The e3 correctness gate requires exact equality with the immutable R0.4a
+synchronous reference:
+
+```text
+persistent output
+==
+synchronous output
+
+persistent completed coverage
+==
+synchronous completed coverage
+```
+
+R0.4e-3 also records that each persistent stage worker enters its `run()`
+exactly once while executing all work units, both stage-mailbox peaks remain
+within their configured finite capacity, final retained raster bytes return to
+zero and both workers are joined.
+
+R0.4e-3 intentionally proves only one successful request.
+
+Cross-request reuse remains R0.4e-4.
+
+Failure/cancellation recovery remains R0.4e-5.
+
+No public worker/executor API is promoted.
