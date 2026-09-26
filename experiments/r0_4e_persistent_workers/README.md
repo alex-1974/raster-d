@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0/R0.4e-1/R0.4e-2 complete; R0.4e-3 implementation — local compiler validation pending
+Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3 complete; R0.4e-4 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -517,3 +517,67 @@ Cross-request reuse remains R0.4e-4.
 Failure/cancellation recovery remains R0.4e-5.
 
 No public worker/executor API is promoted.
+
+
+## 16. R0.4e-4 sequential request reuse
+
+R0.4e-4 keeps exactly one live materialization worker and one live compute
+worker across two successful sequential raster requests.
+
+The two requests deliberately use different:
+
+```text
+StableRequestIdentity
+requested output region
+work-unit decomposition
+work-unit count
+output length
+```
+
+The same worker threads are created and started once before request 1 and are
+shut down only after request 2.
+
+The e4 gate requires:
+
+```text
+materialization worker runEntries == 1
+compute worker runEntries == 1
+
+materialization jobs
+==
+request 1 work units + request 2 work units
+
+compute jobs
+==
+request 1 work units + request 2 work units
+```
+
+Each worker also records the request identity observed for every work unit so
+the experiment can prove that both requests crossed the same persistent worker
+set.
+
+For each request independently:
+
+```text
+persistent output
+==
+R0.4a synchronous output
+
+persistent completed coverage
+==
+R0.4a synchronous completed coverage
+```
+
+The request-local slot is reset between requests. The second request therefore
+starts with fresh output, coverage, fixture and completion state while worker
+identity and worker lifetime remain unchanged.
+
+The first request's copied output/coverage is verified again after request 2 to
+detect accidental cross-request mutation.
+
+After both requests, both bounded mailboxes are closed, drained and empty, and
+both persistent workers are joined.
+
+R0.4e-4 does not introduce failure or cancellation recovery.
+
+That remains R0.4e-5.
