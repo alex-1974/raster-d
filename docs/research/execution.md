@@ -4214,3 +4214,574 @@ Any later execution abstraction must preserve the R0.4a/R0.4b/R0.4c/R0.4d
 semantic references rather than embedding execution policy into raster
 geometry, views or operation correctness.
 
+## 31. R0.4e contract — persistent raster workers
+
+Tracking issue: #20
+
+### 31.1 Central question
+
+R0.4e asks:
+
+> Can a fixed, research-local set of persistent raster stage workers execute
+> many work units and multiple sequential requests without per-work-unit thread
+> creation, while preserving the exact R0.4a/R0.4b/R0.4c/R0.4d semantics,
+> bounded stage queues, request-local termination and complete retained-resource
+> cleanup?
+
+The central separation is:
+
+```text
+semantic work
+!=
+stage readiness
+!=
+worker assignment
+!=
+worker lifetime
+!=
+request lifetime
+```
+
+R0.4e is therefore not primarily a thread-performance experiment.
+
+Its first purpose is to determine worker/request lifecycle semantics.
+
+### 31.2 Why R0.4e exists after R0.4d
+
+R0.4d proved bounded staged raster execution using disposable proof workers and
+explicit synchronization.
+
+That was sufficient to prove:
+
+- stage overlap;
+- handoff backpressure;
+- completion-order independence;
+- termination cleanup;
+- exact raster integration.
+
+It did not answer whether a real execution substrate should create new threads
+for each proof action or retain a small worker set.
+
+R0.4e isolates that unanswered question.
+
+The new separation is:
+
+```text
+pipeline semantics
+!=
+thread creation strategy
+```
+
+### 31.3 Initial worker model
+
+The first candidate model is intentionally narrow:
+
+```text
+one persistent materialization worker
+one persistent compute worker
+bounded research-local stage queues
+sequential raster requests
+```
+
+Each worker may execute many stage actions during its lifetime.
+
+The worker set may outlive an individual request.
+
+The first model does not generalize this into an arbitrary task executor.
+
+### 31.4 Worker lifetime
+
+A worker has a lifecycle conceptually equivalent to:
+
+```text
+not started
+    ->
+running / waiting
+    ->
+shutdown observed
+    ->
+joined
+```
+
+A waiting worker is still alive.
+
+Worker lifetime is distinct from:
+
+```text
+work-unit lifetime
+request lifetime
+resident-raster lifetime
+```
+
+A completed or terminated request must not require worker destruction.
+
+### 31.5 Request lifetime and isolation
+
+The same worker set may serve multiple **sequential** requests.
+
+Each request retains its own:
+
+- work-unit states;
+- coverage/output;
+- stage accounting;
+- handoff/backpressure state;
+- failure/cancellation state;
+- retained raster ownership.
+
+After one request reaches a terminal state:
+
+```text
+request-local state
+must not leak into
+later request state
+```
+
+The first R0.4e evidence does not execute multiple requests concurrently.
+
+### 31.6 Stage queues
+
+R0.4e may introduce bounded research-local stage queues/mailboxes.
+
+The initial candidate uses separate stage queues:
+
+```text
+materialization queue
+compute queue
+```
+
+rather than one general task queue.
+
+This keeps the first worker model tied to the generic raster pipeline already
+established by R0.4d.
+
+Each queue must have an explicit finite capacity.
+
+No queue may grow merely because producers are faster than consumers.
+
+Queue capacity is additional execution-resource vocabulary.
+
+It does not replace the R0.4d handoff and active-work bounds.
+
+### 31.7 Initial queue order
+
+Use deterministic FIFO/stable work identity within each stage queue.
+
+R0.4e must not reopen the R0.4c scheduling-policy experiment.
+
+Therefore:
+
+```text
+queue correctness
+!=
+priority-policy selection
+```
+
+Priority/fairness remains historical R0.4c evidence.
+
+### 31.8 Blocking and wakeup
+
+Persistent workers may block while no stage work is available.
+
+Correctness must not depend on:
+
+```text
+busy polling
+sleep
+wall-clock timeout
+machine speed
+OS scheduling luck
+```
+
+Explicit synchronization may be used to prove:
+
+- worker waiting;
+- worker wakeup;
+- queue closure;
+- request termination;
+- worker shutdown.
+
+### 31.9 Worker reuse
+
+R0.4e must distinguish:
+
+```text
+same worker thread executes multiple work units
+```
+
+from merely:
+
+```text
+multiple threads execute multiple work units
+```
+
+Evidence should therefore track stable research-local worker identity and prove
+that at least one persistent worker executes more than one stage action without
+thread recreation.
+
+### 31.10 Cross-request reuse
+
+At least two sequential requests must execute on the same still-live worker set.
+
+The evidence must prove:
+
+- no worker respawn is required between requests;
+- request A terminal state does not become request B state;
+- retained raster ownership from request A is zero before request B completes;
+- request B can succeed after request A succeeds;
+- later termination evidence also proves request B can succeed after a
+  failed/cancelled request A.
+
+This is worker-set reuse evidence.
+
+It is not concurrent request scheduling.
+
+### 31.11 Termination recovery
+
+R0.4e inherits R0.4d termination semantics:
+
+- no new stage starts for a terminated request;
+- already-running stage bodies are non-preemptive;
+- retained ready work is released;
+- final request-local resident state returns to zero.
+
+Persistent workers themselves do not become failed/cancelled merely because a
+request terminates.
+
+After request cleanup:
+
+```text
+worker set remains usable
+```
+
+unless the worker set itself is explicitly shut down.
+
+### 31.12 Worker-set shutdown
+
+Worker-set shutdown is distinct from request termination.
+
+Shutdown must:
+
+- close later worker admission;
+- wake workers blocked waiting for stage work;
+- allow required deterministic cleanup;
+- cause every worker to leave its loop;
+- allow every worker thread to be joined;
+- prevent later stage execution after shutdown.
+
+The first shutdown model should avoid forced thread termination.
+
+### 31.13 Work stealing decision
+
+Work stealing is **not an initial R0.4e requirement**.
+
+The first worker model uses bounded shared/stage queues.
+
+Work stealing becomes justified only if later evidence shows that:
+
+```text
+shared/stage queue model
+is insufficient for a concrete raster workload
+```
+
+or that per-worker queues provide a measurable benefit worth their additional
+lifecycle, fairness and termination complexity.
+
+Therefore R0.4e must not introduce per-worker deques merely because work
+stealing appears in the broad R0.4 roadmap.
+
+### 31.14 Prefetch decision
+
+Prefetch is **deferred from initial R0.4e evidence**.
+
+Useful prefetch policy generally depends on information such as:
+
+- source latency/cost;
+- source locality;
+- materialization cost;
+- cache state;
+- predicted future region demand.
+
+Those concerns overlap the later raster-source boundary and representative
+workload research.
+
+Until R0.6/R0.7 or equivalent evidence provides that context:
+
+```text
+prefetch policy
+!=
+persistent-worker correctness
+```
+
+R0.4e must not invent source semantics in order to test prefetch.
+
+### 31.15 Relationship to R0.5 and performance
+
+R0.4e may record deterministic execution counts and lifecycle events.
+
+It does not select a performance winner.
+
+Questions such as:
+
+- ideal worker count;
+- throughput scaling;
+- queue contention cost;
+- context-switch cost;
+- CPU saturation;
+- cache effects;
+
+belong to later measurement work, especially R0.5/R0.7.
+
+R0.4e first proves that the lifecycle model is correct enough to benchmark.
+
+### 31.16 Explicit non-goals
+
+R0.4e does not select or implement:
+
+```text
+work stealing
+per-worker local deques
+prefetch policy
+concurrent multi-request scheduling
+cross-request priority/fairness
+dynamic worker resizing
+OS thread priority
+CPU affinity
+NUMA policy
+GPU execution
+real async file/network I/O
+codec/decode backends
+provider/source policy
+general DAG/workflow execution
+public WorkerPool/Executor/Task/Future API
+performance winner selection
+```
+
+### 31.17 Inherited semantics
+
+R0.4e inherits unchanged:
+
+- R0.4a exact synchronous semantic result;
+- R0.4b bounded execution and non-preemption;
+- R0.4c separation of scheduling policy from semantic work;
+- R0.4d stage lifecycle;
+- R0.4d handoff/backpressure;
+- R0.4d termination cleanup;
+- decomposition-independent exact output;
+- work-unit-local retained raster ownership.
+
+Historical R0.3/R0.4a/R0.4b/R0.4c/R0.4d experiment sources remain immutable.
+
+Production `source/raster/` remains unchanged unless a later explicit
+promotion decision is justified.
+
+### 31.18 Evidence slices
+
+#### R0.4e-0 — worker vocabulary and reuse boundary
+
+Define:
+
+- worker lifetime;
+- request lifetime;
+- stage-queue vocabulary;
+- shutdown vocabulary;
+- reuse invariants.
+
+No persistent threads yet.
+
+#### R0.4e-1 — persistent worker loop
+
+Prove one persistent worker can:
+
+- block waiting for work;
+- wake deterministically;
+- execute multiple stable jobs;
+- return to waiting;
+- observe shutdown;
+- exit and join cleanly.
+
+No raster pipeline yet.
+
+#### R0.4e-2 — bounded stage queues
+
+Introduce bounded materialization/compute queues and prove:
+
+- explicit finite capacities;
+- deterministic FIFO/stable identity;
+- queue-full admission rejection/backpressure;
+- blocking wakeup without polling;
+- clean queue close.
+
+#### R0.4e-3 — real raster pipeline on persistent workers
+
+Execute the exact R0.4d materialize/compute pipeline on persistent stage
+workers.
+
+Prove:
+
+- same-worker reuse across multiple work units;
+- exact output and coverage;
+- R0.4d handoff/resource bounds;
+- final zero request-local residency.
+
+#### R0.4e-4 — sequential request reuse
+
+Run at least two successful raster requests through the same still-live worker
+set.
+
+Prove:
+
+- workers were not recreated;
+- request-local state is reset/isolated;
+- both outputs match semantic references;
+- no retained resource leaks across the request boundary.
+
+#### R0.4e-5 — termination recovery
+
+Terminate one request at controlled stage boundaries.
+
+Prove:
+
+- terminated-request queue/stage starts close correctly;
+- already-running stage work remains non-preemptive;
+- retained state is released;
+- persistent workers survive;
+- a later request succeeds on the same worker set.
+
+#### R0.4e-6 — shutdown and final integration
+
+Shut down the persistent worker set deterministically.
+
+Prove:
+
+- blocked workers wake;
+- all worker loops exit;
+- all worker threads join;
+- no later stage work executes;
+- final worker/request/resident counters are zero;
+- exact raster semantics still match historical references.
+
+### 31.19 Initial hypotheses
+
+**H1 — worker lifetime remains orthogonal to raster semantics**
+
+Persistent thread identity can remain execution-local without entering Region2D,
+RasterView, dependency or operation semantics.
+
+**H2 — persistent workers do not require a general task framework**
+
+Separate bounded stage queues are sufficient for the first reusable-worker
+evidence.
+
+**H3 — worker reuse preserves exact output**
+
+Reusing the same worker threads across many work units does not alter exact
+raster output or coverage.
+
+**H4 — request state can remain isolated from worker state**
+
+A worker set can outlive a request without retaining semantic request state.
+
+**H5 — request termination need not terminate workers**
+
+Failure/cancellation can clean one request while leaving the worker set usable
+for a later request.
+
+**H6 — shutdown can be deterministic without forced thread termination**
+
+Queue closure/wakeup and cooperative worker-loop exit are sufficient.
+
+**H7 — work stealing is not yet required**
+
+No per-worker local-deque/stealing complexity is justified unless the simpler
+shared/stage queue model proves insufficient.
+
+**H8 — prefetch should wait for source/workload evidence**
+
+Persistent-worker correctness can be established without source-specific
+prefetch policy.
+
+### 31.20 Questions R0.4e must answer
+
+1. What is the minimum worker lifecycle needed for reusable raster execution?
+2. Should worker lifetime outlive one request?
+3. Can one worker execute multiple work units without semantic state leakage?
+4. Are separate bounded stage queues sufficient for first evidence?
+5. Which queue events must be observable for deterministic correctness tests?
+6. Can workers block/wake correctly without polling or timing assumptions?
+7. Can the same worker set execute multiple sequential requests exactly?
+8. Can a failed/cancelled request clean up without poisoning the worker set?
+9. Can shutdown wake and join all workers deterministically?
+10. Is work stealing actually required for correctness or only a later
+    performance candidate?
+11. Should prefetch remain deferred until source/workload research?
+12. Does any worker-pool abstraction deserve production promotion?
+
+### 31.21 Success gate
+
+R0.4e evidence is sufficient only if:
+
+1. worker lifetime is explicit and distinct from work-unit/request lifetime;
+2. worker threads are created once and reused for multiple work units;
+3. the same worker set is reused across multiple sequential requests;
+4. stage queues are explicitly bounded;
+5. queued work preserves stable deterministic identity/order for the baseline;
+6. no correctness claim depends on sleep, timeout or wall-clock timing;
+7. exact raster output/coverage matches the semantic references;
+8. request-local termination prevents later starts for that request;
+9. already-running work remains non-preemptive;
+10. termination cleanup returns retained resident state to zero;
+11. a failed/cancelled request does not poison the next request;
+12. clean shutdown wakes and joins all persistent workers;
+13. no work starts after worker-set shutdown;
+14. work stealing/prefetch/source policy are not smuggled into the model;
+15. historical evidence and production `source/raster/` remain unchanged;
+16. DMD and LDC produce the same deterministic correctness result.
+
+### 31.22 Promotion rule
+
+Passing R0.4e does not authorize a public:
+
+```text
+WorkerPool
+Worker
+Task
+Queue
+Executor
+Future
+ThreadPool
+```
+
+API.
+
+Promotion requires later evidence that:
+
+- the abstraction remains generic across raster consumers;
+- its lifetime is stable across source and performance research;
+- it is not merely an implementation detail;
+- it survives real workload measurement;
+- the public-surface cost is justified.
+
+Until then, all R0.4e worker/queue machinery remains disposable research
+evidence.
+
+### 31.23 Expected boundary after R0.4e
+
+If R0.4e passes, the correctness-focused R0.4 execution sequence will have
+evidence for:
+
+```text
+synchronous semantics
+bounded parallel execution
+scheduling policy separation
+bounded staged execution/backpressure
+persistent worker reuse
+```
+
+At that point, work stealing and prefetch should not automatically become more
+R0.4 correctness slices.
+
+They should be admitted only by later measured workload/source evidence.
+
+That keeps R0.4 from expanding into an unbounded general execution-framework
+project.
+
