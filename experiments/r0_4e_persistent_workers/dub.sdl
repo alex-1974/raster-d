@@ -23,6 +23,7 @@ sourceFiles "bounded_stage_mailbox.d"
 sourceFiles "persistent_raster_pipeline.d"
 sourceFiles "sequential_request_reuse.d"
 sourceFiles "termination_recovery.d"
+sourceFiles "final_integration.d"
 sourceFiles "reuse_probe.d"
 
 sourceFiles "../r0_4d_pipeline_backpressure/pipeline_vocabulary.d"
