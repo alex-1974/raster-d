@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0 complete; R0.4e-1 implementation — local compiler validation pending
+Status: R0.4e-0/R0.4e-1 complete; R0.4e-2 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -9,6 +9,7 @@ Contract baseline:
 ```text
 c04040e research: define R0.4e persistent worker contract
 6029ca3 research: establish R0.4e worker vocabulary and reuse
+e280ddc research: prove R0.4e persistent worker loop
 ```
 
 Authoritative research document:
@@ -23,6 +24,14 @@ R0.4e-0 local compiler evidence:
 ```text
 DMD: 13 modules passed unittests
 LDC: 13 modules passed unittests
+```
+
+
+R0.4e-1 local compiler evidence:
+
+```text
+DMD: 14 modules passed unittests
+LDC: 14 modules passed unittests
 ```
 
 Nothing in this experiment directory is a stable public API.
@@ -317,4 +326,138 @@ joined
 R0.4e-1 proves persistent thread reuse only.
 
 Queue bounds and queue-full semantics remain R0.4e-2.
+
+## 13. R0.4e-1 result
+
+R0.4e-1 is complete.
+
+Exactly one OS worker thread was created and started once.
+
+The same persistent `run()` invocation executed:
+
+```text
+job 101
+job 202
+```
+
+with deterministic waiting boundaries between them.
+
+The final evidence was:
+
+```text
+runEntries   = 1
+waitEntries  = 3
+jobsExecuted = 2
+trace        = [101, 202]
+```
+
+Cooperative shutdown was observed by the same worker and the thread was joined.
+
+No queue, sleep, timeout or polling correctness assumption was introduced.
+
+## 14. R0.4e-2 bounded stage mailboxes
+
+R0.4e-2 introduces two research-local stage-mailbox identities:
+
+```text
+materialization
+compute
+```
+
+The mailbox contract is deliberately smaller than a production queue API.
+
+### 14.1 Push semantics
+
+`tryPush` is non-blocking and returns one of:
+
+```text
+none
+full
+closed
+```
+
+Therefore queue-capacity pressure is explicit:
+
+```text
+count == capacity
+    ->
+tryPush == full
+```
+
+A rejected full push does not mutate queue contents.
+
+### 14.2 FIFO semantics
+
+Accepted items are removed in insertion order.
+
+The baseline uses stable research work identity and ready ordinal only as
+evidence payload.
+
+R0.4e-2 does not reopen R0.4c priority/fairness policy.
+
+### 14.3 Blocking pop
+
+`waitPop` blocks while:
+
+```text
+queue empty
+and
+queue open
+```
+
+It wakes when either:
+
+- one item is pushed; or
+- the mailbox is closed.
+
+The proof uses a condition variable plus an explicit barrier observation hook so
+the coordinator knows the consumer has reached the wait boundary before
+triggering the wakeup.
+
+No elapsed-time threshold is used.
+
+### 14.4 Close semantics
+
+`close` means:
+
+```text
+reject later pushes
+allow already queued items to drain
+wake blocked consumers
+after drain, waitPop returns closed
+```
+
+Closing an already closed mailbox is idempotent.
+
+Mailbox close is not request cancellation.
+
+R0.4d request termination rules remain separate and will be reintroduced with
+real persistent raster workers in later slices.
+
+### 14.5 Bounded evidence
+
+The materialization-mailbox fixture uses capacity two and proves:
+
+```text
+peakCount == 2
+third push while full -> full
+pop oldest
+push resumes
+FIFO trace == [10, 20, 30]
+```
+
+The compute-mailbox fixture uses capacity one and one consumer thread to prove:
+
+```text
+empty/open -> consumer blocks
+push 55 -> consumer wakes with item 55
+empty/open -> consumer blocks again
+close -> consumer wakes with closed
+```
+
+No stage queue grows beyond configured capacity.
+
+R0.4e-2 still does not execute the raster pipeline.
+
+That begins in R0.4e-3.
 
