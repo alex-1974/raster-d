@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3 complete; R0.4e-4 implementation — local compiler validation pending
+Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3/R0.4e-4 complete; R0.4e-5 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -581,3 +581,47 @@ both persistent workers are joined.
 R0.4e-4 does not introduce failure or cancellation recovery.
 
 That remains R0.4e-5.
+
+
+## 17. R0.4e-5 failure/cancellation recovery
+
+R0.4e-5 adds controlled request termination while keeping the persistent worker
+set alive.
+
+Two termination classes are exercised independently:
+
+```text
+cooperative cancellation before a later work unit begins
+controlled materialization failure for one work unit
+```
+
+The cancellation fixture completes an initial prefix, observes cancellation at
+the next work-unit boundary, admits no later work for that request, cleans all
+request-local retained raster state and then executes a later request
+successfully on the same worker threads.
+
+The failure fixture injects one deterministic materialization failure after a
+completed prefix. The failed request is terminated and all retained raster state
+is released. A later request then executes successfully on the same still-live
+worker pair.
+
+For each recovery request:
+
+```text
+persistent output
+==
+R0.4a synchronous output
+
+persistent completed coverage
+==
+R0.4a synchronous completed coverage
+```
+
+The persistent worker `run()` entry count must remain exactly one for each
+worker across termination and recovery.
+
+R0.4e-5 is still research-local. It does not define a public cancellation,
+error, worker or executor API.
+
+Final worker-set shutdown and the complete R0.4e success-gate integration remain
+R0.4e-6.
