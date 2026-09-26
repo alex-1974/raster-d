@@ -20,10 +20,12 @@ importPaths "../r0_3_regions_streaming"
 sourceFiles "worker_vocabulary.d"
 sourceFiles "persistent_worker_loop.d"
 sourceFiles "bounded_stage_mailbox.d"
+sourceFiles "persistent_raster_pipeline.d"
 sourceFiles "reuse_probe.d"
 
 sourceFiles "../r0_4d_pipeline_backpressure/pipeline_vocabulary.d"
 sourceFiles "../r0_4d_pipeline_backpressure/pipeline_state_machine.d"
+sourceFiles "../r0_4d_pipeline_backpressure/pipeline_raster_fixture.d"
 
 sourceFiles "../r0_4c_scheduling_policy/scheduling_policy_oracle.d"
 sourceFiles "../r0_4b_bounded_parallel_execution/bounded_parallel_execution.d"
