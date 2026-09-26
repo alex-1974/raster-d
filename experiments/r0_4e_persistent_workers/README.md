@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3/R0.4e-4/R0.4e-5 complete; R0.4e-6 implementation — local compiler validation pending
+Status: COMPLETE — R0.4e-0 through R0.4e-6 validated locally
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -715,3 +715,34 @@ thread-pool API.
 
 The final local DMD/LDC validation remains the release gate for declaring
 R0.4e complete.
+
+
+## 19. Final local validation
+
+Final local compiler evidence for R0.4e-6:
+
+```text
+DMD: 19 modules passed unittests
+LDC: 19 modules passed unittests
+
+dmd=0
+ldc=0
+working tree clean
+```
+
+Final branch scope against `main` contains only:
+
+```text
+docs/research/execution.md
+experiments/r0_4e_persistent_workers/
+```
+
+No production file under `source/raster/` was changed.
+
+All 16 candidate R0.4e success gates are therefore covered by the accumulated
+evidence from e0 through e6.
+
+R0.4e is complete as research evidence.
+
+No public worker, queue, task, future, executor or thread-pool API is promoted
+by this result.
