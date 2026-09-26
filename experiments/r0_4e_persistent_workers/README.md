@@ -1,6 +1,6 @@
 # R0.4e Persistent Worker Reuse Experiment
 
-Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3/R0.4e-4 complete; R0.4e-5 implementation — local compiler validation pending
+Status: R0.4e-0/R0.4e-1/R0.4e-2/R0.4e-3/R0.4e-4/R0.4e-5 complete; R0.4e-6 implementation — local compiler validation pending
 Date: 2026-09-26
 Tracking issue: #20
 
@@ -625,3 +625,93 @@ error, worker or executor API.
 
 Final worker-set shutdown and the complete R0.4e success-gate integration remain
 R0.4e-6.
+
+
+## 18. R0.4e-6 shutdown and final integration
+
+R0.4e-6 closes the remaining worker-set lifecycle gates.
+
+One persistent worker is deterministically observed while blocked on an
+empty/open bounded mailbox. Closing that mailbox must:
+
+```text
+wake the blocked worker
+produce closed from waitPop
+transition the worker to shutdownObserved
+allow the thread to return
+allow the coordinator to join it
+transition observer state to joined
+```
+
+After shutdown, producer admission is permanently closed:
+
+```text
+tryPush -> closed
+```
+
+and the worker's started/completed job counters remain unchanged. This is the
+explicit proof that no work starts after worker-set shutdown.
+
+The final integration slice also rechecks the canonical raster result against
+the immutable R0.4a synchronous and R0.4b bounded-parallel references and
+requires exact output/coverage equality plus zero final retained raster bytes.
+
+### 18.1 R0.4e candidate success gate mapping
+
+The full R0.4e evidence now maps to the 16 candidate gates as follows:
+
+```text
+1  worker lifetime distinct from request/work-unit lifetime
+   -> e0/e1/e4
+
+2  worker threads created once and reused
+   -> e1/e3
+
+3  same worker set reused across sequential requests
+   -> e4
+
+4  stage queues explicitly bounded
+   -> e2/e3/e4/e5
+
+5  stable deterministic FIFO identity/order
+   -> e2
+
+6  no correctness claim depends on sleep/timeout/wallclock
+   -> e1/e2/e3/e4/e5/e6
+
+7  exact raster output/coverage matches semantic references
+   -> e0/e3/e4/e5/e6
+
+8  request-local termination prevents later starts
+   -> e5
+
+9  already-running work remains non-preemptive
+   -> inherited R0.4b/R0.4d semantics; e5 terminates only at controlled boundaries
+
+10 termination cleanup returns resident state to zero
+   -> e5
+
+11 failed/cancelled request does not poison next request
+   -> e5
+
+12 clean shutdown wakes and joins persistent workers
+   -> e1/e3/e4/e5/e6
+
+13 no work starts after worker-set shutdown
+   -> e6
+
+14 no work stealing/prefetch/source policy introduced
+   -> all R0.4e slices
+
+15 historical evidence and production source/raster unchanged
+   -> branch compare scope
+
+16 DMD and LDC deterministic correctness equal
+   -> local compiler gates for e0-e6
+```
+
+R0.4e-6 does not promote any public worker, queue, task, future, executor or
+thread-pool API.
+
+The final local DMD/LDC validation remains the release gate for declaring
+R0.4e complete.
