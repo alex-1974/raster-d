@@ -14,6 +14,7 @@ import neighbourhood_address_shape_bench : runNeighbourhoodAddressShapeMatrix;
 import neighbourhood_alias_path_bench : runNeighbourhoodAliasPath;
 import neighbourhood_sliding_bench : runNeighbourhoodSliding;
 import neighbourhood_view_bench : runNeighbourhoodViewMatrix;
+import neighbourhood_qualification_bench : runNeighbourhoodQualificationMatrix;
 import neighbourhood_direction_matrix_bench : runNeighbourhoodDirectionMatrix;
 import neighbourhood_signed_stride_bench : runNeighbourhoodSignedStrideMatrix;
 import corpus : fillDeterministic, fingerprint;
@@ -271,6 +272,8 @@ int main()
     if (runNeighbourhoodSliding() != 0)
         return 1;
     if (runNeighbourhoodViewMatrix() != 0)
+        return 1;
+    if (runNeighbourhoodQualificationMatrix() != 0)
         return 1;
 
     return 0;
