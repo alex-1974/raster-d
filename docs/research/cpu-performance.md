@@ -1034,3 +1034,37 @@ production split is justified by this probe.
 The result is operation-specific. Floating-point min/max requires a separate
 semantic study because NaN handling, signed zero and ordering policy can change
 which transformations are valid.
+
+
+### Finite float min/max probe
+
+A follow-up probe repeats the min/max experiment for `float`, but deliberately
+restricts the timed corpus to finite, non-zero values. This isolates code
+generation without yet defining raster-d semantics for NaN or signed zero.
+
+Representative medians:
+
+| elements | compiler | slice | pointer | four lane | pointer control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 79.3 us | 63.0 us | 59.1 us | 63.1 us |
+| 1,048,576 | DMD | 1.3384 ms | 1.0478 ms | 0.9785 ms | 1.0591 ms |
+| 8,388,608 | DMD | 11.2661 ms | 8.9274 ms | 8.1876 ms | 8.9298 ms |
+| 65,536 | LDC | 64.1 us | 64.1 us | 20.3 us | 64.1 us |
+| 1,048,576 | LDC | 1.1469 ms | 1.0902 ms | 0.3956 ms | 1.1307 ms |
+| 8,388,608 | LDC | 13.9513 ms | 12.8659 ms | 6.9113 ms | 13.5119 ms |
+
+The LDC 8 Mi-element samples are highly variable, including the four-lane
+samples, so the large-working-set median is diagnostic rather than a stable
+speedup claim. The 65,536-element samples are much tighter.
+
+Unlike `ubyte`, the explicit four-lane float source form is faster in the
+measured finite corpus under both compilers. This does not justify production
+promotion. The source form changes the reduction graph, and for unrestricted
+IEEE floating-point inputs NaN handling and signed-zero behavior can make such
+reassociation observably different.
+
+The next step is therefore semantic rather than performance tuning: characterize
+the ordinary scalar operation graph and the candidate lane graph on NaN
+placement and +/-0.0 permutations. Only after a required float min/max semantic
+contract is explicit can code-generation alternatives be classified as
+equivalent implementations or deliberately different numeric semantics.
