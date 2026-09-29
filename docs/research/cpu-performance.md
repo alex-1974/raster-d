@@ -1781,3 +1781,52 @@ The next diagnostic should therefore compare generated code for the actual
 row-kernel benchmark path and then test a research-only no-inline boundary (or
 equivalent compiler optimization boundary) as a causal control. Such a control
 is not yet a proposed production design.
+
+
+##### R0.5f no-inline causal control
+
+The row-kernel experiment was repeated with the inner row operation kept
+explicitly out of line via `pragma(inline, false)`. No algorithm, logical
+layout, arithmetic graph, source corpus, or target layout changed.
+
+Linux x86-64, 2048x512 output, pitch 4096:
+
+| Compiler | Rows | Trusted | Row kernel | Row no-inline |
+| --- | --- | ---: | ---: | ---: |
+| DMD 2.111 | positive | 1.7636 ms | 1.8841 ms | 1.8685 ms |
+| DMD 2.111 | negative | 1.7993 ms | 1.8509 ms | 1.7929 ms |
+| LDC 1.41 | positive | 0.4611 ms | 0.9605 ms | 0.5420 ms |
+| LDC 1.41 | negative | 1.6443 ms | 1.6927 ms | 0.5206 ms |
+
+The LDC negative result is decisive for the causal question. Keeping the row
+kernel out of line reduces the negative case from 1.6443 ms to 0.5206 ms,
+about 3.16x faster, and removes the positive/negative performance asymmetry:
+the no-inline positive and negative medians are 0.5420 and 0.5206 ms.
+
+Together with the earlier code-generation evidence, this strongly supports
+the explanation that inlining/recombination with the signed-stride outer loop
+causes LLVM 19.1.7 in LDC 1.41 to construct a conservative loop-versioning
+guard that selects the scalar fallback for ordinary negative Canonical
+execution. Preserving the row-kernel optimization boundary allows the local
+three-row loop to remain in the vectorizable performance class.
+
+This is not a universal recommendation to disable inlining. LDC positive
+Canonical remains faster in the ordinary trusted integrated form (0.4611 ms)
+than in the no-inline row form (0.5420 ms), while DMD shows no material
+no-inline benefit and retains the ordinary trusted kernel as the best current
+form. The evidence therefore supports compiler- and layout-specific internal
+execution specialization rather than one source form for all cases.
+
+Current evidence-backed candidates for this 3x3 operation on Linux x86-64 are:
+
+- DMD 2.111: validated semantic boundary -> ordinary trusted check-free kernel
+  for both positive and negative Canonical row stride.
+- LDC 1.41 / LLVM 19.1.7: ordinary trusted/integrated kernel for positive
+  Canonical row stride; preserved out-of-line row kernel for negative
+  Canonical row stride.
+
+These remain research candidates. Before production promotion, qualify the
+result across dimensions/pitches, replace research-only signed-stride
+assertions with robust validated magnitude handling, inspect final generated
+code, and centralize compiler/version/architecture selection rather than
+scattering compiler conditionals. No handwritten SIMD is justified.
