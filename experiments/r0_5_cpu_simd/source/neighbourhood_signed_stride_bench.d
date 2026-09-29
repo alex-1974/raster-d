@@ -105,6 +105,64 @@ private void box3SignedUnchecked(
     }
 }
 
+
+private void box3NegativePhysicalForwardValidated(
+    scope const(float)[] storage,
+    size_t origin,
+    size_t pitch,
+    scope float[] dst,
+    size_t width,
+    size_t height)
+@safe pure nothrow @nogc
+{
+    if (width == 0 || height == 0)
+        return;
+
+    assert(width <= size_t.max - 2);
+    assert(height <= size_t.max - 2);
+    assert(pitch >= width + 2);
+    assert(origin < storage.length);
+    assert(height + 1 <= origin / pitch);
+    assert(width <= size_t.max / height);
+    assert(width * height <= dst.length);
+
+    box3NegativePhysicalForwardUnchecked(
+        storage, origin, pitch, dst, width, height);
+}
+
+private void box3NegativePhysicalForwardUnchecked(
+    scope const(float)[] storage,
+    size_t origin,
+    size_t pitch,
+    scope float[] dst,
+    size_t width,
+    size_t height)
+@trusted pure nothrow @nogc
+{
+    /*
+     * The negative logical view starts at the highest physical row. Walking
+     * output rows in reverse lets the source rows advance physically forward.
+     * Output placement preserves the exact logical result of the ordinary
+     * negative-stride kernel.
+     */
+    const low=storage.ptr + origin - (height + 1) * pitch;
+    auto dp=dst.ptr;
+
+    foreach(physicalY; 0 .. height) {
+        const logicalY=height - 1 - physicalY;
+        const r0=physicalY*pitch;
+        const r1=(physicalY+1)*pitch;
+        const r2=(physicalY+2)*pitch;
+        const d=logicalY*width;
+
+        foreach(x; 0 .. width)
+            dp[d+x] =
+                low[r0+x] + low[r0+x+1] + low[r0+x+2] +
+                low[r1+x] + low[r1+x+1] + low[r1+x+2] +
+                low[r2+x] + low[r2+x+1] + low[r2+x+2];
+    }
+}
+
 private long measure(void delegate() op)
 {
     const t=MonoTime.currTime; op();
@@ -145,6 +203,42 @@ private int runCase(size_t pitch, bool reverse)
     writefln(
         "neighbourhood3x3_signed pitch=%s direction=%s raw_ns=%(%s,%)",
         pitch,reverse ? "negative" : "positive",samples);
+
+    if (reverse) {
+        auto reference=dst.dup;
+
+        box3NegativePhysicalForwardValidated(
+            storage, origin, pitch, dst, width, height);
+
+        if (dst != reference) {
+            writefln(
+                "neighbourhood3x3_signed normalized correctness failed pitch=%s",
+                pitch);
+            return 1;
+        }
+
+        foreach(_;0..warmups) {
+            box3NegativePhysicalForwardValidated(
+                storage, origin, pitch, dst, width, height);
+            consume(dst,width,height);
+        }
+
+        long[repetitions] normalizedSamples;
+        foreach(i;0..repetitions)
+            normalizedSamples[i]=measure({
+                box3NegativePhysicalForwardValidated(
+                    storage, origin, pitch, dst, width, height);
+                consume(dst,width,height);
+            });
+
+        auto nm=normalizedSamples;
+        writefln(
+            "neighbourhood3x3_signed pitch=%s direction=negative normalized_physical_forward_ns=%s",
+            pitch,median(nm[]));
+        writefln(
+            "neighbourhood3x3_signed pitch=%s direction=negative normalized_raw_ns=%(%s,%)",
+            pitch,normalizedSamples);
+    }
     return 0;
 }
 
