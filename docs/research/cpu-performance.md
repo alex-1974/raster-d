@@ -896,3 +896,36 @@ The next step is therefore a focused same-module code-generation probe for the
 validated execution kernel versus the existing pointer diagnostic under DMD
 and LDC, retaining normal release bounds-check policy. No handwritten SIMD or
 public API change is justified yet.
+
+
+### LUT validated-vs-pointer code-generation diagnosis
+
+Focused same-module assembly inspection resolves an important ambiguity in the
+runtime result.
+
+DMD emits effectively the same scalar inner loop for the validated execution
+kernel and the pointer diagnostic: load one source byte, use it as the LUT
+index, load one float, store one float, increment, compare, branch. The exported
+wrappers likewise contain the same basic scalar loop shape. No SIMD or
+unrolling difference explains the large DMD runtime separation observed in the
+benchmark.
+
+LDC likewise makes the two forms essentially equivalent. Both exported probes
+use the same four-element unrolled main loop followed by a scalar remainder.
+Each unrolled lane performs a byte load, indexed scalar float LUT load, and
+scalar float store. This matches the runtime result where validated execution
+and pointer diagnostic are in the same performance class under LDC.
+
+Therefore the earlier DMD timing result -- where the validated path was much
+faster than the pointer diagnostic -- must not be attributed to a superior
+inner-loop instruction sequence. The focused assembly rules that explanation
+out. The remaining investigation must look at benchmark-context effects such
+as call-site inlining/code placement, wrapper structure, register/ABI context,
+or measurement interaction in the full executable.
+
+This also means there is not yet evidence for a DMD-specific production
+algorithm. The robust conclusion remains narrower: once repeated checked slice
+indexing is removed after validation, a simple pointer/count execution loop is
+sufficient for the compiler to generate the desired check-free loop class.
+LDC additionally unrolls that loop automatically. Handwritten SIMD remains
+unjustified.
