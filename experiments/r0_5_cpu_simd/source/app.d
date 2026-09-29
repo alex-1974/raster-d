@@ -2,6 +2,7 @@ module app;
 
 import affine_bench : runAffineMatrix;
 import conversion_bench : runConversionMatrix;
+import plane_extraction_bench : runPlaneExtractionMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -221,6 +222,9 @@ int main()
         return 1;
 
     if (runConversionMatrix() != 0)
+        return 1;
+
+    if (runPlaneExtractionMatrix() != 0)
         return 1;
 
     return 0;
