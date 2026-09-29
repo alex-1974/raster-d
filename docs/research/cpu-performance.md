@@ -1746,3 +1746,38 @@ form that lets LDC prove/vectorize negative Canonical execution without
 weakening alias safety, changing logical semantics, or adding handwritten
 SIMD. Compiler-specific specialization is justified only if such a form
 remains beneficial under benchmark and codegen qualification.
+
+
+##### R0.5f row-kernel source-form control
+
+A further candidate moved signed Canonical row traversal into an outer trusted
+loop and expressed the inner 3x3 operation as a separate row kernel receiving
+only three concrete source-row pointers, one destination-row pointer, and
+width. The arithmetic graph remained unchanged.
+
+Linux x86-64, 2048x512 output, pitch 4096:
+
+| Compiler | Rows | Trusted | Row kernel |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | positive | 1.8143 ms | 1.9440 ms |
+| DMD 2.111 | negative | 1.8375 ms | 1.9780 ms |
+| LDC 1.41 | positive | 0.5018 ms | 0.5113 ms |
+| LDC 1.41 | negative | 1.7129 ms | 1.7055 ms |
+
+The row-kernel decomposition does not recover the LDC negative-Canonical SIMD
+performance class. Positive LDC remains approximately 0.5 ms and negative
+remains approximately 1.7 ms. DMD is modestly slower with the decomposition.
+
+This rejects source-level row-function decomposition by itself as the
+specialization. The standalone code-generation probe showed that a row body
+with concrete row pointers can be vectorized, but the production-shaped
+benchmark demonstrates that expressing the operation as a helper is not
+sufficient. A plausible compiler-level explanation is that optimization/inlining
+recombines the helper with the signed-stride outer context and reconstructs the
+same conservative loop-versioning condition. That explanation must be
+verified in generated code before it is treated as established.
+
+The next diagnostic should therefore compare generated code for the actual
+row-kernel benchmark path and then test a research-only no-inline boundary (or
+equivalent compiler optimization boundary) as a causal control. Such a control
+is not yet a proposed production design.
