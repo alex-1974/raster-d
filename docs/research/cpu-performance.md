@@ -1708,3 +1708,41 @@ In particular, test whether runtime alias/legality conditions or another
 versioning guard distinguish the positive and negative layouts. SIMD presence
 in assembly alone is insufficient evidence that the measured invocation uses
 the SIMD version.
+
+
+##### R0.5f LDC negative-Canonical loop-versioning cause
+
+A standalone LDC 1.41 code-generation probe exposed the runtime
+loop-versioning guards for positive and negative Canonical row traversal. Both
+the positive and negative kernels contain scalar and four-float SIMD inner
+loops. A separate negative physical-forward form is scalar-only, explaining
+why that control could not recover the positive SIMD throughput.
+
+The production-shaped benchmark then printed its actual allocation geometry
+outside the timed region. Both positive and negative runs had completely
+disjoint source and destination allocations. The negative run still measured
+1.6334 ms versus 0.5361 ms positive.
+
+For the negative generated kernel, the decisive guard sequence shifts the
+positive pitch by two (bytes), negates it, records the sign flag with `sets`,
+and ORs that result into the aggregate loop-versioning condition before
+`testb` selects scalar versus SIMD execution. With the benchmark pitch of
+4096 elements, negating the positive byte stride necessarily produces a
+negative signed value, so this sign component is true. For the observed
+ordinary non-wrapping address geometry the actual overlap subconditions are
+false, but the sign component alone keeps the aggregate guard true and selects
+the scalar fallback.
+
+Therefore the approximately 3x-3.5x LDC penalty for the current negative
+Canonical 3x3 kernel is not explained by cache stream direction or real
+source/destination overlap. It is caused by the optimizer's runtime
+loop-versioning/legality proof for this source form: SIMD code is emitted, but
+the measured ordinary positive pitch magnitude cannot select it.
+
+This is compiler/code-shape evidence, not a raster-d semantic restriction.
+The public Canonical contract should continue to allow signed row stride. The
+next research step is to find an equivalent exact-arithmetic internal source
+form that lets LDC prove/vectorize negative Canonical execution without
+weakening alias safety, changing logical semantics, or adding handwritten
+SIMD. Compiler-specific specialization is justified only if such a form
+remains beneficial under benchmark and codegen qualification.
