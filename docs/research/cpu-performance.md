@@ -1482,3 +1482,24 @@ itself scalar in the standalone LDC assembly, while the signed forms contain
 a SIMD fast path. The next question is consequently stencil code quality:
 compare the compact scalar control with LLVM's vectorized overlapping-window
 loads/address recurrences rather than assuming SIMD is intrinsically faster.
+
+
+##### Sliding-window algorithm control
+
+A research-only 3x3 sliding-window control reduced repeated source work by
+forming vertical column sums and reusing two columns for the next output.
+This changes the floating-point evaluation graph and is therefore not a
+drop-in implementation of the exact baseline semantic.
+
+At 2048x512 with pitch 4096 and negative row stride:
+
+- DMD: exact baseline 2.1714 ms; sliding 2.4469 ms (about 12.7% slower).
+- LDC: exact baseline 1.8158 ms; sliding 1.2306 ms (about 32.2% faster).
+
+Thus reducing nominal loads/additions is not intrinsically faster; the result
+is compiler-sensitive. The LDC improvement does show that stencil
+reassociation/reuse can matter, but even this control remains well behind the
+roughly 0.5 ms reverse-index control observed earlier. Explicit SIMD is
+therefore still premature. Inspect baseline/sliding/reverse code generation
+next, especially vectorization, loop-carried dependencies, load structure,
+and pointer recurrences.
