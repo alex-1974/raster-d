@@ -31,6 +31,43 @@ private void transformFixedLut(
         target[i] = lut[source[i]];
 }
 
+private void transformValidatedExecution(
+    scope const(ubyte)* source,
+    scope const(float)* lut,
+    scope float* target,
+    size_t elementCount
+)
+@system pure nothrow @nogc
+{
+    assert(source !is null);
+    assert(lut !is null);
+    assert(target !is null);
+
+    foreach (i; 0 .. elementCount)
+        target[i] = lut[source[i]];
+}
+
+private void transformValidated(
+    scope const(ubyte)[] source,
+    scope const(float)[] lut,
+    scope float[] target
+)
+@trusted pure nothrow @nogc
+{
+    assert(lut.length >= lutSize);
+    assert(source.length == target.length);
+
+    if (source.length == 0)
+        return;
+
+    transformValidatedExecution(
+        source.ptr,
+        lut.ptr,
+        target.ptr,
+        source.length
+    );
+}
+
 private void transformPointer(scope const(ubyte)[] source, scope const(float)[] lut, scope float[] target)
 @trusted pure nothrow @nogc
 {
@@ -61,6 +98,13 @@ private int runCase(size_t elements)
         return 1;
     }
 
+    transformValidated(source, lut[], target);
+    if (fingerprint(target) != expected)
+    {
+        writeln("lut validated execution correctness preflight failed");
+        return 1;
+    }
+
     transformPointer(source, lut[], target);
     if (fingerprint(target) != expected)
     {
@@ -70,9 +114,9 @@ private int runCase(size_t elements)
 
     const samples = measureFour!(
         () => transformSlice(source, lut[], target),
-        () => transformFixedLut(source, lut, target),
+        () => transformValidated(source, lut[], target),
         () => transformPointer(source, lut[], target),
-        () => transformFixedLut(source, lut, target)
+        () => transformValidated(source, lut[], target)
     )(repetitions, warmupRounds);
 
     if (fingerprint(target) != expected)
@@ -82,7 +126,7 @@ private int runCase(size_t elements)
     }
 
     writefln(
-        "lut_transform elements=%s slice_ns=%s fixed_lut_ns=%s pointer_ns=%s fixed_lut_control_ns=%s",
+        "lut_transform elements=%s slice_ns=%s validated_ns=%s pointer_ns=%s validated_control_ns=%s",
         elements,
         samples.first.median,
         samples.second.median,
@@ -90,9 +134,9 @@ private int runCase(size_t elements)
         samples.fourth.median
     );
     writefln("lut_transform elements=%s slice_raw_ns=%(%s,%)", elements, samples.first.nanoseconds);
-    writefln("lut_transform elements=%s fixed_lut_raw_ns=%(%s,%)", elements, samples.second.nanoseconds);
+    writefln("lut_transform elements=%s validated_raw_ns=%(%s,%)", elements, samples.second.nanoseconds);
     writefln("lut_transform elements=%s pointer_raw_ns=%(%s,%)", elements, samples.third.nanoseconds);
-    writefln("lut_transform elements=%s fixed_lut_control_raw_ns=%(%s,%)", elements, samples.fourth.nanoseconds);
+    writefln("lut_transform elements=%s validated_control_raw_ns=%(%s,%)", elements, samples.fourth.nanoseconds);
 
     return 0;
 }
