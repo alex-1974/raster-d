@@ -17,6 +17,20 @@ private void transformSlice(scope const(ubyte)[] source, scope const(float)[] lu
         target[i] = lut[source[i]];
 }
 
+// The LUT extent is part of the type. A ubyte index is therefore always
+// within the 0 .. 255 LUT domain; source/target remain ordinary safe slices.
+private void transformFixedLut(
+    scope const(ubyte)[] source,
+    scope ref const(float)[lutSize] lut,
+    scope float[] target
+)
+@safe pure nothrow @nogc
+{
+    assert(source.length == target.length);
+    foreach (i; 0 .. target.length)
+        target[i] = lut[source[i]];
+}
+
 private void transformPointer(scope const(ubyte)[] source, scope const(float)[] lut, scope float[] target)
 @trusted pure nothrow @nogc
 {
@@ -29,7 +43,7 @@ private void transformPointer(scope const(ubyte)[] source, scope const(float)[] 
 private int runCase(size_t elements)
 {
     auto source = new ubyte[elements];
-    auto lut = new float[lutSize];
+    float[lutSize] lut;
     auto target = new float[elements];
 
     foreach (i; 0 .. source.length)
@@ -37,10 +51,17 @@ private int runCase(size_t elements)
     foreach (i; 0 .. lut.length)
         lut[i] = (cast(float) i - 127.5f) * 0.0078125f;
 
-    transformSlice(source, lut, target);
+    transformSlice(source, lut[], target);
     const expected = fingerprint(target);
 
-    transformPointer(source, lut, target);
+    transformFixedLut(source, lut, target);
+    if (fingerprint(target) != expected)
+    {
+        writeln("lut fixed-LUT correctness preflight failed");
+        return 1;
+    }
+
+    transformPointer(source, lut[], target);
     if (fingerprint(target) != expected)
     {
         writeln("lut pointer correctness preflight failed");
@@ -48,10 +69,10 @@ private int runCase(size_t elements)
     }
 
     const samples = measureFour!(
-        () => transformSlice(source, lut, target),
-        () => transformPointer(source, lut, target),
-        () => transformSlice(source, lut, target),
-        () => transformPointer(source, lut, target)
+        () => transformSlice(source, lut[], target),
+        () => transformFixedLut(source, lut, target),
+        () => transformPointer(source, lut[], target),
+        () => transformFixedLut(source, lut, target)
     )(repetitions, warmupRounds);
 
     if (fingerprint(target) != expected)
@@ -61,13 +82,18 @@ private int runCase(size_t elements)
     }
 
     writefln(
-        "lut_transform elements=%s slice_ns=%s pointer_ns=%s slice_control_ns=%s pointer_control_ns=%s",
+        "lut_transform elements=%s slice_ns=%s fixed_lut_ns=%s pointer_ns=%s fixed_lut_control_ns=%s",
         elements,
         samples.first.median,
         samples.second.median,
         samples.third.median,
         samples.fourth.median
     );
+    writefln("lut_transform elements=%s slice_raw_ns=%(%s,%)", elements, samples.first.nanoseconds);
+    writefln("lut_transform elements=%s fixed_lut_raw_ns=%(%s,%)", elements, samples.second.nanoseconds);
+    writefln("lut_transform elements=%s pointer_raw_ns=%(%s,%)", elements, samples.third.nanoseconds);
+    writefln("lut_transform elements=%s fixed_lut_control_raw_ns=%(%s,%)", elements, samples.fourth.nanoseconds);
+
     return 0;
 }
 
