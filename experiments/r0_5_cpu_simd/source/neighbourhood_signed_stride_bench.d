@@ -150,9 +150,13 @@ private void box3NegativePhysicalForwardUnchecked(
 
     foreach(physicalY; 0 .. height) {
         const logicalY=height - 1 - physicalY;
-        const r0=physicalY*pitch;
+        // In the original negative-stride view, logical rows
+        // logicalY, logicalY+1, logicalY+2 map to physical rows
+        // physicalY+2, physicalY+1, physicalY respectively. Preserve that
+        // exact source/addition order while the outer walk advances forward.
+        const r0=(physicalY+2)*pitch;
         const r1=(physicalY+1)*pitch;
-        const r2=(physicalY+2)*pitch;
+        const r2=physicalY*pitch;
         const d=logicalY*width;
 
         foreach(x; 0 .. width)
