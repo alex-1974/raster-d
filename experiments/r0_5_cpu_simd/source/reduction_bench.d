@@ -142,11 +142,28 @@ private int runCase(size_t elements)
     }
 
     ulong sink;
+    size_t invocation;
     const samples = measureFour!(
-        () => sink ^= sinkValue(minMaxSlice(source)),
-        () => sink ^= sinkValue(minMaxPointer(source)),
-        () => sink ^= sinkValue(minMaxFourLane(source)),
-        () => sink ^= sinkValue(minMaxPointer(source))
+        () {
+            const result = sinkValue(minMaxSlice(source));
+            sink = sink * 0x9E37_79B9_7F4A_7C15UL
+                + result + ++invocation;
+        },
+        () {
+            const result = sinkValue(minMaxPointer(source));
+            sink = sink * 0x9E37_79B9_7F4A_7C15UL
+                + result + ++invocation;
+        },
+        () {
+            const result = sinkValue(minMaxFourLane(source));
+            sink = sink * 0x9E37_79B9_7F4A_7C15UL
+                + result + ++invocation;
+        },
+        () {
+            const result = sinkValue(minMaxPointer(source));
+            sink = sink * 0x9E37_79B9_7F4A_7C15UL
+                + result + ++invocation;
+        }
     )(repetitions, warmupRounds);
 
     if (minMaxSlice(source) != expected ||
