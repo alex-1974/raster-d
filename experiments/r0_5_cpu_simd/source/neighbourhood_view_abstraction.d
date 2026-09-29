@@ -106,3 +106,102 @@ nothrow
 
     return true;
 }
+
+
+/++
+    R0.5f research candidate.
+
+    Keeps RasterView/RasterTargetPlane as the semantic boundary, then extracts
+    already-validated execution metadata once and runs a narrow trusted
+    check-free kernel. This is not a public pointer API and establishes no
+    persistent noalias capability.
++/
+bool box3CanonicalTrusted(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target
+)
+@safe
+nothrow
+@nogc
+{
+    if (source.width != target.width + 2 ||
+        source.height != target.height + 2)
+        return false;
+
+    PlaneExecutionTraits traits;
+    if (!source.tryPlaneExecutionTraits(0, traits) ||
+        traits.layout2D == PlaneExecutionLayout2D.universal)
+        return false;
+
+    ptrdiff_t rowStride;
+    ptrdiff_t sampleStride;
+    if (!source.tryExecutionPlaneStrides(0, rowStride, sampleStride) ||
+        sampleStride != 1)
+        return false;
+
+    const src = source.executionRegionBase(0);
+    auto dst = target.executionBase();
+    if (src is null || dst is null)
+        return false;
+
+    box3CanonicalTrustedUnchecked(
+        src, rowStride, dst, target.width, target.height
+    );
+    return true;
+}
+
+private void box3CanonicalTrustedUnchecked(
+    scope const(float)* src,
+    ptrdiff_t rowStride,
+    scope float* dst,
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    if (rowStride >= 0)
+    {
+        const pitch = cast(size_t) rowStride;
+        foreach (y; 0 .. height)
+        {
+            const r0 = src + y * pitch;
+            const r1 = r0 + pitch;
+            const r2 = r1 + pitch;
+            auto out = dst + y * width;
+            foreach (x; 0 .. width)
+                out[x] =
+                    r0[x] + r0[x + 1] + r0[x + 2] +
+                    r1[x] + r1[x + 1] + r1[x + 2] +
+                    r2[x] + r2[x + 1] + r2[x + 2];
+        }
+    }
+    else
+    {
+        /*
+         * Branch once, outside the hot loops.  The negative Canonical
+         * contract remains unchanged; only the execution spelling uses a
+         * positive pitch magnitude and pointer subtraction.
+         *
+         * Validation has already excluded ptrdiff_t.min for a traversed
+         * multi-row layout because the represented backing range must be
+         * reachable. Keep the negation here inside this research-only trusted
+         * boundary rather than changing the public layout classifier.
+         */
+        assert(rowStride != ptrdiff_t.min);
+        const pitch = cast(size_t)(-rowStride);
+        foreach (y; 0 .. height)
+        {
+            const r0 = src - y * pitch;
+            const r1 = r0 - pitch;
+            const r2 = r1 - pitch;
+            auto out = dst + y * width;
+            foreach (x; 0 .. width)
+                out[x] =
+                    r0[x] + r0[x + 1] + r0[x + 2] +
+                    r1[x] + r1[x + 1] + r1[x + 2] +
+                    r2[x] + r2[x + 1] + r2[x + 2];
+        }
+    }
+}
