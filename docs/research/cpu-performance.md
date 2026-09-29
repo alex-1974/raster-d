@@ -1890,3 +1890,65 @@ depend on release-elided assertions, and the final production-shaped codegen
 and correctness suite must be re-qualified. Architecture-specific claims
 remain limited to the measured Linux x86-64 host; AArch64/NEON requires its
 own evidence.
+
+
+##### R0.5g preliminary persistent-worker scaling
+
+The first parallel-scaling probe reused the validated R0.5f 3x3 arithmetic
+graph through a research-only row-range entry.  The library kernel creates no
+threads and establishes no scheduling policy.  The benchmark owns a persistent
+worker team and partitions output into disjoint contiguous row ranges.
+
+Measured host: Linux x86-64, 6 physical cores / 12 hardware threads (SMT2),
+single socket and single NUMA node.  The initial fixture is 2048x512 output
+with source pitch 4096, 3 warm-up rounds, 11 measured repetitions, and worker
+counts 1/2/3/4/6/12.  Source plus destination storage is approximately 12 MiB,
+close to the host's shared L3 capacity, so this first matrix is intentionally
+treated as preliminary/cache-sensitive evidence rather than the final
+full-core scaling limit.
+
+Representative DMD 2.111 medians:
+
+| Rows / source shape | Serial | 2 workers | 3 workers | 4 workers | 6 workers | 12 workers |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| positive inline | 1.9546 ms | 1.0065 ms | 0.6921 ms | 0.9748 ms | 0.7224 ms | 0.5165 ms |
+| negative inline | 1.9058 ms | 1.0319 ms | 0.7039 ms | 0.5434 ms | 0.6979 ms | 0.5611 ms |
+| negative no-inline | 1.7820 ms | 0.9289 ms | 0.6662 ms | 0.5253 ms | 0.6099 ms | 0.5580 ms |
+
+DMD reaches roughly 90-97% efficiency through two to three workers in the
+stable cases and about 85-88% at four workers for the negative cases.  The
+positive-inline four-worker run and several six-worker runs are non-monotonic.
+Raw samples also show regime changes/outliers, so those points must not be
+interpreted as an intrinsic six-core algorithm limit.
+
+Representative LDC 1.41 / LLVM 19.1.7 medians:
+
+| Rows / source shape | Serial | 2 workers | 3 workers | 4 workers | 6 workers | 12 workers |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| positive inline | 0.5279 ms | 0.4266 ms | 0.2456 ms | 0.1732 ms | 0.2018 ms | 0.1755 ms |
+| negative inline | 1.6178 ms | 0.8627 ms | 0.6203 ms | 0.8347 ms | 0.5957 ms | 0.4793 ms |
+| negative no-inline | 0.4786 ms | 0.2894 ms | 0.4146 ms | 0.1801 ms | 0.2034 ms | 0.1785 ms |
+
+The serial LDC result independently reproduces the R0.5f source-shape finding:
+negative inline is 1.6178 ms while negative no-inline is 0.4786 ms, about
+3.38x faster.  Parallel execution therefore does not invalidate the
+compiler-specific row-kernel evidence.
+
+The persistent-worker dispatch/synchronization cost is visible but not
+prohibitive.  One-worker DMD runs are generally within a few percent of the
+serial row-range run.  For the much faster LDC vectorized kernels the same
+fixed synchronization cost is a larger fraction of total time; for example
+positive no-inline measures 0.4742 ms serial and 0.5881 ms with one worker.
+
+Several LDC multi-worker raw-sample series are visibly non-stationary or
+bimodal.  Together with the approximately shared-L3-sized fixture, this makes
+the current 4/6/12-worker ordering insufficient evidence for a production
+thread-count policy, scheduler policy, affinity requirement, or SMT policy.
+
+R0.5g therefore continues with the same persistent-worker mechanism and exact
+row-range semantics on a substantially larger working set that exceeds shared
+L3 capacity.  CPU affinity remains a diagnostic follow-up rather than a first
+response: if the larger matrix still shows unexplained 4-to-6-core
+non-monotonicity, a pinned-core control can distinguish scheduler placement
+from memory/cache/frequency effects.  No public parallel execution API is
+proposed by this experiment.
