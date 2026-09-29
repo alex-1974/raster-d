@@ -205,3 +205,71 @@ nothrow
         }
     }
 }
+
+
+/++
+    R0.5f LDC direction control.
+
+    For negative Canonical rows only, traverse logical output rows in reverse
+    order so source row addresses advance physically forward. Each output
+    sample keeps the exact same nine-load/eight-add expression and is written
+    to its original logical destination row.
++/
+bool box3CanonicalNegativePhysicalForward(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target
+)
+@safe
+nothrow
+@nogc
+{
+    if (source.width != target.width + 2 ||
+        source.height != target.height + 2)
+        return false;
+
+    PlaneExecutionTraits traits;
+    if (!source.tryPlaneExecutionTraits(0, traits) ||
+        traits.layout2D == PlaneExecutionLayout2D.universal)
+        return false;
+
+    ptrdiff_t rowStride;
+    ptrdiff_t sampleStride;
+    if (!source.tryExecutionPlaneStrides(0, rowStride, sampleStride) ||
+        sampleStride != 1 || rowStride >= 0 || rowStride == ptrdiff_t.min)
+        return false;
+
+    const src = source.executionRegionBase(0);
+    auto dst = target.executionBase();
+    if (src is null || dst is null)
+        return false;
+
+    box3NegativePhysicalForwardUnchecked(
+        src, cast(size_t)(-rowStride), dst, target.width, target.height
+    );
+    return true;
+}
+
+private void box3NegativePhysicalForwardUnchecked(
+    scope const(float)* src,
+    size_t pitch,
+    scope float* dst,
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    foreach_reverse (y; 0 .. height)
+    {
+        const r0 = src - y * pitch;
+        const r1 = r0 - pitch;
+        const r2 = r1 - pitch;
+        auto dstRow = dst + y * width;
+        foreach (x; 0 .. width)
+            dstRow[x] =
+                r0[x] + r0[x + 1] + r0[x + 2] +
+                r1[x] + r1[x + 1] + r1[x + 2] +
+                r2[x] + r2[x + 1] + r2[x + 2];
+    }
+}
