@@ -2055,3 +2055,107 @@ would add Linux-specific harness complexity.  It remains an optional deeper
 diagnostic if a later production decision depends on exact core-placement
 behaviour.  No public raster-d threading, affinity, SMT, or worker-count policy
 is introduced by this research.
+
+
+### R0.5h cross-architecture boundary and synthesis
+
+R0.5 has direct performance evidence only for the measured Linux x86-64 host.
+The measured compiler baselines are DMD 2.111 and LDC 1.41 / LLVM 19.1.7.
+No AArch64 machine, NEON code generation, non-Linux scheduler, or non-x86
+memory subsystem was measured in this study.  R0.5 therefore makes no
+cross-architecture performance equivalence claim.
+
+The x86-64 evidence is sufficient for the following conclusions.
+
+1. Semantic validation and hot-loop execution should remain separate.
+   Consumer-facing RasterView semantics can be validated once per region and
+   then handed to a small trusted check-free internal kernel.  Repeating safe
+   multidimensional indexing work in the inner loop imposed material cost,
+   especially under DMD.
+
+2. Source shape is part of optimization evidence, not part of public
+   semantics.  DMD 2.111 and LDC 1.41 can prefer different internal forms for
+   the same arithmetic.  In particular, LDC 1.41 / LLVM 19.1.7 on x86-64
+   selects a scalar loop-version for the qualified negative-Canonical
+   integrated neighbourhood form, while preserving a small out-of-line row
+   kernel restores the vectorized performance class.  DMD does not benefit
+   from that specialization.
+
+3. Handwritten SIMD is not justified by the measured kernels.  LDC already
+   generates strong vector code for suitable source shapes, and the important
+   neighbourhood failure was corrected by exposing a better optimization
+   boundary rather than by introducing explicit vector intrinsics.  Any future
+   explicit SIMD path must pass the workspace SIMD gate independently on its
+   target compiler and architecture.
+
+4. Signed Canonical row stride is a supported execution-layout property, not
+   an exceptional slow-path semantic.  Negative row stride itself did not
+   require weaker RasterView contracts.  The observed LDC penalty was a
+   compiler/code-shape issue and must be handled internally if promoted.
+
+5. Parallelism is workload- and kernel-quality-dependent.  Persistent
+   caller-owned workers can scale the compute-heavier neighbourhood forms
+   across physical cores, but the fastest LDC large-streaming form reaches a
+   shared-throughput ceiling at low worker counts.  A slower scalar kernel may
+   show a larger parallel speedup while remaining slower in absolute time.
+
+6. Thread placement is part of reproducible scaling evidence.  Restricting the
+   process to one logical CPU from each physical core materially changed DMD's
+   four-to-six-worker behaviour.  This supports controlling or reporting CPU
+   placement in future scaling studies, but does not justify a raster-d
+   affinity or scheduler policy.
+
+7. raster-d should expose independent work rather than hide scheduling.
+   The research row-range entry demonstrates that disjoint output ranges can
+   be executed by caller-owned workers without introducing hidden library
+   threads.  R0.5 does not establish a need for a public executor, fixed worker
+   count, affinity control, or SMT policy.
+
+#### Architecture-specific status
+
+Linux x86-64 is the only qualified performance target in R0.5.  The following
+questions remain open for AArch64/NEON and must be answered by measurement on
+representative hardware before architecture-specific production selection is
+introduced:
+
+- whether DMD and LDC produce comparable vector code for copy/fill, affine
+  transforms, LUTs, reductions, and the 3x3 neighbourhood kernel;
+- whether signed Canonical row stride creates a similar optimizer/versioning
+  asymmetry;
+- whether preserving the row-kernel boundary helps, hurts, or is neutral;
+- vector width, tail handling, alignment sensitivity, and unaligned-load cost;
+- memory-bandwidth saturation versus physical-core count for large streaming
+  regions;
+- scheduler and thread-placement effects on the target operating system;
+- whether any explicit NEON implementation can materially beat qualified
+  compiler-generated code while preserving the same semantics.
+
+These are research questions, not missing portability requirements.  The
+portable semantic implementation remains the reference path.  Architecture-
+or compiler-specific internal implementations may be added only when
+representative measurements demonstrate a material benefit and the selection
+is centralized, testable, and removable.
+
+#### R0.5 production handoff
+
+R0.5 supports carrying the following items into later implementation work:
+
+- retain the validated-boundary -> trusted check-free-kernel architecture;
+- retain the DMD 2.111 ordinary trusted neighbourhood form for both Canonical
+  row-stride signs;
+- carry the LDC 1.41 / LLVM 19.1.7 negative-Canonical out-of-line row-kernel
+  form as a production candidate, subject to centralized compiler/version
+  selection, robust signed-stride handling, final production-shaped codegen
+  inspection, and correctness/performance qualification;
+- keep positive LDC Canonical execution in the ordinary integrated trusted
+  form unless later evidence changes the choice;
+- preserve caller-parallelisable row/region decomposition as an architectural
+  capability without introducing hidden worker threads;
+- do not add handwritten SIMD, a public execution abstraction, fixed worker
+  counts, affinity policy, or SMT policy from R0.5 evidence alone;
+- record future architecture-specific measurements separately rather than
+  extrapolating the x86-64 results.
+
+This completes the planned R0.5 CPU/SIMD study on the available hardware.
+Cross-architecture qualification remains a future evidence task and does not
+block preserving the portable semantic path.
