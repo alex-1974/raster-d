@@ -680,3 +680,55 @@ ubyte-to-float conversion. Preserve:
 This closes the specific contiguous-conversion source-form question. Further
 DMD-only optimization, if pursued, must be a separate evidence-backed study
 rather than part of this promotion.
+
+
+## R0.5c — interleaved plane extraction baseline
+
+A research-only plane-extraction matrix compared three equivalent source forms
+for extracting channel 1 from interleaved ubyte RGB (stride 3) and RGBA
+(stride 4) into a contiguous ubyte destination:
+
+- Mir `Universal` 1D strided view;
+- safe D slice indexing;
+- trusted pointer diagnostic.
+
+A second safe-slice position was included as an order/noise control.
+
+Representative release medians:
+
+| pixels | compiler | channels | Mir | safe slice | pointer diagnostic |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 3 | 56.8 us | 68.8 us | 32.7 us |
+| 65,536 | DMD | 4 | 56.7 us | 68.7 us | 32.4 us |
+| 1,048,576 | DMD | 3 | 0.9789 ms | 1.1543 ms | 0.5667 ms |
+| 1,048,576 | DMD | 4 | 1.0099 ms | 1.1841 ms | 0.6057 ms |
+| 8,388,608 | DMD | 3 | 8.0209 ms | 9.8375 ms | 4.9689 ms |
+| 8,388,608 | DMD | 4 | 7.9760 ms | 9.4118 ms | 4.8562 ms |
+| 65,536 | LDC | 3 | 18.5 us | 32.2 us | 18.8 us |
+| 65,536 | LDC | 4 | 19.1 us | 31.9 us | 19.1 us |
+| 1,048,576 | LDC | 3 | 0.3031 ms | 0.5217 ms | 0.3009 ms |
+| 1,048,576 | LDC | 4 | 0.3356 ms | 0.5555 ms | 0.3326 ms |
+| 8,388,608 | LDC | 3 | 3.1701 ms | 4.6921 ms | 3.1417 ms |
+| 8,388,608 | LDC | 4 | 3.6599 ms | 4.9960 ms | 3.6042 ms |
+
+The repeated safe-slice control tracks the first safe-slice position closely,
+so the large gap is not explained by benchmark ordering.
+
+### Interpretation
+
+This operation differs materially from contiguous ubyte-to-float conversion.
+
+For interleaved strided reads, Mir does not impose the previously observed
+per-element penalty. Under LDC, Mir and the pointer diagnostic are effectively
+equivalent across the tested sizes. Under DMD, Mir is slower than the pointer
+diagnostic but remains consistently faster than the direct safe-slice indexing
+loop.
+
+Stride 4 does not show a systematic advantage over stride 3. In the largest
+LDC case it is actually slower for all three forms, so no SIMD-oriented
+stride-4 conclusion is justified from timing alone.
+
+The next research question is therefore code generation rather than API or
+production promotion: inspect Mir, safe-slice, and pointer forms for fixed
+stride 3 and fixed stride 4, with normative release bounds checking preserved
+and unchecked builds used only as diagnostics.
