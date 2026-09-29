@@ -1262,3 +1262,37 @@ focused code-generation/bounds-check diagnostic for this exact kernel.
 This remains diagnostic evidence only. It does not justify exposing pointers,
 removing validation, prescribing row alignment, or introducing handwritten
 SIMD.
+
+
+#### 3x3 neighbourhood code-generation diagnosis
+
+The code-generation probe explains the safe-row gap on both compilers.
+
+DMD retains bounds checks throughout the inner neighbourhood loop. The safe
+form checks the destination index and repeatedly checks the shifted source
+indices for x, x+1 and x+2 across the three input rows. The pointer diagnostic
+instead emits the expected compact scalar sequence of nine float loads/adds
+and one store. The measured greater-than-2x gap is therefore attributable to
+checked indexing/code generation, not to the Canonical stride or explicit-halo
+model.
+
+LDC reaches a stronger optimization in the pointer diagnostic: after loop and
+alias/runtime legality checks it vectorizes four adjacent output samples at a
+time using packed float loads/adds/stores. The safe slice form contains a much
+larger range-proof/control block for the repeated shifted accesses. Although
+LLVM attempts to reason about those bounds, that source form does not expose
+the same compact vectorized hot path. This explains the measured roughly
+35--40% safe-row overhead in the stable stride cases.
+
+This is the clearest R0.5 evidence so far for a validated internal execution
+boundary for neighbourhood kernels: validate dimensions, halo reach, physical
+ranges and target capacity once at the safe semantic boundary, then permit a
+narrow trusted implementation to execute a prevalidated row kernel without
+per-sample slice checks. Such a boundary must remain internal and preserve the
+existing RasterView/RasterTargetPlane safety and layout contracts.
+
+The evidence does not justify public pointer APIs or handwritten SIMD. LDC
+already demonstrates that ordinary scalar D source can become packed SIMD once
+the compiler can prove the execution region. DMD still emits scalar arithmetic,
+so compiler-specific SIMD work should only be reconsidered after measuring a
+validated-boundary implementation.
