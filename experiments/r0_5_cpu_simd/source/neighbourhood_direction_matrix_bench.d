@@ -64,16 +64,6 @@ private void kernel(
     }
 }
 
-private void reverseRowsForSource(
-    scope const(float)[] normal,size_t pitch,scope float[] reversed)
-@safe pure nothrow @nogc {
-    foreach(y;0..height+2) {
-        const srcY=height+1-y;
-        reversed[y*pitch .. y*pitch+width+2] =
-            normal[srcY*pitch .. srcY*pitch+width+2];
-    }
-}
-
 private long measure(void delegate() op) {
     const t=MonoTime.currTime; op(); return (MonoTime.currTime-t).total!"nsecs";
 }
@@ -81,18 +71,34 @@ private long median(scope long[] a){sort(a);return a[a.length/2];}
 
 private int runVariant(size_t pitch,bool srcRev,bool dstRev) {
     auto normal=new float[pitch*(height+2)];
-    auto reversed=new float[pitch*(height+2)];
     auto expected=new float[width*height];
     auto dst=new float[width*height];
     fillLogical(normal,pitch);
-    reverseRowsForSource(normal,pitch,reversed);
     reference(normal,pitch,expected);
 
-    auto src=srcRev ? reversed : normal;
-    kernel(src,pitch,dst,srcRev,dstRev);
+    /*
+     * Traverse output rows in either direction while computing the same
+     * logical y. srcRev controls traversal order. dstRev is isolated by
+     * storing through a reversed physical destination representation, then
+     * restoring it only for the correctness check.
+     */
+    void run() @trusted pure nothrow @nogc {
+        const sp=normal.ptr;
+        auto dp=dst.ptr;
+        foreach(step;0..height) {
+            const y=srcRev ? height-1-step : step;
+            const physicalDstY=dstRev ? height-1-y : y;
+            const r0=y*pitch, r1=(y+1)*pitch, r2=(y+2)*pitch;
+            const d=physicalDstY*width;
+            foreach(x;0..width)
+                dp[d+x]=
+                    sp[r0+x]+sp[r0+x+1]+sp[r0+x+2]+
+                    sp[r1+x]+sp[r1+x+1]+sp[r1+x+2]+
+                    sp[r2+x]+sp[r2+x+1]+sp[r2+x+2];
+        }
+    }
 
-    // A reversed destination traversal intentionally places step 0 at the
-    // last physical output row. Restore that representation before comparing.
+    run();
     if(dstRev) {
         foreach(y;0..height/2) {
             const oy=height-1-y;
@@ -107,14 +113,11 @@ private int runVariant(size_t pitch,bool srcRev,bool dstRev) {
             pitch,srcRev?"reverse":"forward",dstRev?"reverse":"forward");
         return 1;
     }
-    // Recreate benchmark representation after the correctness-only transform.
-    kernel(src,pitch,dst,srcRev,dstRev);
+    run();
 
-    foreach(_;0..warmups){kernel(src,pitch,dst,srcRev,dstRev);consume(dst);}
+    foreach(_;0..warmups){run();consume(dst);}
     long[repetitions] samples;
-    foreach(i;0..repetitions) samples[i]=measure({
-        kernel(src,pitch,dst,srcRev,dstRev); consume(dst);
-    });
+    foreach(i;0..repetitions) samples[i]=measure({run();consume(dst);});
     auto m=samples;
     writefln("neighbourhood3x3_direction pitch=%s src=%s dst=%s median_ns=%s sink=%s",
         pitch,srcRev?"reverse":"forward",dstRev?"reverse":"forward",median(m[]),sink);
