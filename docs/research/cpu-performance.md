@@ -732,3 +732,43 @@ The next research question is therefore code generation rather than API or
 production promotion: inspect Mir, safe-slice, and pointer forms for fixed
 stride 3 and fixed stride 4, with normative release bounds checking preserved
 and unchecked builds used only as diagnostics.
+
+
+## R0.5c — LUT scalar transform baseline
+
+A research-only LUT transform measured the element-wise operation
+
+    target[i] = lut[source[i]]
+
+with an 8-bit source, a 256-entry float LUT, and a float destination. The
+initial isolation deliberately compares only a safe D-slice indexed loop with
+a trusted raw-pointer diagnostic. Each form is repeated in a second rotating
+position to expose order effects.
+
+Representative release medians:
+
+| elements | compiler | safe slice | pointer diagnostic | slice control | pointer control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 78.7 us | 57.3 us | 78.7 us | 57.2 us |
+| 1,048,576 | DMD | 1.3657 ms | 1.0134 ms | 1.3744 ms | 0.9811 ms |
+| 8,388,608 | DMD | 11.0376 ms | 8.0469 ms | 10.8422 ms | 7.9833 ms |
+| 65,536 | LDC | 70.4 us | 40.2 us | 70.2 us | 40.9 us |
+| 1,048,576 | LDC | 1.0492 ms | 0.5815 ms | 1.1542 ms | 0.6111 ms |
+| 8,388,608 | LDC | 4.9456 ms | 3.9738 ms | 4.8722 ms | 4.0036 ms |
+
+The duplicate positions preserve the same qualitative ordering, so the
+slice/pointer difference is not explained by the four-way execution order.
+
+Unlike the earlier contiguous ubyte-to-float conversion, LDC does not make the
+safe slice and pointer formulations equivalent in this LUT workload. At the
+largest working set the pointer/slice time ratio is approximately 0.73 under
+DMD and 0.80 under LDC. The gap is larger at the smaller LDC sizes.
+
+This is diagnostic evidence only. The pointer form is not a production
+candidate on timing alone. The next step is to isolate bounds-check effects and
+inspect generated code. In particular, the LUT operation contains two indexed
+memory accesses with different bounds contracts: the linear source/target
+iteration and the data-dependent LUT lookup. Any unchecked build remains a
+diagnostic control, not a proposed production configuration.
+
+No Mir or handwritten SIMD conclusion is drawn from this first LUT baseline.
