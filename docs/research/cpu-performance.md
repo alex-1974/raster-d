@@ -1830,3 +1830,63 @@ result across dimensions/pitches, replace research-only signed-stride
 assertions with robust validated magnitude handling, inspect final generated
 code, and centralize compiler/version/architecture selection rather than
 scattering compiler conditionals. No handwritten SIMD is justified.
+
+
+##### R0.5f qualification matrix: width, tail, pitch, and height
+
+The no-inline causal result was qualified over output widths 127/128/129,
+511/512/513, and 2047/2048/2049, plus pitch and height controls at width 2048.
+Every case used the same logical corpus for positive and negative Canonical
+storage, an independent oracle, and both ordinary trusted and no-inline row
+execution.
+
+DMD 2.111 remained essentially insensitive to row-stride sign and to the
+no-inline boundary across the matrix. Representative medians include:
+
+- 127x64 pitch 192: positive trusted 13.0 us, negative trusted 13.0 us,
+  negative no-inline 13.0 us.
+- 512x256 pitch 640: positive trusted 205.8 us, negative trusted 206.6 us,
+  negative no-inline 206.6 us.
+- 2048x512 pitch 4096: positive trusted 1.7673 ms, negative trusted
+  1.7630 ms, negative no-inline 1.7761 ms.
+
+Thus DMD has no evidence-backed reason to select the no-inline specialization.
+
+LDC 1.41 / LLVM 19.1.7 reproduced the negative-Canonical asymmetry and its
+no-inline recovery at every tested width class, including widths immediately
+below and above multiples of four:
+
+- 127x64: positive trusted 3.5 us; negative trusted 12.0 us; negative
+  no-inline 3.6 us.
+- 128x64: 3.2 us; 12.0 us; 3.4 us.
+- 129x64: 3.4 us; 12.2 us; 3.6 us.
+- 511x256: 54.8 us; 190.7 us; 55.5 us.
+- 512x256: 53.3 us; 192.0 us; 54.1 us.
+- 513x256: 55.5 us; 191.4 us; 55.5 us.
+- 2047x512 pitch 2304: 462.6 us; 1.6471 ms; 463.2 us.
+- 2048x512 pitch 2304: 446.3 us; 1.6006 ms; 440.8 us.
+- 2049x512 pitch 2304: 551.8 us; 1.6507 ms; 546.5 us.
+
+The effect also survives pitch and height changes. At width 2048 / pitch
+4096, negative trusted versus negative no-inline measured 1.6408 ms versus
+451.1 us for height 512, 190.7 us versus 53.6 us for height 64, and
+3.2932 ms versus 1.1101 ms for height 1024.
+
+The tested non-multiple widths show that ordinary vector-tail handling does not
+remove the benefit. The tested pitch and height changes show that the result is
+not tied to the original 2048x512/pitch-4096 fixture.
+
+R0.5f therefore has sufficient Linux x86-64 evidence to carry forward a
+compiler-specific internal candidate: under LDC 1.41 / LLVM 19.1.7, negative
+Canonical neighbourhood execution should preserve the qualified out-of-line
+row-kernel boundary, while positive Canonical execution may retain the
+integrated trusted form. DMD 2.111 should retain the integrated trusted form
+for both signs.
+
+This conclusion is deliberately narrower than a production dispatch contract.
+Before promotion, the compiler/version selector must follow the workspace's
+centralized toolchain policy, the negative-stride magnitude handling must not
+depend on release-elided assertions, and the final production-shaped codegen
+and correctness suite must be re-qualified. Architecture-specific claims
+remain limited to the measured Linux x86-64 host; AArch64/NEON requires its
+own evidence.
