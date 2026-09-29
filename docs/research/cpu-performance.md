@@ -772,3 +772,39 @@ iteration and the data-dependent LUT lookup. Any unchecked build remains a
 diagnostic control, not a proposed production configuration.
 
 No Mir or handwritten SIMD conclusion is drawn from this first LUT baseline.
+
+
+### LUT bounds-check diagnostic
+
+A diagnostic repeat disabled bounds checking globally through `DFLAGS="-boundscheck=off"`.
+This configuration is not a proposed production mode; it exists only to
+identify the source of the safe-slice/pointer timing gap.
+
+Representative medians:
+
+| elements | compiler | safe slice, checks on | pointer, checks on | safe slice, checks off | pointer, checks off |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 78.7 us | 57.3 us | 59.1 us | 58.6 us |
+| 1,048,576 | DMD | 1.3657 ms | 1.0134 ms | 1.0042 ms | 1.0003 ms |
+| 8,388,608 | DMD | 11.0376 ms | 8.0469 ms | 8.4424 ms | 8.3592 ms |
+| 65,536 | LDC | 70.4 us | 40.2 us | 24.6 us | 24.6 us |
+| 1,048,576 | LDC | 1.0492 ms | 0.5815 ms | 0.4724 ms | 0.4715 ms |
+| 8,388,608 | LDC | 4.9456 ms | 3.9738 ms | 3.6394 ms | 3.6012 ms |
+
+The duplicate controls in the unchecked run also converge closely.
+
+This diagnostic resolves the initial source-form ambiguity: once bounds checks
+are removed, safe-slice indexing and pointer indexing are effectively in the
+same performance class under both DMD and LDC. The checked-build pointer
+advantage therefore does not justify a pointer-based production kernel.
+
+The next question is narrower and semantic: determine which checks remain
+necessary after validating the operation contract. In particular, a source
+sample of type `ubyte` is restricted to 0..255, so a LUT contract requiring
+at least 256 entries can prove the data-dependent LUT index valid before the
+hot loop. Source and destination lengths can likewise be validated once before
+execution. Research should test whether expressing those proven invariants
+through a narrow execution boundary can recover the unchecked code-generation
+class without weakening the external checked contract.
+
+No handwritten SIMD is justified by this result.
