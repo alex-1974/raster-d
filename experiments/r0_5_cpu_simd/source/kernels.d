@@ -15,6 +15,20 @@ nothrow
         destination[i] = source[i];
 }
 
+void copySlice(
+    const(float)[] source,
+    float[] destination
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    assert(source.length == destination.length);
+
+    destination[] = source[];
+}
+
 void fillScalar(
     float[] destination,
     float value
@@ -26,4 +40,16 @@ nothrow
 {
     foreach (ref element; destination)
         element = value;
+}
+
+void fillSlice(
+    float[] destination,
+    float value
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    destination[] = value;
 }
