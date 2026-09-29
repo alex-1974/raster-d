@@ -157,8 +157,10 @@ private final class PersistentRowTeam
         assert(workerCount <= height);
 
         this.fixture = fixture;
-        startGate = new Barrier(workerCount + 1);
-        completionGate = new Barrier(workerCount + 1);
+        assert(workerCount < uint.max);
+        const barrierParticipants = cast(uint)(workerCount + 1);
+        startGate = new Barrier(barrierParticipants);
+        completionGate = new Barrier(barrierParticipants);
 
         workers = new RowWorker[workerCount];
         threads = new Thread[workerCount];
