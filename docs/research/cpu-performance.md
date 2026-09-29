@@ -2005,3 +2005,53 @@ diagnostic should pin worker threads to distinct physical cores for the
 compare that controlled placement against the unpinned persistent-worker
 baseline.  The 12-worker SMT case remains a separate control.  Thread
 affinity, if used, belongs only to the research harness at this stage.
+
+
+##### R0.5g physical-CPU-set diagnostic
+
+The beyond-L3 matrix was repeated without changing the benchmark code while
+restricting the complete process to logical CPUs 0-5 with taskset.  On the
+established host topology these are one hardware thread from each of the six
+physical cores.  This is a process CPU-set restriction, not fixed per-worker
+affinity: Linux may still migrate workers among CPUs 0-5.  The 12-worker point
+is oversubscribed in this control and is therefore not an SMT-scaling result.
+
+For DMD 2.111 the restriction materially changes the previously suspicious
+four-to-six-worker shape.  Positive inline reaches 3.62x at four workers and
+3.44x at six; positive no-inline improves from 3.07x to 3.41x; negative inline
+improves from 3.27x to 3.55x; and negative no-inline improves from 3.31x to
+3.54x.  Three of the four forms therefore improve from four to six workers,
+while the remaining positive-inline regression is small compared with the
+earlier unrestricted anomaly.  Scheduler placement and/or use of SMT siblings
+was consequently a material confounder in the unrestricted DMD matrix.
+
+The LDC 1.41 fast no-inline forms retain the previously observed streaming
+ceiling under the physical-CPU restriction.  Positive no-inline is 11.2875 ms
+serial, 9.7436 ms at two workers, and remains around 8.99-9.66 ms through six
+workers.  Negative no-inline is 12.9569 ms serial, 9.5697 ms at two, and
+roughly 8.85-9.39 ms through six.  Restricting placement therefore does not
+turn additional physical cores into proportional throughput for the already
+fast vectorized large-streaming kernel.  This strengthens the interpretation
+that shared memory-system throughput, rather than worker availability, is the
+dominant limit for that case.
+
+The LDC negative-inline scalar-class form still scales substantially more:
+28.9171 ms serial, 14.6562 ms at two workers, 11.0832 ms at three, 10.1428 ms
+at four, and 10.5598 ms at six.  Its larger speedup does not make it the faster
+implementation; it remains slower in absolute time than the no-inline form.
+
+This diagnostic is sufficient for the current R0.5g distinction:
+
+- thread placement can materially distort scaling measurements and must be
+  controlled or reported when making CPU-scaling claims;
+- DMD's earlier four-to-six-worker anomaly was at least partly a placement/SMT
+  artifact rather than a fundamental six-core kernel limit;
+- LDC's optimized large-streaming kernel reaches a shared-throughput ceiling
+  at low worker counts, so adding workers has little benefit;
+- a worker-count speedup alone is not a kernel-quality metric.
+
+Fixed per-thread affinity is not required to support these conclusions and
+would add Linux-specific harness complexity.  It remains an optional deeper
+diagnostic if a later production decision depends on exact core-placement
+behaviour.  No public raster-d threading, affinity, SMT, or worker-count policy
+is introduced by this research.
