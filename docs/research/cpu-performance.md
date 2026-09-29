@@ -533,3 +533,58 @@ Do not introduce compiler-specific production code or handwritten SIMD on the
 basis of this probe. The safe slice remains the leading candidate, but the
 remaining question is whether replacing Mir indexing is necessary or whether
 the same semantics can be recovered through compilation/inlining structure.
+
+
+## R0.5c — same-translation-unit Mir control
+
+The same-TU control resolves an important ambiguity in the conversion result.
+
+### LDC
+
+When an exact copy of the Mir conversion loop is visible in the same
+translation unit, LDC inlines through the Mir slice abstraction and emits the
+same broad vectorized conversion shape as the direct slice and pointer
+controls:
+
+- two `<4 x i8>` loads per vector iteration;
+- vector `uitofp` to `<4 x float>`;
+- two vector stores;
+- scalar/unrolled tail handling.
+
+The wrapper `probeConvertMirSameTu` itself contains the vectorized loop after
+optimization. In contrast, `probeConvertMir`, which calls the normal
+production module, remains a tail call to the externally compiled
+`scalarConvertUbyteToFloatContiguous1D`.
+
+Therefore Mir indexing is not intrinsically preventing LDC vectorization for
+this kernel. Visibility/optimization across the production compilation
+boundary is a material part of the observed performance problem.
+
+### DMD
+
+DMD does not inline the same-TU Mir helper into the C-symbol wrapper in this
+probe. Both the same-TU Mir wrapper and the normal production Mir wrapper
+retain calls, while the direct slice and pointer controls remain compact
+scalar loops.
+
+This is consistent with the earlier DMD/Mir observations but does not yet show
+the body generated for the same-TU helper or production helper. DMD therefore
+requires separate body-level inspection before choosing a compiler-specific
+implementation.
+
+### Consequence
+
+The evidence now separates compiler strategy:
+
+- LDC: preserve the possibility of Mir-based source where optimization
+  visibility can be guaranteed; test a combined build before replacing the
+  abstraction solely for LDC.
+- DMD: direct safe slices remain the strongest simple source-form candidate;
+  inspect helper bodies and measure a production-equivalent slice kernel
+  before promotion.
+- Both: no handwritten SIMD is justified. LDC already generates suitable SIMD
+  from safe D source.
+
+The next experiment should measure normal versus combined LDC execution and
+inspect the DMD helper bodies. A production change should follow only if those
+results confirm the expected compiler-specific behavior.
