@@ -277,8 +277,7 @@ private int runCase(BenchCase bench, bool negativeRows, bool noInline)
         writefln(
             "neighbourhood3x3_parallel case=%s correctness_failed rows=%s kernel=%s phase=serial",
             bench.label,
-            bench.label,
-        negativeRows ? "negative" : "positive",
+            negativeRows ? "negative" : "positive",
             noInline ? "noinline" : "inline"
         );
         return 1;
@@ -324,8 +323,7 @@ private int runCase(BenchCase bench, bool negativeRows, bool noInline)
             writefln(
                 "neighbourhood3x3_parallel case=%s correctness_failed rows=%s kernel=%s workers=%s",
                 bench.label,
-            bench.label,
-        negativeRows ? "negative" : "positive",
+            negativeRows ? "negative" : "positive",
                 noInline ? "noinline" : "inline",
                 workerCount
             );
@@ -368,8 +366,7 @@ private int runCase(BenchCase bench, bool negativeRows, bool noInline)
         writefln(
             "neighbourhood3x3_parallel case=%s rows=%s kernel=%s mode=persistent workers=%s median_ns=%s speedup_vs_serial=%.6f efficiency=%.6f raw_ns=%(%s,%) sink=%s",
             bench.label,
-            bench.label,
-        negativeRows ? "negative" : "positive",
+            negativeRows ? "negative" : "positive",
             noInline ? "noinline" : "inline",
             workerCount,
             workerMedian,
