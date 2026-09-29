@@ -1375,3 +1375,27 @@ layout enum should be introduced from timing alone. A dedicated code-generation
 probe now compares a positive-only stride, a runtime signed stride, and an
 explicit negative-magnitude stride to determine whether LDC loses vectorization
 or incurs another loop-shape penalty before any specialization decision.
+
+
+##### Signed-stride code-generation diagnosis
+
+The dedicated code-generation probe rules out the simplest explanation for the
+LDC negative-row-stride penalty. LDC 1.41 keeps a four-float SIMD inner loop
+for all three forms: positive-only pitch, runtime signed row stride, and an
+explicit negative-magnitude row stride. The negative form therefore does not
+merely fall back to scalar arithmetic.
+
+The negative form does, however, require substantially different address
+setup and outer-row pointer evolution. This makes the measured penalty a
+memory-traversal/address-generation/code-shape question rather than evidence
+that Canonical negative row stride is intrinsically non-vectorizable.
+
+DMD remains scalar for all three probe forms, matching the benchmark result
+that changing the sign of the outer stride has little effect there.
+
+No compiler-specific production specialization is justified yet. The next
+control should separate logical row orientation from physical traversal:
+process the same negatively represented Canonical source through a normalized
+positive physical row walk, while preserving the requested logical output
+orientation. If that recovers LDC throughput, row traversal direction rather
+than SIMD eligibility is the relevant specialization axis.
