@@ -3,6 +3,7 @@ module neighbourhood_view_bench;
 import core.time : MonoTime;
 import std.algorithm : sort;
 import std.stdio : writefln;
+import neighbourhood_versioning_guard_probe : reportVersioningGeometry;
 
 import raster.internal.r0_5_neighbourhood_view_bench :
     box3CanonicalNegativePhysicalForward, box3CanonicalTrusted, box3CanonicalView,
@@ -101,6 +102,8 @@ private int runTrustedCase(bool negativeRows) {
     auto dst=new float[width*height];
     fillLogical(source,negativeRows);
     oracle(expected);
+
+    reportVersioningGeometry(source, dst, pitch);
 
     auto fixture=makeCanonicalNeighbourhoodFixture(
         source,dst,width,height,pitch,negativeRows
