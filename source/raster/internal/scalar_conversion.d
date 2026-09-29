@@ -64,6 +64,32 @@ nothrow
 }
 
 
+/++
+    Converts equal-length contiguous D slices without Mir element access.
+
+    This is the compiler-friendly execution form for a dispatcher that has
+    already established layout and alias safety. It remains package-internal.
++/
+package(raster)
+bool scalarConvertUbyteToFloatSlice(
+    scope const(ubyte)[] source,
+    scope float[] target
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    if (source.length != target.length)
+        return false;
+
+    foreach (i; 0 .. source.length)
+        target[i] = cast(float) source[i];
+
+    return true;
+}
+
+
 version (unittest)
 {
 
