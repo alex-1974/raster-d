@@ -1399,3 +1399,30 @@ process the same negatively represented Canonical source through a normalized
 positive physical row walk, while preserving the requested logical output
 orientation. If that recovers LDC throughput, row traversal direction rather
 than SIMD eligibility is the relevant specialization axis.
+
+
+##### Row-direction isolation
+
+A 2x2 control separated source-row and destination-row traversal direction at
+pitches 2304 and 4096 while preserving the same logical 3x3 computation and
+checking every variant against one reference result.
+
+The result does not support row direction itself as the cause of the earlier
+LDC negative-signed-stride penalty. On LDC 1.41 all four direction
+combinations remained in the same broad performance class (approximately
+0.46--0.58 ms medians in these runs). At pitch 4096, reverse source traversal
+with forward destination traversal measured 0.581 ms, far below the roughly
+1.82 ms measured for the actual runtime-signed negative-stride kernel in the
+preceding run. DMD likewise showed no material direction-specific class split.
+
+Together with the code-generation probe, this narrows the issue: negative
+physical traversal is not inherently slow and LLVM still vectorizes the
+negative-stride kernel. The remaining important difference is source shape
+and address representation: the direction matrix selects a logical row and
+then uses positive size_t row/pitch arithmetic, whereas the real Canonical
+kernel carries a signed ptrdiff_t rowStride through row-address formation.
+
+Do not change Canonical classification or introduce compiler-specific/SIMD
+production paths from this evidence. The next probe should vary only signed
+address-expression shape while keeping traversal, data, arithmetic, and
+destination mapping fixed.
