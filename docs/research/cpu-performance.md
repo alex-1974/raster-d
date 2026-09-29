@@ -853,3 +853,46 @@ This separates the problem further:
 Do not promote the pointer diagnostic or introduce a compiler split from this
 result. The next probe should preserve the checked external contract while
 isolating the already-proven equal-length source/target execution invariant.
+
+
+### LUT validated execution-boundary probe
+
+A research-only follow-up moved all dynamic contract checks to a narrow
+`@trusted` wrapper and passed only validated pointers plus element count to an
+internal `@system pure nothrow @nogc` execution kernel. This is a diagnostic
+architecture probe, not a production promotion.
+
+Representative release medians:
+
+| elements | compiler | checked slice | validated execution | pointer diagnostic | validated control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 78.6 us | 23.8 us | 48.4 us | 23.8 us |
+| 1,048,576 | DMD | 1.2594 ms | 0.3880 ms | 0.8142 ms | 0.3841 ms |
+| 8,388,608 | DMD | 10.9550 ms | 4.0487 ms | 6.9023 ms | 4.1164 ms |
+| 65,536 | LDC | 29.7 us | 25.2 us | 25.2 us | 25.2 us |
+| 1,048,576 | LDC | 0.4879 ms | 0.4079 ms | 0.4071 ms | 0.4128 ms |
+| 8,388,608 | LDC | 4.3813 ms | 3.7443 ms | 3.7220 ms | 3.7084 ms |
+
+Under LDC the result is straightforward: the validated execution form and the
+existing pointer diagnostic are effectively in the same performance class.
+This supports the hypothesis that one checked boundary followed by an
+invariant-exploiting execution kernel can recover the unchecked hot-loop class
+without globally disabling checks.
+
+DMD is more surprising. The validated execution kernel is substantially faster
+than the existing pointer diagnostic: roughly 2.1x at 1,048,576 elements and
+1.7x at 8,388,608 elements. Its duplicate control closely tracks the first
+validated position. The largest DMD case contains several late outliers, but
+the separation from the pointer diagnostic is much larger than those ordering
+effects and is already clear at the smaller sizes.
+
+This DMD result must not yet be interpreted as evidence for a production
+architecture. The two pointer-based forms differ in source structure and
+call/validation boundaries, so generated-code inspection is required before
+attributing the speedup to aliasing, loop optimization, bounds-check
+elimination, inlining, or another compiler effect.
+
+The next step is therefore a focused same-module code-generation probe for the
+validated execution kernel versus the existing pointer diagnostic under DMD
+and LDC, retaining normal release bounds-check policy. No handwritten SIMD or
+public API change is justified yet.
