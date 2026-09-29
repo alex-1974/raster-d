@@ -82,3 +82,33 @@ flags. Compiler/version/flag profiles are recorded in
 
 The local benchmark executable is ignored by the repository and is not
 research evidence by itself.
+
+
+## Copy code-generation diagnostic
+
+The first abstraction probe found a material compiler-dependent gap between the
+raw, Mir Contiguous1D, and checked contiguous copy paths. Inspect generated code
+before changing production implementation.
+
+From the repository root, build the experiment normally first. Then retain
+compiler output in a temporary directory rather than committing generated
+assembly/IR to the repository.
+
+For LDC, use the experiment source plus the raster-d source tree and inspect
+LLVM optimization/vectorization output for the instantiated copy loops. For
+DMD, retain assembly and compare the raw scalar loop with the instantiated Mir
+Contiguous1D loop. The checked raster path should additionally be inspected to
+confirm the expected call/lowering to `memcpy`.
+
+The diagnostic questions are:
+
+- does the raw D slice lower to a bulk-copy primitive;
+- does LDC vectorize the raw scalar loop;
+- what loop does Mir Contiguous1D instantiate under DMD and LDC;
+- are Mir indexing/shape operations retained inside the element loop;
+- is the relevant raster/Mir code inlined across the normal library boundary;
+- does a combined/same-unit build materially change the generated hot loop;
+- does the checked contiguous path reach `memcpy` after its one-time checks.
+
+Generated-code observations are explanatory evidence. Performance conclusions
+still require timing on the reference machine.
