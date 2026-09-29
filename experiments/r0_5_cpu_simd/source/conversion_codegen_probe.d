@@ -1,4 +1,4 @@
-module conversion_codegen_probe;
+module raster.internal.r0_5_conversion_codegen_probe;
 
 import mir.ndslice.slice : Contiguous, Slice;
 import raster.internal.scalar_conversion : scalarConvertUbyteToFloatContiguous1D;
