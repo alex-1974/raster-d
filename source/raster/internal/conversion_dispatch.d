@@ -35,7 +35,8 @@ import raster.internal.physical_range :
     classifyByteAddressRanges;
 
 import raster.internal.scalar_conversion :
-    scalarConvertUbyteToFloatContiguous1D;
+    scalarConvertUbyteToFloatContiguous1D,
+    scalarConvertUbyteToFloatSlice;
 
 import raster.internal.target :
     RasterTargetPlane,
@@ -446,6 +447,28 @@ nothrow
 }
 
 
+private
+bool convertApprovedUbyteToFloatContiguous1D(
+    scope const(ubyte)* sourceBase,
+    scope float* targetBase,
+    size_t elementCount
+)
+@trusted
+pure
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+    assert(elementCount != 0);
+
+    return scalarConvertUbyteToFloatSlice(
+        sourceBase[0 .. elementCount],
+        targetBase[0 .. elementCount]
+    );
+}
+
+
 /++
     Converts one ubyte source plane into a contiguous float target.
 
@@ -550,14 +573,10 @@ nothrow
         case PhysicalByteRangeRelation.nonOverlapping:
         {
             const converted =
-                scalarConvertUbyteToFloatContiguous1D(
-                    asMirContiguousFlat(
-                        source,
-                        planeIndex
-                    ),
-                    asMirTargetContiguousFlat(
-                        target
-                    )
+                convertApprovedUbyteToFloatContiguous1D(
+                    sourceBase,
+                    targetBase,
+                    traits.flatElementCount
                 );
 
             /*
