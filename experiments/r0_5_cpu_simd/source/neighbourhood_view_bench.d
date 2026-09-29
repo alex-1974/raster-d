@@ -65,10 +65,27 @@ private int runCase(bool negativeRows) {
             negativeRows?"negative":"positive");
         return 1;
     }
-    foreach(_;0..warmups){assert(run());consume(dst);}
+    foreach(_;0..warmups) {
+        if(!run()) {
+            writefln("neighbourhood3x3_view execution_failed rows=%s",
+                negativeRows?"negative":"positive");
+            return 1;
+        }
+        consume(dst);
+    }
     long[repetitions] samples;
+    bool executionOk=true;
     foreach(i;0..repetitions)
-        samples[i]=measure({assert(run());consume(dst);});
+        samples[i]=measure({
+            const ok=run();
+            executionOk = executionOk && ok;
+            consume(dst);
+        });
+    if(!executionOk) {
+        writefln("neighbourhood3x3_view execution_failed rows=%s",
+            negativeRows?"negative":"positive");
+        return 1;
+    }
     auto m=samples;
     writefln("neighbourhood3x3_view rows=%s median_ns=%s sink=%s",
         negativeRows?"negative":"positive",median(m[]),sink);
