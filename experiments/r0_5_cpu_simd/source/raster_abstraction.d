@@ -99,3 +99,26 @@ nothrow
         target
     ).ok;
 }
+
+
+bool affineMirContiguous1D(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target,
+    float gain,
+    float bias
+)
+@safe
+nothrow
+@nogc
+{
+    auto input = asMirContiguousFlat(source, 0);
+    auto output = asMirTargetContiguousFlat(target);
+
+    if (input.length != output.length)
+        return false;
+
+    foreach (i; 0 .. input.length)
+        output[i] = input[i] * gain + bias;
+
+    return true;
+}
