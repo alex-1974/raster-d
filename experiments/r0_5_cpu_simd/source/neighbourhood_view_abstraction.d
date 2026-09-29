@@ -430,6 +430,90 @@ nothrow
     }
 }
 
+
+/++
+    R0.5g research-only row-range entry.
+
+    The semantic RasterView/RasterTargetPlane validation remains identical to
+    the serial row-kernel path.  Callers may assign disjoint output row ranges
+    to independent workers.  This function creates no threads and establishes
+    no scheduling policy.
+
+    noInline selects the already-qualified R0.5f inner-row source shape.  The
+    arithmetic graph is otherwise identical.
++/
+bool box3CanonicalRowRange(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target,
+    size_t rowBegin,
+    size_t rowEnd,
+    bool noInline
+)
+@safe
+nothrow
+@nogc
+{
+    if (source.width != target.width + 2 ||
+        source.height != target.height + 2 ||
+        rowBegin > rowEnd ||
+        rowEnd > target.height)
+        return false;
+
+    PlaneExecutionTraits traits;
+    if (!source.tryPlaneExecutionTraits(0, traits) ||
+        traits.layout2D == PlaneExecutionLayout2D.universal)
+        return false;
+
+    ptrdiff_t rowStride;
+    ptrdiff_t sampleStride;
+    if (!source.tryExecutionPlaneStrides(0, rowStride, sampleStride) ||
+        sampleStride != 1)
+        return false;
+
+    const src = source.executionRegionBase(0);
+    auto dst = target.executionBase();
+    if (src is null || dst is null)
+        return false;
+
+    box3CanonicalRowRangeUnchecked(
+        src, rowStride, dst, target.width,
+        rowBegin, rowEnd, noInline
+    );
+    return true;
+}
+
+private void box3CanonicalRowRangeUnchecked(
+    scope const(float)* src,
+    ptrdiff_t rowStride,
+    scope float* dst,
+    size_t width,
+    size_t rowBegin,
+    size_t rowEnd,
+    bool noInline
+)
+@trusted
+nothrow
+@nogc
+{
+    auto r0 = src + cast(ptrdiff_t) rowBegin * rowStride;
+    auto r1 = r0 + rowStride;
+    auto r2 = r1 + rowStride;
+    auto dstRow = dst + rowBegin * width;
+
+    foreach (_; rowBegin .. rowEnd)
+    {
+        if (noInline)
+            box3RowNoInlineUnchecked(r0, r1, r2, dstRow, width);
+        else
+            box3RowUnchecked(r0, r1, r2, dstRow, width);
+
+        r0 += rowStride;
+        r1 += rowStride;
+        r2 += rowStride;
+        dstRow += width;
+    }
+}
+
 pragma(inline, false)
 private void box3RowNoInlineUnchecked(
     scope const(float)* r0,
