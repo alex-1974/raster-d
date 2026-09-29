@@ -94,6 +94,23 @@ int runNeighbourhoodAliasPath() {
     writefln("neighbourhood3x3_alias disjoint=%s",proven);
     if(!proven) return 1;
 
+    /*
+     * Diagnostic only: report the complete source-storage and destination
+     * address intervals used by this invocation. LLVM's exact loop-versioning
+     * expression is an implementation detail, but for these separately
+     * allocated buffers a disjoint pair of complete enclosing intervals also
+     * proves every accessed source row disjoint from every destination row.
+     * Keep this outside timed execution.
+     */
+    const sourceStart=cast(size_t)storage.ptr;
+    const sourceEnd=sourceStart+storage.length*float.sizeof;
+    const targetStart=cast(size_t)dst.ptr;
+    const targetEnd=targetStart+dst.length*float.sizeof;
+    writefln(
+        "neighbourhood3x3_alias ranges source=[0x%x,0x%x) target=[0x%x,0x%x) enclosing_disjoint=%s",
+        sourceStart,sourceEnd,targetStart,targetEnd,
+        sourceEnd<=targetStart || targetEnd<=sourceStart);
+
     report("ordinary_call", { signedKernel(base,stride,dst.ptr); }, dst);
     report("after_runtime_nonoverlap_proof", {
         // The branch records the semantic proof but cannot by itself add a
