@@ -37,10 +37,10 @@ private void box3Rows(scope const(float)[] src, size_t stride,
         const r2=(y+2)*stride;
         const d=y*width;
         foreach(x;0..width) {
-            dp[d+x] =
-                sp[r0+x] + sp[r0+x+1] + sp[r0+x+2] +
-                sp[r1+x] + sp[r1+x+1] + sp[r1+x+2] +
-                sp[r2+x] + sp[r2+x+1] + sp[r2+x+2];
+            dst[d+x] =
+                src[r0+x] + src[r0+x+1] + src[r0+x+2] +
+                src[r1+x] + src[r1+x+1] + src[r1+x+2] +
+                src[r2+x] + src[r2+x+1] + src[r2+x+2];
         }
     }
 }
@@ -72,10 +72,10 @@ private void box3ValidatedUnchecked(
     foreach(y;0..height) {
         const r0=y*stride, r1=(y+1)*stride, r2=(y+2)*stride, d=y*width;
         foreach(x;0..width) {
-            dst[d+x] =
-                src[r0+x] + src[r0+x+1] + src[r0+x+2] +
-                src[r1+x] + src[r1+x+1] + src[r1+x+2] +
-                src[r2+x] + src[r2+x+1] + src[r2+x+2];
+            dp[d+x] =
+                sp[r0+x] + sp[r0+x+1] + sp[r0+x+2] +
+                sp[r1+x] + sp[r1+x+1] + sp[r1+x+2] +
+                sp[r2+x] + sp[r2+x+1] + sp[r2+x+2];
         }
     }
 }
