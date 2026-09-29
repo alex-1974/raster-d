@@ -1458,3 +1458,27 @@ public noalias/uniqueness contract: RasterTargetPlane currently provides no
 such guarantee. Any production optimization must preserve that contract or
 perform a validated runtime non-overlap dispatch before entering a narrower
 trusted kernel.
+
+
+##### Alias-path control
+
+A runtime control using separate heap allocations confirmed that the complete
+source and destination intervals were disjoint. In one LDC run the source was
+[0x730f22d00010,0x730f23508010) and the destination
+[0x730f23509010,0x730f23909010), leaving a 4096-byte gap. The ordinary signed
+kernel measured 1.7320 ms median and the same kernel after an explicit
+invocation-local non-overlap proof measured 1.7346 ms. The proof therefore
+does not change the performance class or communicate a persistent no-alias
+property through the function boundary.
+
+Reading the standalone LDC assembly also refines the loop-versioning result:
+the signed kernel branches to a scalar fallback when its generated overlap
+condition is true and to the 4-float movups/addps loop when that condition is
+false. For the fully disjoint allocations above, aliasing is therefore not a
+credible explanation for the approximately 1.7 ms result.
+
+The important inversion is that the previously fast reverse-index control is
+itself scalar in the standalone LDC assembly, while the signed forms contain
+a SIMD fast path. The next question is consequently stencil code quality:
+compare the compact scalar control with LLVM's vectorized overlapping-window
+loads/address recurrences rather than assuming SIMD is intrinsically faster.
