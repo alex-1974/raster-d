@@ -1559,3 +1559,46 @@ for the negative-Canonical slowdown. Keep the timings as research evidence,
 but narrow their interpretation. The next benchmark must compare actual
 validated RasterView Canonical execution with positive and negative
 rowStride using the same logical corpus and an independent correctness oracle.
+
+
+##### Validated RasterView Canonical neighbourhood result
+
+A production-shaped benchmark now constructs both source variants through
+validateRasterBackingLayout, creates RasterView only after successful backing
+validation, verifies Canonical execution traits, adapts through
+asMirCanonical, and writes to a contiguous RasterTargetPlane. Positive and
+negative physical layouts contain the same logical samples and are checked
+against an independent logical-value oracle. Validation and fixture creation
+are outside the timed region.
+
+An initial release-build run accidentally placed the timed kernel call inside
+assert; release compilation removed that call. Those microsecond timings are
+invalid and are excluded. An audit found no equivalent assert-wrapped timed
+operation in the other R0.5 benchmark files. Commit fce5138 corrected this
+benchmark to execute and check the operation explicitly.
+
+Corrected 2048x512, pitch 4096 results:
+
+- DMD: positive 10.8170 ms; negative 10.6977 ms. Row direction is effectively
+  neutral (negative is about 1.1% faster in this run), but this Mir-indexed
+  production-shaped kernel is much slower than the earlier trusted
+  check-free raw kernels.
+- LDC: positive 0.6932 ms; negative 1.7204 ms. Negative Canonical row traversal
+  is about 2.48x slower.
+- The LDC negative result falls in the same approximately 1.6-1.8 ms class as
+  the earlier negative signed-stride/raw controls, while the positive result
+  is in the fast sub-millisecond class.
+
+This establishes that the LDC positive/negative Canonical asymmetry is real
+for the current RasterView -> asMirCanonical -> contiguous-target execution
+shape. It is not evidence that RasterView itself is generally expensive:
+positive Canonical execution is already fast under LDC. Conversely, DMD shows
+no meaningful direction asymmetry here; its issue is the much larger cost of
+the Mir-indexed neighbourhood expression itself.
+
+Do not change the public Canonical contract or add hand SIMD from this result.
+The next specialization/codegen question is whether a validated internal
+negative-row specialization can preserve RasterView semantics while presenting
+the hot loop to LDC in a positive-pitch/index form, and whether DMD needs a
+separate check-free internal neighbourhood kernel rather than Mir element
+indexing.
