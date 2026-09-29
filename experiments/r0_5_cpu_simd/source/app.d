@@ -1,14 +1,55 @@
 module app;
 
 import corpus : fillDeterministic, fingerprint;
-import harness : measure;
-import kernels : copyScalar;
+import harness : measurePair;
+import kernels :
+    copyScalar,
+    copySlice,
+    fillScalar,
+    fillSlice;
 
 import std.stdio : writefln, writeln;
 
 enum size_t elementCount = 1024 * 1024;
-enum size_t repetitions = 9;
+enum size_t repetitions =  nineRepetitions;
 enum size_t warmupRounds = 2;
+enum size_t nineRepetitions = 9;
+enum float fillValue = 0.375f;
+
+private void printPair(
+    string family,
+    string firstLabel,
+    string secondLabel,
+    long[] firstRaw,
+    long[] secondRaw,
+    long firstMedian,
+    long secondMedian
+)
+{
+    writefln(
+        "%s %s_median_ns=%s %s_median_ns=%s ratio_second_over_first=%.6f",
+        family,
+        firstLabel,
+        firstMedian,
+        secondLabel,
+        secondMedian,
+        cast(double) secondMedian / cast(double) firstMedian
+    );
+
+    writefln(
+        "%s %s_raw_ns=%(%s,%)",
+        family,
+        firstLabel,
+        firstRaw
+    );
+
+    writefln(
+        "%s %s_raw_ns=%(%s,%)",
+        family,
+        secondLabel,
+        secondRaw
+    );
+}
 
 int main()
 {
@@ -16,37 +57,87 @@ int main()
     auto destination = new float[elementCount];
 
     fillDeterministic(source, 0x5230_3500_2026_0929UL);
-
-    const expected = fingerprint(source);
+    const sourceFingerprint = fingerprint(source);
 
     copyScalar(source, destination);
-
-    if (fingerprint(destination) != expected)
+    if (fingerprint(destination) != sourceFingerprint)
     {
-        writeln("correctness preflight failed");
+        writeln("copy_scalar correctness preflight failed");
         return 1;
     }
 
-    const samples = measure!(
-        () => copyScalar(source, destination)
+    copySlice(source, destination);
+    if (fingerprint(destination) != sourceFingerprint)
+    {
+        writeln("copy_slice correctness preflight failed");
+        return 1;
+    }
+
+    fillScalar(destination, fillValue);
+    const fillFingerprint = fingerprint(destination);
+
+    fillSlice(destination, fillValue);
+    if (fingerprint(destination) != fillFingerprint)
+    {
+        writeln("fill_slice correctness preflight failed");
+        return 1;
+    }
+
+    const copySamples = measurePair!(
+        () => copyScalar(source, destination),
+        () => copySlice(source, destination)
     )(
         repetitions,
         warmupRounds
     );
 
-    const resultFingerprint = fingerprint(destination);
+    if (fingerprint(destination) != sourceFingerprint)
+    {
+        writeln("copy benchmark postflight failed");
+        return 1;
+    }
+
+    printPair(
+        "copy",
+        "scalar",
+        "slice",
+        copySamples.first.nanoseconds,
+        copySamples.second.nanoseconds,
+        copySamples.first.median,
+        copySamples.second.median
+    );
+
+    const fillSamples = measurePair!(
+        () => fillScalar(destination, fillValue),
+        () => fillSlice(destination, fillValue)
+    )(
+        repetitions,
+        warmupRounds
+    );
+
+    const finalFingerprint = fingerprint(destination);
+    if (finalFingerprint != fillFingerprint)
+    {
+        writeln("fill benchmark postflight failed");
+        return 1;
+    }
+
+    printPair(
+        "fill",
+        "scalar",
+        "slice",
+        fillSamples.first.nanoseconds,
+        fillSamples.second.nanoseconds,
+        fillSamples.first.median,
+        fillSamples.second.median
+    );
 
     writefln(
-        "copy_scalar elements=%s median_ns=%s fingerprint=%016x",
+        "elements=%s source_fingerprint=%016x fill_fingerprint=%016x",
         elementCount,
-        samples.median,
-        resultFingerprint
+        sourceFingerprint,
+        finalFingerprint
     );
 
-    writefln(
-        "raw_ns=%(%s,%)",
-        samples.nanoseconds
-    );
-
-    return resultFingerprint == expected ? 0 : 1;
+    return 0;
 }
