@@ -1116,3 +1116,35 @@ Consequences:
    reason to invent that API.
 5. Integer min/max remains a separate result: LDC's simple `ubyte` loop is
    already efficiently vector-reduced and manual lane splitting is harmful.
+
+
+### Ubyte histogram reduction
+
+No production histogram path currently exists in raster-d, so this probe remains
+research-only. It measures a 256-bin `ubyte -> ulong[256]` histogram using a
+safe slice loop, a check-free pointer diagnostic, and four private 256-bin
+histograms followed by a merge.
+
+Representative medians:
+
+| elements | compiler | slice | pointer | four histograms | pointer control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 35.5 us | 31.5 us | 38.5 us | 31.7 us |
+| 1,048,576 | DMD | 0.5772 ms | 0.5118 ms | 0.6259 ms | 0.5157 ms |
+| 8,388,608 | DMD | 4.8367 ms | 4.3472 ms | 5.0723 ms | 4.3417 ms |
+| 65,536 | LDC | 28.6 us | 28.7 us | 30.1 us | 28.7 us |
+| 1,048,576 | LDC | 0.4665 ms | 0.4463 ms | 0.4799 ms | 0.4429 ms |
+| 8,388,608 | LDC | 3.8409 ms | 3.6768 ms | 4.1667 ms | 3.7134 ms |
+
+The four-private-histogram form does not recover its extra state and merge cost
+for this deterministic corpus at any measured size. At 8 Mi elements it is
+about 16.7% slower than the pointer diagnostic under DMD and about 13.3% slower
+under LDC. There is therefore no evidence here for promoting manual lane-private
+histograms.
+
+The safe-slice form is consistently slower than the pointer diagnostic under
+DMD (roughly 11--13% in these measurements) and modestly slower under LDC at
+the larger sizes. As with earlier R0.5 probes, this does not justify an unsafe
+production pointer loop. A focused code-generation/bounds-check diagnostic is
+required to determine whether the difference is source-form overhead rather
+than an algorithmic advantage.
