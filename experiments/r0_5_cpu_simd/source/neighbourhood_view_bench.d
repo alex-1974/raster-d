@@ -6,8 +6,8 @@ import std.stdio : writefln;
 import neighbourhood_versioning_guard_probe : reportVersioningGeometry;
 
 import raster.internal.r0_5_neighbourhood_view_bench :
-    box3CanonicalNegativePhysicalForward, box3CanonicalTrusted, box3CanonicalView,
-    makeCanonicalNeighbourhoodFixture;
+    box3CanonicalNegativePhysicalForward, box3CanonicalRowKernel,
+    box3CanonicalTrusted, box3CanonicalView, makeCanonicalNeighbourhoodFixture;
 
 private enum size_t width=2048, height=512, pitch=4096;
 private enum size_t repetitions=12, warmups=2;
@@ -139,6 +139,47 @@ private int runTrustedCase(bool negativeRows) {
 }
 
 
+
+private int runRowKernelCase(bool negativeRows) {
+    auto source=new float[pitch*(height+2)];
+    auto expected=new float[width*height];
+    auto dst=new float[width*height];
+    fillLogical(source,negativeRows);
+    oracle(expected);
+
+    auto fixture=makeCanonicalNeighbourhoodFixture(
+        source,dst,width,height,pitch,negativeRows
+    );
+    bool run() @safe nothrow @nogc {
+        return box3CanonicalRowKernel(fixture.source,fixture.target);
+    }
+
+    if(!run() || dst!=expected) {
+        writefln("neighbourhood3x3_row_kernel correctness_failed rows=%s",
+            negativeRows?"negative":"positive");
+        return 1;
+    }
+    foreach(_;0..warmups) {
+        if(!run()) return 1;
+        consume(dst);
+    }
+    long[repetitions] samples;
+    bool executionOk=true;
+    foreach(i;0..repetitions)
+        samples[i]=measure({
+            const ok=run();
+            executionOk = executionOk && ok;
+            consume(dst);
+        });
+    if(!executionOk) return 1;
+    auto m=samples;
+    writefln("neighbourhood3x3_row_kernel rows=%s median_ns=%s sink=%s",
+        negativeRows?"negative":"positive",median(m[]),sink);
+    writefln("neighbourhood3x3_row_kernel rows=%s raw_ns=%(%s,%)",
+        negativeRows?"negative":"positive",samples);
+    return 0;
+}
+
 private int runPhysicalForwardCase() {
     enum negativeRows=true;
     auto source=new float[pitch*(height+2)];
@@ -184,6 +225,8 @@ int runNeighbourhoodViewMatrix() {
     if(runCase(true)!=0)return 1;
     if(runTrustedCase(false)!=0)return 1;
     if(runTrustedCase(true)!=0)return 1;
+    if(runRowKernelCase(false)!=0)return 1;
+    if(runRowKernelCase(true)!=0)return 1;
     if(runPhysicalForwardCase()!=0)return 1;
     return 0;
 }
