@@ -72,3 +72,31 @@ bool convertDispatch(scope ConversionFixture fixture)
         fixture.target
     ).ok;
 }
+
+
+bool convertSlice(scope const(ubyte)[] source, scope float[] target)
+@safe pure nothrow @nogc
+{
+    if (source.length != target.length)
+        return false;
+
+    foreach (i; 0 .. source.length)
+        target[i] = cast(float) source[i];
+
+    return true;
+}
+
+bool convertPointer(scope const(ubyte)[] source, scope float[] target)
+@trusted pure nothrow @nogc
+{
+    if (source.length != target.length)
+        return false;
+
+    const(ubyte)* input = source.ptr;
+    float* output = target.ptr;
+
+    foreach (i; 0 .. source.length)
+        output[i] = cast(float) input[i];
+
+    return true;
+}
