@@ -1342,3 +1342,36 @@ overflow boundaries, insufficient halo/reach, padded and negative-stride cases
 where applicable, and checked for source/target alias requirements. The trusted
 surface should remain minimal. No public pointer API and no handwritten SIMD
 are supported by this evidence.
+
+
+#### Signed Canonical row-stride matrix
+
+The existing execution-layout contract permits a Canonical plane to have a
+negative outer row stride as long as logical x remains forward unit stride.
+R0.5e therefore repeated the validated 3x3 halo kernel with the same physical
+pitches in both row directions.
+
+| Compiler | Pitch | Positive row stride | Negative row stride | negative / positive |
+|---|---:|---:|---:|---:|
+| DMD | 2050 | 2.4657 ms | 2.3225 ms | 0.94x |
+| DMD | 2112 | 2.4598 ms | 2.4093 ms | 0.98x |
+| DMD | 2304 | 2.4141 ms | 2.4227 ms | 1.00x |
+| DMD | 4096 | 2.4000 ms | 2.4519 ms | 1.02x |
+| LDC | 2050 | 0.6075 ms | 1.7599 ms | 2.90x |
+| LDC | 2112 | 0.7811 ms | 1.7619 ms | 2.26x |
+| LDC | 2304 | 0.4646 ms | 1.6304 ms | 3.51x |
+| LDC | 4096 | 0.4673 ms | 1.7543 ms | 3.75x |
+
+DMD is effectively insensitive to physical row direction in this experiment.
+LDC is not: negative row traversal is materially slower, by roughly 2.3--3.8x
+for these medians. The positive signed-stride measurements at pitches 2050 and
+2112 are noisier than the earlier positive-only benchmark, so the exact ratios
+should not be overinterpreted; the large negative-stride penalty is nevertheless
+unambiguous.
+
+This does not invalidate the Canonical semantic classification. It shows that
+Canonical is not necessarily one performance class. No new public or internal
+layout enum should be introduced from timing alone. A dedicated code-generation
+probe now compares a positive-only stride, a runtime signed stride, and an
+explicit negative-magnitude stride to determine whether LDC loses vectorization
+or incurs another loop-shape penalty before any specialization decision.
