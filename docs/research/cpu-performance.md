@@ -1178,3 +1178,46 @@ simple safe representation first. If DMD histogram performance becomes a
 consumer bottleneck, investigate a narrowly validated execution boundary that
 lets the hot loop operate on a statically known 256-bin target without changing
 public safety semantics.
+
+
+## R0.5e — canonical region / row-stride baseline
+
+The first R0.5e probe isolates physical row layout from neighbourhood arithmetic.
+It applies the same affine float point transform to a fixed logical 2048 x 512
+region while varying the physical row stride.
+
+| Compiler | Stride | Safe rows | Pointer diagnostic | Pointer control |
+|---|---:|---:|---:|---:|
+| DMD | 2048 | 1.0429 ms | 0.5423 ms | 0.5457 ms |
+| DMD | 2112 | 1.0754 ms | 0.5919 ms | 0.6067 ms |
+| DMD | 2304 | 1.0870 ms | 0.5950 ms | 0.5906 ms |
+| DMD | 4096 | 1.1460 ms | 0.6547 ms | 0.6525 ms |
+| LDC | 2048 | 0.1747 ms | 0.1709 ms | 0.1721 ms |
+| LDC | 2112 | 0.1826 ms | 0.1827 ms | 0.1794 ms |
+| LDC | 2304 | 0.2023 ms | 0.1971 ms | 0.1963 ms |
+| LDC | 4096 | 0.2069 ms | 0.2004 ms | 0.1993 ms |
+
+The logical work is identical in all rows. Stride 2048 is fully contiguous;
+2112 and 2304 add increasing row padding; 4096 models a narrow region retaining
+a parent row stride twice its logical width.
+
+LDC maps the safe row form and pointer diagnostic to essentially the same
+performance class. The contiguous safe-row median is only about 2.2% above the
+pointer diagnostic, and the padded cases remain within a few percent. This is
+strong evidence that the existing Canonical layout model does not inherently
+require a material abstraction penalty under the primary performance compiler.
+
+Physical row spacing itself is measurable but moderate. From stride 2048 to
+4096, the LDC pointer median rises from 0.1709 to 0.2004 ms (about 17%), while
+the DMD pointer median rises from 0.5423 to 0.6547 ms (about 21%). This is a
+real locality/layout effect rather than extra logical work.
+
+DMD shows a separate source-form problem: the safe row loop is roughly
+1.8--1.9x the pointer diagnostic across the matrix. Given the earlier R0.5
+bounds-check/code-generation results, this is diagnostic evidence for a focused
+DMD codegen check rather than evidence against Canonical row execution. It does
+not justify an unsafe public or production representation.
+
+R0.5e therefore proceeds to a real neighbourhood/halo kernel. A DMD row-loop
+codegen probe can be retained as a secondary diagnostic if that compiler
+remains important for the eventual consumer hot path.
