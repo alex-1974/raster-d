@@ -127,6 +127,9 @@ void runFloatReductionSemantics()
     printCase("nan_lane3", [3.0f, -2.0f, 7.0f, qnan, 1.0f]);
     printCase("nan_tail", [3.0f, -2.0f, 7.0f, 1.0f, qnan]);
     printCase("nan_multiple", [3.0f, qnan, -2.0f, qnan, 7.0f, 1.0f]);
+    printCase("nan_lane_cycle1", [3.0f, 4.0f, qnan, 2.0f, 8.0f, -5.0f, 9.0f, 1.0f, 6.0f]);
+    printCase("nan_lane_cycle2", [3.0f, 4.0f, 2.0f, qnan, 8.0f, -5.0f, 9.0f, 1.0f, 6.0f]);
+    printCase("nan_lane_cycle3", [3.0f, 4.0f, 2.0f, 8.0f, qnan, -5.0f, 9.0f, 1.0f, 6.0f]);
 
     printCase("zero_pos_neg", [+0.0f, -0.0f]);
     printCase("zero_neg_pos", [-0.0f, +0.0f]);
@@ -134,4 +137,15 @@ void runFloatReductionSemantics()
     printCase("zero_neg_pos_long", [-0.0f, 2.0f, +0.0f, 1.0f, -0.0f]);
     printCase("zero_mixed_negative", [-1.0f, +0.0f, -0.0f, -2.0f, +0.0f]);
     printCase("zero_mixed_positive", [1.0f, -0.0f, +0.0f, 2.0f, -0.0f]);
+
+    // Force different lanes to retain different signed-zero extrema before
+    // the lane-combine phase.
+    printCase("zero_lane_min_pos_first", [+0.0f, 4.0f, -0.0f, 3.0f, 2.0f, +0.0f, -0.0f, 1.0f, 5.0f]);
+    printCase("zero_lane_min_neg_first", [-0.0f, 4.0f, +0.0f, 3.0f, 2.0f, -0.0f, +0.0f, 1.0f, 5.0f]);
+    printCase("zero_lane_max_pos_first", [+0.0f, -4.0f, -0.0f, -3.0f, -2.0f, +0.0f, -0.0f, -1.0f, -5.0f]);
+    printCase("zero_lane_max_neg_first", [-0.0f, -4.0f, +0.0f, -3.0f, -2.0f, -0.0f, +0.0f, -1.0f, -5.0f]);
+
+    // Alternating zeros exercise equality across several lane cycles.
+    printCase("zero_alternating_pos", [+0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f]);
+    printCase("zero_alternating_neg", [-0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f]);
 }
