@@ -1068,3 +1068,51 @@ the ordinary scalar operation graph and the candidate lane graph on NaN
 placement and +/-0.0 permutations. Only after a required float min/max semantic
 contract is explicit can code-generation alternatives be classified as
 equivalent implementations or deliberately different numeric semantics.
+
+
+### Float min/max semantic counterexample
+
+Hand-selected NaN and signed-zero cases initially produced bit-identical results
+between the scalar and four-lane graphs under both DMD and LDC. An exhaustive
+bounded state-space search was therefore added rather than inferring general
+equivalence from examples.
+
+Alphabet:
+
+- NaN
+- -infinity
+- -3.5
+- -0.0
+- +0.0
+- 2.25
+- +infinity
+
+The length-9 search found the same first mismatch under both compilers at case
+50618. The encoded sequence is:
+
+`[-infinity, NaN, +0.0, NaN, NaN, -0.0, NaN, NaN, NaN]`
+
+Results:
+
+- scalar: min = `0xff800000` (-infinity), max = `0x00000000` (+0.0)
+- four lane: min = `0xff800000` (-infinity), max = `0x80000000` (-0.0)
+
+Therefore the four-lane graph is **not bitwise equivalent** to the current
+ordinary `<` / `>` scalar graph for unrestricted IEEE float inputs. This is
+a semantic counterexample, not a compiler-specific code-generation effect:
+DMD and LDC report the identical mismatch.
+
+Consequences:
+
+1. The finite-corpus speedup cannot by itself justify replacing a strict scalar
+   float min/max implementation with this four-lane graph.
+2. Any future fast float reduction must first have an explicit public/internal
+   numeric contract for NaN and signed zero.
+3. If raster-d requires exact preservation of the ordinary scalar graph, this
+   four-lane implementation is invalid for that strict mode.
+4. A separately named/documented relaxed or normalized semantic mode could
+   still permit a faster reduction graph, but only if such semantics are
+   independently useful to consumers; performance alone is not sufficient
+   reason to invent that API.
+5. Integer min/max remains a separate result: LDC's simple `ubyte` loop is
+   already efficiently vector-reduced and manual lane splitting is harmful.
