@@ -37,10 +37,10 @@ private void box3Rows(scope const(float)[] src, size_t stride,
         const r2=(y+2)*stride;
         const d=y*width;
         foreach(x;0..width) {
-            dst[d+x] =
-                src[r0+x] + src[r0+x+1] + src[r0+x+2] +
-                src[r1+x] + src[r1+x+1] + src[r1+x+2] +
-                src[r2+x] + src[r2+x+1] + src[r2+x+2];
+            dp[d+x] =
+                sp[r0+x] + sp[r0+x+1] + sp[r0+x+2] +
+                sp[r1+x] + sp[r1+x+1] + sp[r1+x+2] +
+                sp[r2+x] + sp[r2+x+1] + sp[r2+x+2];
         }
     }
 }
@@ -59,14 +59,16 @@ private void box3Validated(
     assert(height == 0 || width <= size_t.max / height);
     assert(width * height <= dst.length);
 
-    box3ValidatedUnchecked(src.ptr, stride, dst.ptr, width, height);
+    box3ValidatedUnchecked(src, stride, dst, width, height);
 }
 
 private void box3ValidatedUnchecked(
-    scope const(float)* src, size_t stride,
-    scope float* dst, size_t width, size_t height)
+    scope const(float)[] src, size_t stride,
+    scope float[] dst, size_t width, size_t height)
 @trusted pure nothrow @nogc
 {
+    const sp = src.ptr;
+    auto dp = dst.ptr;
     foreach(y;0..height) {
         const r0=y*stride, r1=(y+1)*stride, r2=(y+2)*stride, d=y*width;
         foreach(x;0..width) {
