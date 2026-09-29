@@ -10,6 +10,7 @@ import float_reduction_semantics : runFloatReductionSemantics;
 import histogram_bench : runHistogramMatrix;
 import region_stride_bench : runRegionStrideMatrix;
 import neighbourhood_bench : runNeighbourhoodMatrix;
+import neighbourhood_direction_matrix_bench : runNeighbourhoodDirectionMatrix;
 import neighbourhood_signed_stride_bench : runNeighbourhoodSignedStrideMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
@@ -256,6 +257,8 @@ int main()
         return 1;
 
     if (runNeighbourhoodSignedStrideMatrix() != 0)
+        return 1;
+    if (runNeighbourhoodDirectionMatrix() != 0)
         return 1;
 
     return 0;
