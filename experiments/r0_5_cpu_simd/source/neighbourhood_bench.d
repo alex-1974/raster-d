@@ -45,6 +45,39 @@ private void box3Rows(scope const(float)[] src, size_t stride,
     }
 }
 
+private void box3Validated(
+    scope const(float)[] src, size_t stride,
+    scope float[] dst, size_t width, size_t height)
+@safe pure nothrow @nogc
+{
+    // Validate the complete execution region once.  After these checks every
+    // source access through x+2 in rows y..y+2 and every destination access is
+    // inside the supplied slices.
+    assert(stride >= width + 2);
+    assert(height <= (size_t.max / stride) - 2);
+    assert((height + 2) * stride <= src.length);
+    assert(height == 0 || width <= size_t.max / height);
+    assert(width * height <= dst.length);
+
+    box3ValidatedUnchecked(src.ptr, stride, dst.ptr, width, height);
+}
+
+private void box3ValidatedUnchecked(
+    scope const(float)* src, size_t stride,
+    scope float* dst, size_t width, size_t height)
+@trusted pure nothrow @nogc
+{
+    foreach(y;0..height) {
+        const r0=y*stride, r1=(y+1)*stride, r2=(y+2)*stride, d=y*width;
+        foreach(x;0..width) {
+            dst[d+x] =
+                src[r0+x] + src[r0+x+1] + src[r0+x+2] +
+                src[r1+x] + src[r1+x+1] + src[r1+x+2] +
+                src[r2+x] + src[r2+x+1] + src[r2+x+2];
+        }
+    }
+}
+
 private void box3Pointer(scope const(float)[] src, size_t stride,
                          scope float[] dst, size_t width, size_t height)
 @trusted pure nothrow @nogc
@@ -83,24 +116,28 @@ private int runCase(size_t stride)
     box3Rows(src,stride,reference,width,height);
     box3Pointer(src,stride,dst,width,height);
     if(reference!=dst) return 1;
+    box3Validated(src,stride,dst,width,height);
+    if(reference!=dst) return 1;
 
     foreach(_;0..warmups){
         box3Rows(src,stride,dst,width,height);consume(dst,width,height);
+        box3Validated(src,stride,dst,width,height);consume(dst,width,height);
         box3Pointer(src,stride,dst,width,height);consume(dst,width,height);
     }
-    long[repetitions] rows,pointer,control;
+    long[repetitions] rows,validated,pointer,control;
     foreach(r;0..repetitions){
-        const rot=r%3;
-        foreach(step;0..3) final switch((rot+step)%3){
+        const rot=r%4;
+        foreach(step;0..4) final switch((rot+step)%4){
             case 0:rows[r]=measure({box3Rows(src,stride,dst,width,height);consume(dst,width,height);});break;
-            case 1:pointer[r]=measure({box3Pointer(src,stride,dst,width,height);consume(dst,width,height);});break;
-            case 2:control[r]=measure({box3Pointer(src,stride,dst,width,height);consume(dst,width,height);});break;
+            case 1:validated[r]=measure({box3Validated(src,stride,dst,width,height);consume(dst,width,height);});break;
+            case 2:pointer[r]=measure({box3Pointer(src,stride,dst,width,height);consume(dst,width,height);});break;
+            case 3:control[r]=measure({box3Pointer(src,stride,dst,width,height);consume(dst,width,height);});break;
         }
     }
-    auto a=rows,b=pointer,c=control;
-    writefln("neighbourhood3x3 width=%s height=%s halo=1 stride=%s rows_ns=%s pointer_ns=%s pointer_control_ns=%s sink=%s",
-        width,height,stride,median(a[]),median(b[]),median(c[]),sink);
-    raw("rows",stride,rows[]);raw("pointer",stride,pointer[]);raw("pointer_control",stride,control[]);
+    auto a=rows,b=validated,c=pointer,d=control;
+    writefln("neighbourhood3x3 width=%s height=%s halo=1 stride=%s rows_ns=%s validated_ns=%s pointer_ns=%s pointer_control_ns=%s sink=%s",
+        width,height,stride,median(a[]),median(b[]),median(c[]),median(d[]),sink);
+    raw("rows",stride,rows[]);raw("validated",stride,validated[]);raw("pointer",stride,pointer[]);raw("pointer_control",stride,control[]);
     return 0;
 }
 
