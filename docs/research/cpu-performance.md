@@ -627,3 +627,56 @@ Current direction:
   current dependency/toolchain combination cannot build it.
 - Do not introduce handwritten SIMD; the source-form problem is already
   sufficient to explain the evidence.
+
+
+## R0.5c — promoted contiguous conversion kernel verification
+
+The checked contiguous ubyte-to-float dispatcher was changed to execute the
+already-approved non-overlapping flat region through a safe D-slice loop
+instead of Mir per-element indexing. Pointer-to-slice formation is confined to
+one narrow trusted boundary after layout, extent, and physical non-overlap
+validation; the conversion loop itself remains `@safe pure nothrow @nogc`.
+
+Post-change unit tests pass under both DMD and LDC: 29 modules passed.
+
+Representative release medians:
+
+| elements | compiler | Mir control | safe slice | pointer diagnostic | production dispatch |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 292.1 us | 53.7 us | 32.8 us | 50.2 us |
+| 1,048,576 | DMD | 4.7289 ms | 0.8723 ms | 0.5522 ms | 0.8181 ms |
+| 8,388,608 | DMD | 37.1075 ms | 6.8230 ms | 4.4780 ms | 6.6458 ms |
+| 65,536 | LDC | 152.3 us | 7.9 us | 7.9 us | 7.9 us |
+| 1,048,576 | LDC | 2.3063 ms | 0.1380 ms | 0.1292 ms | 0.1298 ms |
+| 8,388,608 | LDC | 18.8718 ms | 2.9581 ms | 2.9993 ms | 3.1999 ms |
+
+At 8,388,608 samples the production dispatch is approximately 5.58x faster
+than the retained Mir control under DMD and 5.90x faster under LDC.
+
+The production dispatch tracks the safe-slice control closely. Validation and
+dispatch overhead therefore remain small relative to the removed Mir
+per-element cost. The exact ordering between slice and dispatch varies within
+normal run noise and should not be interpreted as dispatch itself being faster
+than the kernel.
+
+The pointer diagnostic remains non-production evidence. In particular, LDC's
+safe slice matches or slightly exceeds pointer performance at the largest
+case, while retaining safe source code and automatic SIMD generation. DMD's
+pointer diagnostic remains faster, but promotion to an unsafe compiler-specific
+kernel is not justified here: the safe production change already removes the
+dominant regression without changing public semantics.
+
+### R0.5c promotion conclusion
+
+Promote the safe D-slice execution form for checked flat contiguous
+ubyte-to-float conversion. Preserve:
+
+- the existing public and package-level semantic contract;
+- validation and physical non-overlap proof before execution;
+- the Mir reference/control path for research evidence;
+- compiler-independent production source;
+- no handwritten SIMD.
+
+This closes the specific contiguous-conversion source-form question. Further
+DMD-only optimization, if pursued, must be a separate evidence-backed study
+rather than part of this promotion.
