@@ -111,3 +111,71 @@ PairSamples measurePair(alias first, alias second)(
         SampleSet(secondSamples)
     );
 }
+
+
+struct FourSamples
+{
+    SampleSet first;
+    SampleSet second;
+    SampleSet third;
+    SampleSet fourth;
+}
+
+FourSamples measureFour(alias first, alias second, alias third, alias fourth)(
+    size_t repetitions,
+    size_t warmupRounds
+)
+{
+    assert(repetitions != 0);
+
+    foreach (_; 0 .. warmupRounds)
+    {
+        first();
+        second();
+        third();
+        fourth();
+    }
+
+    auto firstSamples = new long[repetitions];
+    auto secondSamples = new long[repetitions];
+    auto thirdSamples = new long[repetitions];
+    auto fourthSamples = new long[repetitions];
+
+    foreach (i; 0 .. repetitions)
+    {
+        final switch (i & 3)
+        {
+        case 0:
+            firstSamples[i] = timeOnce!first();
+            secondSamples[i] = timeOnce!second();
+            thirdSamples[i] = timeOnce!third();
+            fourthSamples[i] = timeOnce!fourth();
+            break;
+        case 1:
+            secondSamples[i] = timeOnce!second();
+            thirdSamples[i] = timeOnce!third();
+            fourthSamples[i] = timeOnce!fourth();
+            firstSamples[i] = timeOnce!first();
+            break;
+        case 2:
+            thirdSamples[i] = timeOnce!third();
+            fourthSamples[i] = timeOnce!fourth();
+            firstSamples[i] = timeOnce!first();
+            secondSamples[i] = timeOnce!second();
+            break;
+        case 3:
+            fourthSamples[i] = timeOnce!fourth();
+            firstSamples[i] = timeOnce!first();
+            secondSamples[i] = timeOnce!second();
+            thirdSamples[i] = timeOnce!third();
+            break;
+        }
+    }
+
+    return FourSamples(
+        SampleSet(firstSamples),
+        SampleSet(secondSamples),
+        SampleSet(thirdSamples),
+        SampleSet(fourthSamples)
+    );
+}
