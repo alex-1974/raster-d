@@ -8,6 +8,11 @@ import kernels :
     fillScalar,
     fillSlice;
 
+import raster.internal.r0_5_abstraction_bench :
+    copyCheckedContiguous1D,
+    copyMirContiguous1D,
+    makeContiguousCopyFixture;
+
 import std.stdio : writefln, writeln;
 
 enum size_t elementCount = 1024 * 1024;
@@ -105,6 +110,77 @@ int main()
         copySamples.second.nanoseconds,
         copySamples.first.median,
         copySamples.second.median
+    );
+
+    enum size_t rasterWidth = 1024;
+    enum size_t rasterHeight = elementCount / rasterWidth;
+
+    auto rasterFixture =
+        makeContiguousCopyFixture(
+            source,
+            destination,
+            rasterWidth,
+            rasterHeight
+        );
+
+    if (!copyMirContiguous1D(
+        rasterFixture.source,
+        rasterFixture.target
+    ))
+    {
+        writeln("raster Mir contiguous1D preflight failed");
+        return 1;
+    }
+
+    if (fingerprint(destination) != sourceFingerprint)
+    {
+        writeln("raster Mir contiguous1D fingerprint failed");
+        return 1;
+    }
+
+    if (!copyCheckedContiguous1D(
+        rasterFixture.source,
+        rasterFixture.target
+    ))
+    {
+        writeln("raster checked contiguous1D preflight failed");
+        return 1;
+    }
+
+    if (fingerprint(destination) != sourceFingerprint)
+    {
+        writeln("raster checked contiguous1D fingerprint failed");
+        return 1;
+    }
+
+    const abstractionSamples = measurePair!(
+        () => copyMirContiguous1D(
+            rasterFixture.source,
+            rasterFixture.target
+        ),
+        () => copyCheckedContiguous1D(
+            rasterFixture.source,
+            rasterFixture.target
+        )
+    )(
+        repetitions,
+        warmupRounds
+    );
+
+    if (fingerprint(destination) != sourceFingerprint)
+    {
+        writeln("raster abstraction benchmark postflight failed");
+        return 1;
+    }
+
+    printPair(
+        "raster_copy",
+        "mir_contiguous1d",
+        "checked_contiguous1d",
+        abstractionSamples.first.nanoseconds,
+        abstractionSamples.second.nanoseconds,
+        abstractionSamples.first.median,
+        abstractionSamples.second.median
     );
 
     const fillSamples = measurePair!(
