@@ -1426,3 +1426,35 @@ Do not change Canonical classification or introduce compiler-specific/SIMD
 production paths from this evidence. The next probe should vary only signed
 address-expression shape while keeping traversal, data, arithmetic, and
 destination mapping fixed.
+
+
+##### Address-shape and code-generation follow-up
+
+A negative-Canonical address-shape benchmark compared runtime signed
+multiplication, incremented row pointers, and positive pitch magnitude. LDC
+1.41 placed all three in the same slow class (about 1.58--1.67 ms at pitches
+2304/4096); changing arithmetic spelling alone did not recover the roughly
+0.5 ms direction-control result. DMD did show a separate useful observation:
+incremented row pointers reduced these runs from about 2.42 ms to about
+1.83--1.86 ms, but this is compiler-specific research evidence, not yet a
+production specialization.
+
+A direct standalone ASM probe then corrected an earlier interpretation. The
+fast LDC reverse-index control is a compact scalar loop: it uses scalar
+movss/addss operations and advances precomputed source-row pointers and the
+destination row pointer. The runtime signed-stride forms are vectorized only
+through LLVM loop versioning: substantial runtime memory-overlap/legality
+checks select between a scalar loop and a 4-float movups/addps loop.
+
+Therefore the presence of a SIMD loop in assembly does not prove that the
+measured negative-Canonical invocation executes that SIMD path. The remaining
+high-value question is now the runtime path selection/alias proof, not signed
+multiplication, row direction, or SIMD eligibility in isolation.
+
+Next isolate this with a probe that makes source/destination non-overlap
+explicitly provable to the compiler where D permits it, or otherwise records
+which versioned path is taken without perturbing the hot loop. Do not add a
+public noalias/uniqueness contract: RasterTargetPlane currently provides no
+such guarantee. Any production optimization must preserve that contract or
+perform a validated runtime non-overlap dispatch before entering a narrower
+trusted kernel.
