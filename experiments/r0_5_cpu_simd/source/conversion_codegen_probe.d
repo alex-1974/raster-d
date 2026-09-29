@@ -28,6 +28,35 @@ extern(C) void probeConvertPointer(
         target[i] = cast(float) source[i];
 }
 
+private bool sameTuMirConvert(
+    scope Slice!(const(ubyte)*, 1, Contiguous) source,
+    scope Slice!(float*, 1, Contiguous) target
+)
+@safe pure nothrow @nogc
+{
+    if (source.length!0 != target.length!0)
+        return false;
+
+    foreach (i; 0 .. source.length!0)
+        target[i] = cast(float) source[i];
+
+    return true;
+}
+
+extern(C) void probeConvertMirSameTu(
+    const(ubyte)* source,
+    float* target,
+    size_t length
+)
+@trusted nothrow @nogc
+{
+    auto input = Slice!(const(ubyte)*, 1, Contiguous)([length], source);
+    auto output = Slice!(float*, 1, Contiguous)([length], target);
+
+    const ok = sameTuMirConvert(input, output);
+    assert(ok);
+}
+
 extern(C) void probeConvertMir(
     const(ubyte)* source,
     float* target,
