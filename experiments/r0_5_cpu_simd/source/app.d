@@ -7,6 +7,7 @@ import lut_bench : runLutMatrix;
 import reduction_bench : runReductionMatrix;
 import float_reduction_bench : runFloatReductionMatrix;
 import float_reduction_semantics : runFloatReductionSemantics;
+import histogram_bench : runHistogramMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -241,6 +242,9 @@ int main()
         return 1;
 
     runFloatReductionSemantics();
+
+    if (runHistogramMatrix() != 0)
+        return 1;
 
     return 0;
 }
