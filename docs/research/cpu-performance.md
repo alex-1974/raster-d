@@ -1602,3 +1602,49 @@ negative-row specialization can preserve RasterView semantics while presenting
 the hot loop to LDC in a positive-pitch/index form, and whether DMD needs a
 separate check-free internal neighbourhood kernel rather than Mir element
 indexing.
+
+
+##### R0.5f compiler-specific execution candidate
+
+A follow-up kept the validated RasterView/RasterTargetPlane semantic boundary
+but compared the Mir-indexed Canonical kernel with a research-only narrow
+trusted kernel. The trusted kernel extracts validated execution metadata once,
+branches on row-stride sign outside the hot loops, and uses check-free row
+pointers internally. The negative branch converts the signed stride to a
+positive magnitude and subtracts that magnitude when deriving rows. The exact
+nine-load/eight-add expression and logical output order are unchanged.
+
+Linux x86-64, 2048x512 output, pitch 4096:
+
+| Compiler | Rows | Mir view | Trusted | Trusted / Mir |
+| --- | --- | ---: | ---: | ---: |
+| DMD 2.111 | positive | 11.5562 ms | 1.9255 ms | 0.167 |
+| DMD 2.111 | negative | 11.4237 ms | 1.7935 ms | 0.157 |
+| LDC 1.41 | positive | 0.4785 ms | 0.4787 ms | 1.000 |
+| LDC 1.41 | negative | 1.6043 ms | 1.6115 ms | 1.004 |
+
+The compiler-specific conclusions are now materially different.
+
+For DMD, the validated trusted execution form is about 6.0x faster for
+positive rows and 6.4x faster for negative rows than the Mir-indexed form.
+Positive versus negative row direction is not the material DMD issue. This is
+strong evidence for investigating a DMD-oriented internal check-free
+neighbourhood execution path below the common validation/semantic boundary.
+
+For LDC, the trusted source form does not improve either direction. Positive
+Mir and trusted medians are effectively identical, as are negative Mir and
+trusted medians. The negative Canonical case remains about 3.35-3.37x slower
+than the positive case. Therefore branching once on stride sign, using a
+positive pitch magnitude, and spelling negative traversal as pointer
+subtraction are insufficient to recover the positive-row performance class.
+
+This rejects a single universal source-form optimization for this operation.
+It supports compiler-specific internal optimization research while retaining a
+compiler-independent public RasterView/Canonical contract. Architecture and
+operating-system specializations are also allowed research dimensions, but
+must be introduced only where measurements on those targets justify them.
+
+No handwritten SIMD is justified by these results. LDC already reaches the
+fast approximately 0.48 ms class for positive Canonical execution from ordinary
+D source. The remaining LDC question is what property of the negative physical
+row layout prevents equivalent throughput.
