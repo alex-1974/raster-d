@@ -1,5 +1,6 @@
 module app;
 
+import affine_bench : runAffineMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -214,6 +215,9 @@ int main()
         sourceFingerprint,
         finalFingerprint
     );
+
+    if (runAffineMatrix() != 0)
+        return 1;
 
     return 0;
 }
