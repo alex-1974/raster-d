@@ -1148,3 +1148,33 @@ the larger sizes. As with earlier R0.5 probes, this does not justify an unsafe
 production pointer loop. A focused code-generation/bounds-check diagnostic is
 required to determine whether the difference is source-form overhead rather
 than an algorithmic advantage.
+
+
+#### Histogram code-generation diagnosis
+
+A focused code-generation probe explains the safe-slice versus pointer timing
+difference.
+
+DMD keeps a per-element bounds check for the histogram index in the safe slice
+loop before incrementing the selected bin. The pointer diagnostic has the same
+basic load/index/increment loop without that check. This matches the measured
+roughly 11--13% DMD gap and is evidence of checked source-form overhead, not a
+different histogram algorithm.
+
+LDC proves the ubyte index is within the 256-bin histogram after the entry
+length check. Its slice and pointer hot loops are effectively the same: both
+are unrolled four elements per iteration and perform four byte-load/bin-increment
+pairs without per-element bin bounds checks. This matches the much smaller LDC
+runtime gap.
+
+The four-private-histogram form allocates 8192 bytes of stack state. LDC emits
+four 2048-byte clears, four independent indexed increments, and a vectorized
+merge using packed 64-bit additions. Even with an efficient SIMD merge, the
+extra state initialization and merge do not pay back for the measured corpus.
+
+Conclusion: no unsafe pointer production path and no manual four-histogram
+specialization are justified. For a future production histogram API, prefer the
+simple safe representation first. If DMD histogram performance becomes a
+consumer bottleneck, investigate a narrowly validated execution boundary that
+lets the hot loop operate on a statically known 256-bin target without changing
+public safety semantics.
