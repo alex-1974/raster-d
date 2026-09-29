@@ -808,3 +808,48 @@ through a narrow execution boundary can recover the unchecked code-generation
 class without weakening the external checked contract.
 
 No handwritten SIMD is justified by this result.
+
+
+### LUT fixed-extent safe-kernel probe
+
+A follow-up kept the build's normal bounds-checking policy and changed only the
+LUT representation. The LUT extent was encoded in the safe kernel type as
+`scope ref const(float)[256]`. Because the data-dependent index is a
+`ubyte`, its value domain is 0..255. Source and target remained ordinary
+safe slices.
+
+Representative release medians:
+
+| elements | compiler | dynamic safe slice | fixed 256-entry LUT | pointer diagnostic | fixed-LUT control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 78.4 us | 63.1 us | 47.8 us | 63.1 us |
+| 1,048,576 | DMD | 1.3028 ms | 1.0596 ms | 0.8121 ms | 1.0561 ms |
+| 8,388,608 | DMD | 10.5392 ms | 8.5529 ms | 6.6103 ms | 8.4920 ms |
+| 65,536 | LDC | 29.4 us | 31.4 us | 24.6 us | 29.4 us |
+| 1,048,576 | LDC | 0.4776 ms | 0.5096 ms | 0.4181 ms | 0.4730 ms |
+| 8,388,608 | LDC | 4.2708 ms | 4.5490 ms | 3.8495 ms | 4.2306 ms |
+
+Under DMD the fixed-extent safe form materially improves the checked slice
+kernel: at 8,388,608 elements its median is about 19% lower than the dynamic
+safe-slice median. It still remains about 29% slower than the pointer
+diagnostic (or roughly 23% when expressed as the remaining reduction from
+fixed-LUT time to pointer time).
+
+Under LDC the fixed-extent form provides no corresponding benefit. The two
+fixed-LUT positions also show some order/noise sensitivity, while remaining in
+the same broad class as the ordinary checked slice. The pointer diagnostic is
+still faster.
+
+This separates the problem further:
+
+- encoding the LUT extent and ubyte index domain is useful code-generation
+  information for DMD;
+- it is not a portable explanation for the full checked-build gap;
+- source/target slice bounds and/or the exact loop/source form remain relevant;
+- the previous global bounds-check-off diagnostic remains the important
+  control: with all checks disabled, slice and pointer converge under both
+  compilers.
+
+Do not promote the pointer diagnostic or introduce a compiler split from this
+result. The next probe should preserve the checked external contract while
+isolating the already-proven equal-length source/target execution invariant.
