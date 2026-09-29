@@ -8,6 +8,7 @@ import reduction_bench : runReductionMatrix;
 import float_reduction_bench : runFloatReductionMatrix;
 import float_reduction_semantics : runFloatReductionSemantics;
 import histogram_bench : runHistogramMatrix;
+import region_stride_bench : runRegionStrideMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -244,6 +245,9 @@ int main()
     runFloatReductionSemantics();
 
     if (runHistogramMatrix() != 0)
+        return 1;
+
+    if (runRegionStrideMatrix() != 0)
         return 1;
 
     return 0;
