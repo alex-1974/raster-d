@@ -181,3 +181,52 @@ inspection the next diagnostic step. In particular, R0.5 must determine
 whether the slice forms lower to library primitives, vectorized loops, or other
 specialized code, and whether LDC already vectorizes the scalar forms. No
 handwritten SIMD is justified by this baseline.
+
+
+## R0.5b abstraction probe — contiguous raster copy
+
+A second release run measured the existing raster execution layers against the
+raw copy controls for the same 1,048,576-element `float` workload.
+
+The raster-specific paths were:
+
+1. `RasterView -> asMirContiguousFlat -> scalarCopyContiguous1D`;
+2. `RasterView -> checked contiguous dispatch -> non-overlap proof -> memcpy`.
+
+| Compiler | Path | Median | Effective GB/s | Time / raw slice |
+| --- | --- | ---: | ---: | ---: |
+| DMD 2.111.0 | raw scalar | 1.3394 ms | 6.26 | 8.87x |
+| DMD 2.111.0 | raw D slice | 0.1510 ms | 55.55 | 1.00x |
+| DMD 2.111.0 | raster Mir Contiguous1D scalar | 4.4539 ms | 1.88 | 29.50x |
+| DMD 2.111.0 | raster checked contiguous copy | 0.2819 ms | 29.76 | 1.87x |
+| LDC 1.41.0 | raw scalar | 0.1762 ms | 47.61 | 1.25x |
+| LDC 1.41.0 | raw D slice | 0.1408 ms | 59.58 | 1.00x |
+| LDC 1.41.0 | raster Mir Contiguous1D scalar | 0.2519 ms | 33.30 | 1.79x |
+| LDC 1.41.0 | raster checked contiguous copy | 0.2333 ms | 35.96 | 1.66x |
+
+All paths retained the same correctness fingerprint.
+
+Interpretation is deliberately limited to this run. The DMD Mir scalar path is
+far slower than both the raw scalar loop and D slice copy, so it must not be
+treated as a zero-cost abstraction for contiguous copy. LDC narrows that gap
+substantially, but the measured Mir path still trails the raw slice control.
+
+The checked raster path is qualitatively different: after validation and
+physical non-overlap proof it reaches the retained `memcpy` implementation.
+Its median remains much closer to the fast raw copy paths on both compilers.
+This run includes invocation-local checking and dispatch, so it is not a pure
+measurement of the copy primitive.
+
+The raw and raster timings also show substantial sample variation in several
+paths. Therefore the current ratios are diagnostic, not stable performance
+thresholds. Before changing production code, R0.5 should:
+
+- inspect generated code for raw scalar, raw slice, Mir Contiguous1D and the
+  checked-copy path;
+- separate one-time adapter/dispatch work from repeated kernel execution where
+  the production execution model permits reuse;
+- repeat across independent processes and multiple working-set sizes;
+- add a same-compilation-unit/combined-build control if generated code suggests
+  a compilation-boundary effect.
+
+No handwritten SIMD is justified by these results.
