@@ -174,7 +174,7 @@ nothrow
     at most two displacement candidates.
 
     This is the consumer-specific reduction verified by
-    `experiments/e5_4f_5c2_consumer_reduction`.
+    `raster-d-research/experiments/e5_4f_5c2_consumer_reduction`.
 +/
 package(raster)
 AffineByteOverlapRelation classifySameTypeAffine2DByteOverlap(

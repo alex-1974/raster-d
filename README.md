@@ -98,11 +98,9 @@ API by default.
 ```text
 source/raster/        production library
 tests/                correctness and external-consumer tests
-tools/                maintained verification/probe tooling
-experiments/          research and reproducible experiment evidence
+tools/                maintained production verification tooling
 docs/adr/             architecture decision records
 docs/architecture/    current architecture contracts
-docs/research/        research results and retained technical evidence
 ```
 
 Historical research artifacts retain their original naming where changing them
@@ -148,8 +146,8 @@ packages are not compatible with current macOS 15 runners:
 | macOS ARM64 | — | 1.41.0 |
 | Windows ARM64 | experimental | experimental |
 
-Current DMD and LDC releases remain part of the normal CI matrix. See
-`docs/research/compiler-floor-audit.md` for the evidence and boundary tests.
+Current DMD and LDC releases remain part of the normal CI matrix. See `RESEARCH.md` and the retained
+`docs/research/compiler-floor-audit.md` in raster-d-research for the evidence and boundary tests.
 
 ## Workspace context
 
