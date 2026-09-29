@@ -169,9 +169,9 @@ nothrow
             const r0 = src + y * pitch;
             const r1 = r0 + pitch;
             const r2 = r1 + pitch;
-            auto out = dst + y * width;
+            auto dstRow = dst + y * width;
             foreach (x; 0 .. width)
-                out[x] =
+                dstRow[x] =
                     r0[x] + r0[x + 1] + r0[x + 2] +
                     r1[x] + r1[x + 1] + r1[x + 2] +
                     r2[x] + r2[x + 1] + r2[x + 2];
@@ -196,9 +196,9 @@ nothrow
             const r0 = src - y * pitch;
             const r1 = r0 - pitch;
             const r2 = r1 - pitch;
-            auto out = dst + y * width;
+            auto dstRow = dst + y * width;
             foreach (x; 0 .. width)
-                out[x] =
+                dstRow[x] =
                     r0[x] + r0[x + 1] + r0[x + 2] +
                     r1[x] + r1[x + 1] + r1[x + 2] +
                     r2[x] + r2[x + 1] + r2[x + 2];
