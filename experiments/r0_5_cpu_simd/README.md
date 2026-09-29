@@ -128,3 +128,33 @@ The probe exists only to explain compiler code generation. It does not propose
 a production API and its raw-pointer function is not a safety recommendation.
 Compile this file directly with the same release optimization family used by
 the DUB build and inspect the four named functions.
+
+
+## Affine transform matrix
+
+The release harness also compares the same affine transform
+
+`dst[i] = src[i] * gain + bias`
+
+through four source forms:
+
+- scalar D slice indexing;
+- D array expression;
+- raw-pointer diagnostic control;
+- the existing Mir contiguous 1D raster execution path.
+
+It runs 65,536, 1,048,576, and 8,388,608 float elements. Each size uses two
+warm-up rounds and 12 measured repetitions with a rotating four-way execution
+order. A deterministic output fingerprint is checked before and after timing.
+
+Run the matrix as part of the normal release harness:
+
+```bash
+dub run --root=experiments/r0_5_cpu_simd --compiler=dmd --build=release --force
+dub run --root=experiments/r0_5_cpu_simd --compiler=ldc2 --build=release --force
+```
+
+The pointer variant is diagnostic evidence only. It does not establish a
+production pointer API or justify an unsafe hot path. Likewise, the matrix is
+intended to determine whether portable D source forms preserve compiler
+optimization; it is not evidence for handwritten SIMD by itself.
