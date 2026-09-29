@@ -1676,3 +1676,35 @@ physically forward, but both forms remain in the same approximately 2 ms
 trusted-kernel class and both remain far faster than the Mir-indexed DMD path.
 This secondary direction effect does not change the DMD architectural
 conclusion.
+
+
+##### R0.5f negative physical-forward control
+
+To isolate physical stream direction, the negative Canonical fixture was run
+with logical output rows visited in reverse order. This makes successive source
+row addresses advance physically forward while preserving each output sample's
+exact nine-load/eight-add expression and logical destination.
+
+Linux x86-64, 2048x512 output, pitch 4096:
+
+| Compiler | Negative trusted | Negative physical-forward |
+| --- | ---: | ---: |
+| DMD 2.111 | 2.1204 ms | 1.8432 ms |
+| LDC 1.41 | 1.6945 ms | 1.6804 ms |
+
+For LDC the physical-forward control remains in the same approximately
+1.68-1.69 ms class. It does not approach the positive Canonical view result
+(0.4833 ms in the same run). Therefore backward progression of the source
+stream is not the principal explanation for the LDC negative-Canonical
+penalty.
+
+DMD improves by about 13% in this run, so traversal order may be a secondary
+DMD tuning dimension, but it is not required to explain the much larger
+Mir-versus-trusted DMD result.
+
+The next LDC diagnostic should inspect the production-shaped generated control
+flow and determine which LLVM loop-version is actually selected at runtime.
+In particular, test whether runtime alias/legality conditions or another
+versioning guard distinguish the positive and negative layouts. SIMD presence
+in assembly alone is insufficient evidence that the measured invocation uses
+the SIMD version.
