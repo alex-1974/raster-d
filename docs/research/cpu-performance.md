@@ -1296,3 +1296,49 @@ already demonstrates that ordinary scalar D source can become packed SIMD once
 the compiler can prove the execution region. DMD still emits scalar arithmetic,
 so compiler-specific SIMD work should only be reconsidered after measuring a
 validated-boundary implementation.
+
+
+#### Validated execution-boundary experiment
+
+The R0.5e harness then tested the proposed architecture directly. A `@safe`
+wrapper validates row reach, halo reach, multiplication overflow and destination
+capacity once, passes slices across the boundary, and a narrow `@trusted`
+implementation extracts their pointers and runs the otherwise identical 3x3
+loop without per-sample slice checks.
+
+| Compiler | Stride | Safe rows | Validated boundary | Pointer diagnostic | Pointer control |
+|---|---:|---:|---:|---:|---:|
+| DMD | 2050 | 4.9901 ms | 2.2492 ms | 2.3373 ms | 2.3741 ms |
+| DMD | 2112 | 4.9184 ms | 2.2046 ms | 2.3739 ms | 2.3360 ms |
+| DMD | 2304 | 4.9195 ms | 2.2026 ms | 2.3549 ms | 2.3767 ms |
+| DMD | 4096 | 4.9296 ms | 2.2375 ms | 2.3967 ms | 2.3454 ms |
+| LDC | 2050 | 0.6089 ms | 0.4507 ms | 0.4503 ms | 0.4487 ms |
+| LDC | 2112 | 0.6026 ms | 0.4375 ms | 0.4367 ms | 0.4353 ms |
+| LDC | 2304 | 0.6082 ms | 0.4388 ms | 0.4400 ms | 0.4829 ms |
+| LDC | 4096 | 0.6200 ms | 0.4518 ms | 0.4522 ms | 0.4515 ms |
+
+Under LDC the validated boundary and pointer diagnostic converge to effectively
+the same performance across the complete stride matrix. The one-time safe
+validation is negligible at this region size, while removing repeated checked
+indexing restores the compact/vectorizable inner kernel.
+
+Under DMD the validated path reduces runtime from about 4.9--5.0 ms to about
+2.20--2.25 ms. It happens to measure modestly faster than the pointer controls
+in this run, but the inner algorithms are equivalent and that difference is
+not treated as an algorithmic advantage. The robust conclusion is convergence
+to the pointer performance class and removal of more than half of the
+safe-slice runtime.
+
+This experiment confirms the R0.5e architecture hypothesis for this kernel:
+a safe semantic entry point plus complete once-per-region validation can feed a
+small trusted, check-free execution kernel without paying per-sample safety
+cost. The result preserves the existing Canonical explicit-row-stride model;
+even stride 4096 converges with the corresponding pointer control.
+
+Promotion is not automatic. Before a production implementation, the validation
+predicate should be factored around the existing RasterView/RasterTargetPlane
+and execution-layout contracts, tested with zero/degenerate dimensions,
+overflow boundaries, insufficient halo/reach, padded and negative-stride cases
+where applicable, and checked for source/target alias requirements. The trusted
+surface should remain minimal. No public pointer API and no handwritten SIMD
+are supported by this evidence.
