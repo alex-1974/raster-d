@@ -1648,3 +1648,31 @@ No handwritten SIMD is justified by these results. LDC already reaches the
 fast approximately 0.48 ms class for positive Canonical execution from ordinary
 D source. The remaining LDC question is what property of the negative physical
 row layout prevents equivalent throughput.
+
+
+##### Negative Canonical physical-forward control
+
+To isolate physical stream direction, the negative Canonical source was
+processed with logical output rows visited in reverse order. This makes source
+row addresses advance physically forward while preserving each output
+sample's exact nine-load/eight-add expression and logical destination.
+
+Linux x86-64, 2048x512 output, pitch 4096:
+
+| Compiler | Negative trusted | Negative physical-forward |
+| --- | ---: | ---: |
+| DMD 2.111 | 2.0818 ms | 1.8101 ms |
+| LDC 1.41 | 1.6165 ms | 1.6173 ms |
+
+For LDC the two medians are effectively identical. Physical forward versus
+backward progression of the source rows therefore does not explain the roughly
+3.2-3.4x gap from the positive Canonical execution class in these runs. The
+next diagnostic must distinguish the runtime-selected LLVM loop-version path:
+in particular, whether alias/legality checks select the vector loop or scalar
+fallback for the concrete positive and negative RasterView invocations.
+
+DMD improves by roughly 13% in this run when the negative source is traversed
+physically forward, but both forms remain in the same approximately 2 ms
+trusted-kernel class and both remain far faster than the Mir-indexed DMD path.
+This secondary direction effect does not change the DMD architectural
+conclusion.
