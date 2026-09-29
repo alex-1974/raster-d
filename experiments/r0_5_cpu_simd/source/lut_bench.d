@@ -77,6 +77,31 @@ private void transformPointer(scope const(ubyte)[] source, scope const(float)[] 
         target.ptr[i] = lut.ptr[source.ptr[i]];
 }
 
+// Same external signature and validation contract as transformValidated.
+// The only intended difference is whether the pointer loop is written here
+// or delegated to transformValidatedExecution.
+private void transformInlineValidated(
+    scope const(ubyte)[] source,
+    scope const(float)[] lut,
+    scope float[] target
+)
+@trusted pure nothrow @nogc
+{
+    assert(lut.length >= lutSize);
+    assert(source.length == target.length);
+
+    if (source.length == 0)
+        return;
+
+    auto sourceBase = source.ptr;
+    auto lutBase = lut.ptr;
+    auto targetBase = target.ptr;
+    const elementCount = source.length;
+
+    foreach (i; 0 .. elementCount)
+        targetBase[i] = lutBase[sourceBase[i]];
+}
+
 private int runCase(size_t elements)
 {
     auto source = new ubyte[elements];
@@ -105,18 +130,18 @@ private int runCase(size_t elements)
         return 1;
     }
 
-    transformPointer(source, lut[], target);
+    transformInlineValidated(source, lut[], target);
     if (fingerprint(target) != expected)
     {
-        writeln("lut pointer correctness preflight failed");
+        writeln("lut inline validated correctness preflight failed");
         return 1;
     }
 
     const samples = measureFour!(
-        () => transformSlice(source, lut[], target),
         () => transformValidated(source, lut[], target),
-        () => transformPointer(source, lut[], target),
-        () => transformValidated(source, lut[], target)
+        () => transformInlineValidated(source, lut[], target),
+        () => transformValidated(source, lut[], target),
+        () => transformInlineValidated(source, lut[], target)
     )(repetitions, warmupRounds);
 
     if (fingerprint(target) != expected)
@@ -126,17 +151,17 @@ private int runCase(size_t elements)
     }
 
     writefln(
-        "lut_transform elements=%s slice_ns=%s validated_ns=%s pointer_ns=%s validated_control_ns=%s",
+        "lut_ab elements=%s delegated_ns=%s inline_ns=%s delegated_control_ns=%s inline_control_ns=%s",
         elements,
         samples.first.median,
         samples.second.median,
         samples.third.median,
         samples.fourth.median
     );
-    writefln("lut_transform elements=%s slice_raw_ns=%(%s,%)", elements, samples.first.nanoseconds);
-    writefln("lut_transform elements=%s validated_raw_ns=%(%s,%)", elements, samples.second.nanoseconds);
-    writefln("lut_transform elements=%s pointer_raw_ns=%(%s,%)", elements, samples.third.nanoseconds);
-    writefln("lut_transform elements=%s validated_control_raw_ns=%(%s,%)", elements, samples.fourth.nanoseconds);
+    writefln("lut_ab elements=%s delegated_raw_ns=%(%s,%)", elements, samples.first.nanoseconds);
+    writefln("lut_ab elements=%s inline_raw_ns=%(%s,%)", elements, samples.second.nanoseconds);
+    writefln("lut_ab elements=%s delegated_control_raw_ns=%(%s,%)", elements, samples.third.nanoseconds);
+    writefln("lut_ab elements=%s inline_control_raw_ns=%(%s,%)", elements, samples.fourth.nanoseconds);
 
     return 0;
 }
