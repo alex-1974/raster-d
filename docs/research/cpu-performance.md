@@ -1529,3 +1529,33 @@ sums and uses shuffles to carry/reconstruct the horizontal sliding window.
 DMD keeps all three forms scalar; its sliding loop exposes the expected
 loop-carried c0/c1/c2 dependency. These observations explain why the sliding
 experiment is compiler-sensitive but do not justify explicit SIMD yet.
+
+
+##### Outer-address isolation and direction-matrix audit
+
+Holding the exact nine-load/eight-add inner expression constant did not
+reproduce the earlier approximately 0.5 ms LDC class. At pitch 4096:
+
+- DMD: signed recurrence 1.8303 ms, magnitude recurrence 1.7841 ms, indexed
+  magnitude 2.1472 ms.
+- LDC: signed recurrence 1.7214 ms, magnitude recurrence 1.7009 ms, indexed
+  magnitude 1.6339 ms.
+
+Thus neither signed pointer recurrence nor its simple positive-magnitude
+rewrites explain a factor-of-three difference.
+
+Re-reading neighbourhood_direction_matrix_bench.d reveals that the earlier
+direction matrix did not execute the negative-Canonical representation. Its
+kernel accepts only a positive size_t pitch and represents reverse traversal
+by selecting y = height - 1 - step before computing y*pitch. The source
+storage itself is not reversed despite an obsolete comment saying that
+reversed storage had been prepared. Consequently the roughly 0.5 ms LDC
+direction-matrix timings are evidence about loop traversal order with positive
+pitch/index geometry, not evidence that a negative signed rowStride can be
+made equally fast by a trivial outer-loop rewrite.
+
+This invalidates the earlier use of the direction matrix as a direct control
+for the negative-Canonical slowdown. Keep the timings as research evidence,
+but narrow their interpretation. The next benchmark must compare actual
+validated RasterView Canonical execution with positive and negative
+rowStride using the same logical corpus and an independent correctness oracle.
