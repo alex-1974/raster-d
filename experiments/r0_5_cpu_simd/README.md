@@ -158,3 +158,52 @@ The pointer variant is diagnostic evidence only. It does not establish a
 production pointer API or justify an unsafe hot path. Likewise, the matrix is
 intended to determine whether portable D source forms preserve compiler
 optimization; it is not evidence for handwritten SIMD by itself.
+
+
+## ubyte-to-float code-generation probe
+
+The conversion source-form result is followed by a standalone probe with stable
+C symbols:
+
+- `probeConvertSlice`;
+- `probeConvertPointer`;
+- `probeConvertMir`.
+
+Compile this probe directly so assembly can be compared without benchmark
+driver noise. Use the same release optimization class as the benchmark.
+
+```bash
+mkdir -p /tmp/raster-r05-convert-codegen
+
+dmd -c -O -release -inline -boundscheck=off \
+  -preview=dip1000 \
+  -I=source \
+  -I=experiments/r0_5_cpu_simd/source \
+  -I=~/.dub/packages/mir-core/1.7.4/mir-core/source \
+  -I=~/.dub/packages/mir-algorithm/3.22.4/mir-algorithm/source \
+  experiments/r0_5_cpu_simd/source/conversion_codegen_probe.d \
+  -of=/tmp/raster-r05-convert-codegen/convert-dmd.o
+
+ldc2 -c -O3 -release -boundscheck=off \
+  -preview=dip1000 \
+  -I=source \
+  -I=experiments/r0_5_cpu_simd/source \
+  -I=~/.dub/packages/mir-core/1.7.4/mir-core/source \
+  -I=~/.dub/packages/mir-algorithm/3.22.4/mir-algorithm/source \
+  experiments/r0_5_cpu_simd/source/conversion_codegen_probe.d \
+  -of=/tmp/raster-r05-convert-codegen/convert-ldc.o
+
+ldc2 -c -O3 -release -boundscheck=off -output-ll \
+  -preview=dip1000 \
+  -I=source \
+  -I=experiments/r0_5_cpu_simd/source \
+  -I=~/.dub/packages/mir-core/1.7.4/mir-core/source \
+  -I=~/.dub/packages/mir-algorithm/3.22.4/mir-algorithm/source \
+  experiments/r0_5_cpu_simd/source/conversion_codegen_probe.d \
+  -of=/tmp/raster-r05-convert-codegen/convert-ldc.ll
+```
+
+The `-boundscheck=off` probe is diagnostic only. The measured benchmark remains
+the normative safe-source evidence. This probe asks whether bounds checks,
+vectorization, conversion lowering, or retained Mir helper calls explain the
+observed source-form differences.
