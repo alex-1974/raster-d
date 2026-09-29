@@ -1,6 +1,7 @@
 module app;
 
 import affine_bench : runAffineMatrix;
+import conversion_bench : runConversionMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -217,6 +218,9 @@ int main()
     );
 
     if (runAffineMatrix() != 0)
+        return 1;
+
+    if (runConversionMatrix() != 0)
         return 1;
 
     return 0;
