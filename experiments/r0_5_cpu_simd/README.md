@@ -63,11 +63,22 @@ error contract.
 
 ## Build
 
-The experiment is intentionally independent from the library's production
-configuration:
+Debug builds are useful only as compile/correctness sanity checks. Performance
+evidence must use an explicit release build.
+
+Sanity:
 
     dub run --root=experiments/r0_5_cpu_simd --compiler=dmd
     dub run --root=experiments/r0_5_cpu_simd --compiler=ldc2
 
-Compiler/version/flag profiles used for retained evidence are recorded in
+Performance:
+
+    dub run --root=experiments/r0_5_cpu_simd --compiler=dmd --build=release --force
+    dub run --root=experiments/r0_5_cpu_simd --compiler=ldc2 --build=release --force
+
+Retained measurements must also record the exact compiler version and effective
+flags. Compiler/version/flag profiles are recorded in
 `docs/research/cpu-performance.md`.
+
+The local benchmark executable is ignored by the repository and is not
+research evidence by itself.
