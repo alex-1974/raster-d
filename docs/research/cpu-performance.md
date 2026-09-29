@@ -328,3 +328,62 @@ The raw-pointer form is not promoted. It does not outperform the D array express
 ### Measurement caveat
 
 The DMD 1 Mi and 8 Mi D-array samples, and several LDC 1 Mi samples, show noticeable spread. These medians are strong enough to establish the large qualitative compiler difference, but not yet precise enough for a small-threshold regression gate. Independent process runs and CPU controls remain required before setting numeric acceptance thresholds.
+
+
+## R0.5c — real raster ubyte-to-float conversion
+
+The first production-path computational probe uses the retained exact
+`ubyte -> float` conversion rather than introducing a synthetic raster API.
+
+The benchmark separates:
+
+1. the existing flat contiguous Mir conversion kernel; and
+2. the complete checked contiguous dispatcher, including layout/shape and
+   physical non-overlap validation before invoking the same kernel.
+
+The 2026-09-29 Linux x86-64 release run measured:
+
+| Elements | Compiler | Kernel median | Dispatch median | Dispatch/kernel |
+| ---: | --- | ---: | ---: | ---: |
+| 65,536 | DMD | 0.3623 ms | 0.3375 ms | 0.932 |
+| 1,048,576 | DMD | 5.7208 ms | 5.5119 ms | 0.963 |
+| 8,388,608 | DMD | 38.7494 ms | 38.8719 ms | 1.003 |
+| 65,536 | LDC | 0.1426 ms | 0.1427 ms | 1.001 |
+| 1,048,576 | LDC | 2.3053 ms | 2.3242 ms | 1.008 |
+| 8,388,608 | LDC | 18.9695 ms | 18.9639 ms | 1.000 |
+
+All correctness fingerprints matched between the kernel-only and checked
+dispatch paths.
+
+### Interpretation
+
+For large working sets the checked raster dispatch adds no measurable material
+cost relative to the existing conversion kernel. The validation architecture
+is therefore not the observed bottleneck in this operation.
+
+The computational kernel itself remains compiler-sensitive. At 8,388,608
+samples the measured DMD median is about 2.04 times the LDC median. This is a
+large enough difference to justify code-generation inspection and alternative
+DMD-friendly kernel formulations.
+
+This run also exhibited substantially more timing variation in several earlier
+copy and affine controls than the previous run. Those noisy control medians
+must not replace the earlier evidence or be turned into thresholds. The
+large-size conversion samples are sufficiently clustered to support the
+qualitative compiler-gap conclusion, but the next experiment should retain the
+same counterbalanced methodology and inspect generated code before any
+production change.
+
+### Decision
+
+Do not weaken or bypass the checked raster dispatch: current evidence shows
+that its safety/semantic checks are effectively amortized for raster-sized
+contiguous conversion.
+
+Do not introduce handwritten SIMD.
+
+Next isolate the contiguous `ubyte -> float` conversion formulation itself:
+compare the current Mir loop with D-slice/index and narrowly scoped pointer
+forms under DMD and LDC, then inspect code generation. Any eventual
+compiler-specific production specialization must remain below the common
+raster semantic/validation boundary.
