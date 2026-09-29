@@ -1952,3 +1952,56 @@ response: if the larger matrix still shows unexplained 4-to-6-core
 non-monotonicity, a pinned-core control can distinguish scheduler placement
 from memory/cache/frequency effects.  No public parallel execution API is
 proposed by this experiment.
+
+
+##### R0.5g beyond-L3 scaling control
+
+The persistent-worker matrix was repeated at 4096x4096 output with source
+pitch 4352.  Reported source storage is 71,337,984 bytes and target storage is
+67,108,864 bytes, for 138,446,848 bytes combined.  This is far beyond the
+host's 12 MiB shared L3 and therefore rejects the hypothesis that the first
+2048x512 matrix was anomalous merely because its source-plus-target footprint
+was close to L3 capacity.
+
+DMD 2.111 retains useful scaling through four workers for the stable forms.
+Positive inline progresses from 31.4225 ms serial to 16.7357, 12.0060, and
+9.7750 ms at 2/3/4 workers: 1.88x, 2.62x, and 3.21x speedup.  At six workers
+it regresses to 11.0656 ms (2.84x), and 12 SMT workers recover only to
+9.9189 ms (3.17x).  Negative inline and negative no-inline show the same broad
+shape: approximately 3.0-3.2x at four workers, regression at six, and only a
+small recovery at twelve.  The earlier 4-to-6 non-monotonicity therefore
+survives a much larger working set and merits a scheduler/core-placement
+control rather than being attributed to L3 capacity alone.
+
+LDC 1.41 / LLVM 19.1.7 separates two throughput regimes.  The fast vectorized
+forms are already close to a shared-memory-throughput ceiling at low worker
+counts.  Positive no-inline is 10.3688 ms serial, 8.9164 ms at two workers,
+and remains roughly 8.36-9.03 ms from three through twelve workers.  Negative
+no-inline is 10.5225 ms serial, 9.0263 ms at two workers, and roughly
+8.89-9.15 ms thereafter.  More workers therefore provide only about
+1.15-1.24x total speedup for these fast forms on this large fixture.
+
+In contrast, the LDC negative-inline scalar-class form remains compute-heavy
+enough to scale materially: 26.1638 ms serial, 13.8865 ms at two workers,
+10.0480 ms at three, and 9.2444 ms at four (2.83x).  Six workers regress to
+9.6222 ms and twelve recover only to 9.2274 ms.  This simultaneously
+reproduces the compiler-specific negative-inline penalty and shows why
+parallel scaling cannot be interpreted independently of generated kernel
+quality: a slower scalar kernel can exhibit a larger parallel speedup while
+still delivering worse absolute throughput.
+
+The current evidence supports two distinct constraints:
+
+- for LDC's fast vectorized neighbourhood kernel, large streaming execution is
+  predominantly limited by shared memory-system throughput rather than worker
+  availability;
+- for the more compute-heavy DMD and LDC scalar-class paths, the repeated
+  four-to-six-worker regression is not explained by the original L3-sized
+  fixture and requires a core-placement/scheduling diagnostic.
+
+No production worker-count, SMT, or affinity policy follows yet.  The next
+diagnostic should pin worker threads to distinct physical cores for the
+1/2/3/4/6-worker matrix, using the already established host topology, and
+compare that controlled placement against the unpinned persistent-worker
+baseline.  The 12-worker SMT case remains a separate control.  Thread
+affinity, if used, belongs only to the research harness at this stage.
