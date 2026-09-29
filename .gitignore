@@ -20,6 +20,7 @@ __dummy.html
 # Local benchmark artefacts
 *.benchmark.json
 *.profile
+/experiments/r0_5_cpu_simd/raster-r0-5-cpu-simd
 
 # DUB generated test executables
 /raster-d-test-library
