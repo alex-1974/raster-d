@@ -4,6 +4,7 @@ import affine_bench : runAffineMatrix;
 import conversion_bench : runConversionMatrix;
 import plane_extraction_bench : runPlaneExtractionMatrix;
 import lut_bench : runLutMatrix;
+import reduction_bench : runReductionMatrix;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -229,6 +230,9 @@ int main()
         return 1;
 
     if (runLutMatrix() != 0)
+        return 1;
+
+    if (runReductionMatrix() != 0)
         return 1;
 
     return 0;
