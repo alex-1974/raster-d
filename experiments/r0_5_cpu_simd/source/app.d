@@ -20,8 +20,8 @@ private void printPair(
     string family,
     string firstLabel,
     string secondLabel,
-    long[] firstRaw,
-    long[] secondRaw,
+    const(long)[] firstRaw,
+    const(long)[] secondRaw,
     long firstMedian,
     long secondMedian
 )
