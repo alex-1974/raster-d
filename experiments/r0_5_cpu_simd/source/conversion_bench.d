@@ -1,9 +1,11 @@
 module conversion_bench;
 
-import harness : measurePair;
+import harness : measureFour, measurePair;
 import raster.internal.r0_5_conversion_bench :
     convertDispatch,
     convertKernel,
+    convertPointer,
+    convertSlice,
     makeConversionFixture;
 
 import std.stdio : writefln, writeln;
@@ -91,6 +93,73 @@ private int runConversionSize(size_t elementCount)
         "conversion elements=%s fingerprint=%016x",
         elementCount,
         expected
+    );
+
+    if (!convertSlice(source, destination)
+        || conversionFingerprint(destination) != expected
+        || !convertPointer(source, destination)
+        || conversionFingerprint(destination) != expected)
+    {
+        writefln(
+            "conversion source-form correctness failed elements=%s",
+            elementCount
+        );
+        return 1;
+    }
+
+    const forms = measureFour!(
+        () => convertKernel(fixture),
+        () => convertSlice(source, destination),
+        () => convertPointer(source, destination),
+        () => convertDispatch(fixture)
+    )(
+        conversionRepetitions,
+        conversionWarmupRounds
+    );
+
+    if (conversionFingerprint(destination) != expected)
+    {
+        writefln(
+            "conversion source-form postflight failed elements=%s",
+            elementCount
+        );
+        return 1;
+    }
+
+    writefln(
+        "conversion_forms elements=%s mir_ns=%s slice_ns=%s pointer_ns=%s dispatch_ns=%s",
+        elementCount,
+        forms.first.median,
+        forms.second.median,
+        forms.third.median,
+        forms.fourth.median
+    );
+    writefln(
+        "conversion_forms elements=%s ratio_slice_over_mir=%.6f ratio_pointer_over_mir=%.6f ratio_dispatch_over_mir=%.6f",
+        elementCount,
+        cast(double) forms.second.median / cast(double) forms.first.median,
+        cast(double) forms.third.median / cast(double) forms.first.median,
+        cast(double) forms.fourth.median / cast(double) forms.first.median
+    );
+    writefln(
+        "conversion_forms elements=%s mir_raw_ns=%(%s,%)",
+        elementCount,
+        forms.first.nanoseconds
+    );
+    writefln(
+        "conversion_forms elements=%s slice_raw_ns=%(%s,%)",
+        elementCount,
+        forms.second.nanoseconds
+    );
+    writefln(
+        "conversion_forms elements=%s pointer_raw_ns=%(%s,%)",
+        elementCount,
+        forms.third.nanoseconds
+    );
+    writefln(
+        "conversion_forms elements=%s dispatch_raw_ns=%(%s,%)",
+        elementCount,
+        forms.fourth.nanoseconds
     );
 
     return 0;
