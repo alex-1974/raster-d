@@ -252,3 +252,79 @@ pattern. DMD's raster Mir Contiguous1D samples were tightly clustered around
 outliers, Mir and checked contiguous samples reached roughly the same
 0.13--0.21 ms regime. This reinforces the need for generated-code inspection
 and independent-process timing before changing production implementation.
+
+
+## Affine transform matrix — first release result
+
+Date: 2026-09-29
+
+Kernel:
+
+```d
+dst[i] = src[i] * gain + bias;
+```
+
+Configuration:
+
+- x86-64 reference machine;
+- DMD 2.111.0;
+- LDC 1.41.0 / DMD frontend 2.111.0 / LLVM 19.1.7;
+- release build;
+- deterministic inputs and output fingerprints;
+- 2 warm-up rounds;
+- 12 measured repetitions;
+- rotating four-way execution order;
+- variants: scalar D slice loop, D array expression, pointer diagnostic control, Mir contiguous 1D;
+- working sets: 65,536; 1,048,576; 8,388,608 float elements.
+
+### Medians
+
+| Compiler | Elements | Scalar | D array | Pointer | Mir contiguous 1D |
+|---|---:|---:|---:|---:|---:|
+| DMD | 65,536 | 96.6 us | 17.6 us | 57.3 us | 294.3 us |
+| DMD | 1,048,576 | 1.7601 ms | 0.6394 ms | 1.2081 ms | 4.8805 ms |
+| DMD | 8,388,608 | 14.9431 ms | 6.2730 ms | 9.7595 ms | 39.7841 ms |
+| LDC | 65,536 | 10.2 us | 10.2 us | 10.2 us | 10.2 us |
+| LDC | 1,048,576 | 0.2606 ms | 0.1962 ms | 0.2010 ms | 0.2290 ms |
+| LDC | 8,388,608 | 4.3781 ms | 4.3509 ms | 4.2772 ms | 4.3513 ms |
+
+### Interpretation
+
+The result confirms a compiler-specific source-shape effect.
+
+Under DMD:
+
+- the D array expression is consistently the fastest of the four measured affine forms;
+- the pointer diagnostic removes part of the scalar-loop overhead but remains substantially slower than the D array expression;
+- the Mir contiguous form is much slower than every other form;
+- the performance gap persists from cache-near through large working sets.
+
+Under LDC:
+
+- all four forms converge very closely at 65,536 and 8,388,608 elements;
+- at 1,048,576 elements the array, pointer, and Mir variants are somewhat faster than the scalar median, but the raw samples contain substantial outliers;
+- the 8,388,608-element result is the strongest large-working-set evidence: all four forms are within roughly 2.4% of one another.
+
+This matches the code-generation diagnostic:
+
+- DMD keeps scalar work scalar, and its Mir form retains a per-element helper call;
+- LDC auto-vectorizes scalar, pointer, D-array, and Mir affine forms into essentially the same SIMD loop shape.
+
+### Current engineering conclusion
+
+Do not introduce handwritten SIMD for this affine kernel.
+
+Do not introduce a production compiler split yet.
+
+The evidence does justify treating compiler-specific internal source forms as an allowed future optimization mechanism. A production split would require a representative raster operation, repeated independent runs, supported compiler/version coverage, and a centralized compiler capability gate.
+
+The strongest present candidate is:
+
+- LDC: preserve the clearest portable form that continues to auto-vectorize through the real raster abstraction;
+- DMD: investigate D array expressions for already-classified contiguous 1D kernels where their non-overlap and operation-order semantics fit the raster contract.
+
+The raw-pointer form is not promoted. It does not outperform the D array expression under DMD and provides no material advantage under LDC.
+
+### Measurement caveat
+
+The DMD 1 Mi and 8 Mi D-array samples, and several LDC 1 Mi samples, show noticeable spread. These medians are strong enough to establish the large qualitative compiler difference, but not yet precise enough for a small-threshold regression gate. Independent process runs and CPU controls remain required before setting numeric acceptance thresholds.
