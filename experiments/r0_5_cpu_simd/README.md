@@ -112,3 +112,19 @@ The diagnostic questions are:
 
 Generated-code observations are explanatory evidence. Performance conclusions
 still require timing on the reference machine.
+
+
+### Isolated copy probe
+
+`source/codegen_copy_probe.d` contains four intentionally small exported
+functions with stable C linkage:
+
+- `probeScalar`: indexed D slices;
+- `probeSlice`: D slice assignment;
+- `probePointer`: indexed raw pointers;
+- `probeMir`: Mir flat Contiguous slices.
+
+The probe exists only to explain compiler code generation. It does not propose
+a production API and its raw-pointer function is not a safety recommendation.
+Compile this file directly with the same release optimization family used by
+the DUB build and inspect the four named functions.
