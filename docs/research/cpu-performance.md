@@ -973,3 +973,64 @@ No production split is promoted from the DMD delegated advantage yet. A
 focused full-executable/code-placement diagnosis is warranted if the effect is
 important enough to retain; otherwise the broader architectural result is
 already clear: validate once, then execute a simple check-free internal loop.
+
+
+## R0.5d — ubyte min/max reduction
+
+The first reduction probe deliberately uses `ubyte` and computes minimum and
+maximum together. This avoids floating-point NaN-policy ambiguity while testing
+a reduction with loop-carried state.
+
+Measured forms:
+
+- ordinary checked D slice loop;
+- pointer diagnostic with the same scalar operation graph;
+- manually split four-lane pointer reduction;
+- duplicate pointer control position.
+
+The strengthened benchmark sink mixes every invocation non-commutatively with
+an invocation counter; the earlier extreme LDC result therefore survives a
+DCE-resistant control.
+
+Representative medians after sink hardening:
+
+| elements | compiler | slice | pointer | four lane | pointer control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 64.2 us | 64.1 us | 72.2 us | 64.6 us |
+| 1,048,576 | DMD | 1.0623 ms | 1.0431 ms | 1.1511 ms | 1.0748 ms |
+| 8,388,608 | DMD | 8.4383 ms | 8.5531 ms | 9.2449 ms | 8.6947 ms |
+| 65,536 | LDC | 1.2 us | 1.2 us | 31.1 us | 1.2 us |
+| 1,048,576 | LDC | 29.1 us | 27.3 us | 0.5483 ms | 36.8 us |
+| 8,388,608 | LDC | 0.6458 ms | 0.6204 ms | 4.3648 ms | 0.7579 ms |
+
+The large LDC working-set samples are noisy, so their precise ratios are not
+promotion thresholds. The 65 KiB result is exceptionally stable and is useful
+for code-generation diagnosis.
+
+Focused assembly explains the compiler difference.
+
+DMD keeps the simple reduction scalar: one byte load followed by scalar
+comparisons/conditional updates and a scalar loop branch. Its manual four-lane
+form substantially increases register pressure and generated-code complexity
+and is slower in all measured sizes.
+
+LDC recognizes the simple loop as a vector reduction. Its main path consumes
+32 source bytes per iteration using two 16-byte loads and paired unsigned-byte
+`pminub` / `pmaxub` accumulators, then performs horizontal vector reduction
+and scalar tail handling.
+
+The manual four-lane source form prevents this clean contiguous vector
+reduction. LLVM still attempts vectorization, but because the source program
+expresses four interleaved logical lanes it emits many individual byte loads
+plus `movd` and `punpck*` packing operations before vector min/max work.
+The resulting code is dramatically slower than the ordinary loop.
+
+This is strong evidence against manually spelling scalar lane decomposition as
+a generic optimization strategy. For this exact integer min/max operation, the
+simplest D loop exposes the operation to LDC/LLVM best and is also faster than
+the manual lane form under DMD. No handwritten SIMD or compiler-specific
+production split is justified by this probe.
+
+The result is operation-specific. Floating-point min/max requires a separate
+semantic study because NaN handling, signed zero and ordering policy can change
+which transformations are valid.
