@@ -273,3 +273,91 @@ nothrow
                 r2[x] + r2[x + 1] + r2[x + 2];
     }
 }
+
+
+/++
+    R0.5f row-kernel specialization candidate.
+
+    Keep signed Canonical row traversal in the validated outer execution layer,
+    but present the vectorizable inner operation only with three concrete row
+    pointers and one destination row. This removes signed-stride arithmetic
+    from the loop LLVM must prove safe to vectorize.
++/
+bool box3CanonicalRowKernel(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target
+)
+@safe
+nothrow
+@nogc
+{
+    if (source.width != target.width + 2 ||
+        source.height != target.height + 2)
+        return false;
+
+    PlaneExecutionTraits traits;
+    if (!source.tryPlaneExecutionTraits(0, traits) ||
+        traits.layout2D == PlaneExecutionLayout2D.universal)
+        return false;
+
+    ptrdiff_t rowStride;
+    ptrdiff_t sampleStride;
+    if (!source.tryExecutionPlaneStrides(0, rowStride, sampleStride) ||
+        sampleStride != 1)
+        return false;
+
+    const src = source.executionRegionBase(0);
+    auto dst = target.executionBase();
+    if (src is null || dst is null)
+        return false;
+
+    box3CanonicalRowsUnchecked(
+        src, rowStride, dst, target.width, target.height
+    );
+    return true;
+}
+
+private void box3CanonicalRowsUnchecked(
+    scope const(float)* src,
+    ptrdiff_t rowStride,
+    scope float* dst,
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    auto r0 = src;
+    auto r1 = src + rowStride;
+    auto r2 = r1 + rowStride;
+    auto dstRow = dst;
+
+    foreach (_; 0 .. height)
+    {
+        box3RowUnchecked(r0, r1, r2, dstRow, width);
+        r0 += rowStride;
+        r1 += rowStride;
+        r2 += rowStride;
+        dstRow += width;
+    }
+}
+
+private void box3RowUnchecked(
+    scope const(float)* r0,
+    scope const(float)* r1,
+    scope const(float)* r2,
+    scope float* dstRow,
+    size_t width
+)
+@system
+pure
+nothrow
+@nogc
+{
+    foreach (x; 0 .. width)
+        dstRow[x] =
+            r0[x] + r0[x + 1] + r0[x + 2] +
+            r1[x] + r1[x + 1] + r1[x + 2] +
+            r2[x] + r2[x + 1] + r2[x + 2];
+}
