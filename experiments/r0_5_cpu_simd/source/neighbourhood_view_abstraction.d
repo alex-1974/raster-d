@@ -361,3 +361,91 @@ nothrow
             r1[x] + r1[x + 1] + r1[x + 2] +
             r2[x] + r2[x + 1] + r2[x + 2];
 }
+
+
+/++
+    R0.5f causal control for compiler inlining.
+
+    Identical execution decomposition to box3CanonicalRowKernel, except the
+    inner row kernel is explicitly kept out of line. This is research evidence
+    only; pragma(inline, false) is not proposed as a production policy.
++/
+bool box3CanonicalRowKernelNoInline(
+    scope RasterView!float source,
+    scope RasterTargetPlane!float target
+)
+@safe
+nothrow
+@nogc
+{
+    if (source.width != target.width + 2 ||
+        source.height != target.height + 2)
+        return false;
+
+    PlaneExecutionTraits traits;
+    if (!source.tryPlaneExecutionTraits(0, traits) ||
+        traits.layout2D == PlaneExecutionLayout2D.universal)
+        return false;
+
+    ptrdiff_t rowStride;
+    ptrdiff_t sampleStride;
+    if (!source.tryExecutionPlaneStrides(0, rowStride, sampleStride) ||
+        sampleStride != 1)
+        return false;
+
+    const src = source.executionRegionBase(0);
+    auto dst = target.executionBase();
+    if (src is null || dst is null)
+        return false;
+
+    box3CanonicalRowsNoInlineUnchecked(
+        src, rowStride, dst, target.width, target.height
+    );
+    return true;
+}
+
+private void box3CanonicalRowsNoInlineUnchecked(
+    scope const(float)* src,
+    ptrdiff_t rowStride,
+    scope float* dst,
+    size_t width,
+    size_t height
+)
+@trusted
+nothrow
+@nogc
+{
+    auto r0 = src;
+    auto r1 = src + rowStride;
+    auto r2 = r1 + rowStride;
+    auto dstRow = dst;
+
+    foreach (_; 0 .. height)
+    {
+        box3RowNoInlineUnchecked(r0, r1, r2, dstRow, width);
+        r0 += rowStride;
+        r1 += rowStride;
+        r2 += rowStride;
+        dstRow += width;
+    }
+}
+
+pragma(inline, false)
+private void box3RowNoInlineUnchecked(
+    scope const(float)* r0,
+    scope const(float)* r1,
+    scope const(float)* r2,
+    scope float* dstRow,
+    size_t width
+)
+@system
+pure
+nothrow
+@nogc
+{
+    foreach (x; 0 .. width)
+        dstRow[x] =
+            r0[x] + r0[x + 1] + r0[x + 2] +
+            r1[x] + r1[x + 1] + r1[x + 2] +
+            r2[x] + r2[x + 1] + r2[x + 2];
+}
