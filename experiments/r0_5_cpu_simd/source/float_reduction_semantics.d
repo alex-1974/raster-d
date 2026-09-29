@@ -115,6 +115,71 @@ private void printCase(string name, scope const(float)[] values)
             bits(scalar.maximum) == bits(lanes.maximum));
 }
 
+
+private bool sameBits(MinMaxFloat a, MinMaxFloat b)
+@trusted pure nothrow @nogc
+{
+    return bits(a.minimum) == bits(b.minimum) &&
+        bits(a.maximum) == bits(b.maximum);
+}
+
+private bool exhaustiveSemanticCheck()
+{
+    const float[] alphabet = [
+        float.nan,
+        -float.infinity,
+        -3.5f,
+        -0.0f,
+        +0.0f,
+        2.25f,
+        float.infinity
+    ];
+
+    // Length 9 crosses two four-lane execution groups plus the combine/tail
+    // boundary. 7^9 = 40,353,607 sequences: large enough to exercise lane
+    // interactions systematically while remaining a bounded research probe.
+    enum size_t length = 9;
+    enum size_t alphabetSize = 7;
+    enum ulong total = 40_353_607UL;
+
+    float[length] values;
+    size_t[length] digits;
+
+    foreach (caseIndex; 0UL .. total)
+    {
+        foreach (i; 0 .. length)
+            values[i] = alphabet[digits[i]];
+
+        const scalar = minMaxScalar(values[]);
+        const lanes = minMaxFourLane(values[]);
+        if (!sameBits(scalar, lanes))
+        {
+            writefln(
+                "float_semantics_exhaustive mismatch_case=%s scalar_min=0x%08x scalar_max=0x%08x lane_min=0x%08x lane_max=0x%08x digits=%(%s,%)",
+                caseIndex,
+                bits(scalar.minimum), bits(scalar.maximum),
+                bits(lanes.minimum), bits(lanes.maximum),
+                digits[]);
+            return false;
+        }
+
+        size_t position;
+        while (position < length)
+        {
+            ++digits[position];
+            if (digits[position] < alphabetSize)
+                break;
+            digits[position] = 0;
+            ++position;
+        }
+    }
+
+    writefln(
+        "float_semantics_exhaustive checked=%s length=%s alphabet=%s mismatches=0",
+        total, length, alphabetSize);
+    return true;
+}
+
 void runFloatReductionSemantics()
 {
     writeln("=== reduction semantics: float min/max ===");
@@ -148,4 +213,6 @@ void runFloatReductionSemantics()
     // Alternating zeros exercise equality across several lane cycles.
     printCase("zero_alternating_pos", [+0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f]);
     printCase("zero_alternating_neg", [-0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f, +0.0f, -0.0f]);
+
+    exhaustiveSemanticCheck();
 }
