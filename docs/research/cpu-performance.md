@@ -1503,3 +1503,29 @@ roughly 0.5 ms reverse-index control observed earlier. Explicit SIMD is
 therefore still premature. Inspect baseline/sliding/reverse code generation
 next, especially vectorization, loop-carried dependencies, load structure,
 and pointer recurrences.
+
+
+##### Sliding/reverse code-generation correction
+
+The isolated three-way code-generation probe corrects an earlier
+interpretation. LDC's box3ReverseControl is not intrinsically scalar: like
+box3Exact it is loop-versioned and contains both a scalar alias fallback and a
+four-float movups/addps SIMD path. Moreover, the SIMD inner loops of
+box3Exact and box3ReverseControl have essentially the same nine overlapping
+vector loads and eight vector additions per four outputs. The earlier
+approximately 0.5 ms reverse-control result therefore cannot be explained by
+a uniquely compact scalar inner loop or by avoiding the overlapping SIMD load
+pattern.
+
+The important structural difference is outside that inner loop. box3Exact
+carries the signed stride directly through row-pointer recurrences, whereas
+box3ReverseControl derives row locations from positive pitch/index geometry
+and then advances its prepared row pointers in the opposite physical
+direction. This outer-loop/address-formation distinction is now the next
+variable to isolate while holding the inner arithmetic graph constant.
+
+LDC's sliding form is genuinely different: it vectorizes the vertical column
+sums and uses shuffles to carry/reconstruct the horizontal sliding window.
+DMD keeps all three forms scalar; its sliding loop exposes the expected
+loop-carried c0/c1/c2 dependency. These observations explain why the sliding
+experiment is compiler-sensitive but do not justify explicit SIMD yet.
