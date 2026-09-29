@@ -929,3 +929,47 @@ indexing is removed after validation, a simple pointer/count execution loop is
 sufficient for the compiler to generate the desired check-free loop class.
 LDC additionally unrolls that loop automatically. Handwritten SIMD remains
 unjustified.
+
+
+### LUT identical-contract delegated-vs-inline A/B probe
+
+To remove the earlier signature/validation mismatch, a controlled A/B probe
+gave both variants the same slice-based external signature and the same
+validation contract. The only intended difference was loop placement:
+
+- delegated: checked wrapper calls the pointer/count execution kernel;
+- inline: the same wrapper writes the pointer loop directly.
+
+Representative medians:
+
+| elements | compiler | delegated | inline | delegated control | inline control |
+|---:|---|---:|---:|---:|---:|
+| 65,536 | DMD | 24.4 us | 32.1 us | 24.4 us | 32.1 us |
+| 1,048,576 | DMD | 0.4698 ms | 0.6312 ms | 0.5276 ms | 0.6275 ms |
+| 8,388,608 | DMD | 4.3336 ms | 4.9173 ms | 4.5024 ms | 5.5161 ms |
+| 65,536 | LDC | 26.0 us | 25.9 us | 26.0 us | 26.0 us |
+| 1,048,576 | LDC | 0.4191 ms | 0.4174 ms | 0.4175 ms | 0.4155 ms |
+| 8,388,608 | LDC | 5.9810 ms | 6.8270 ms | 5.1798 ms | 3.8261 ms |
+
+For DMD the small case is exceptionally stable and shows a repeatable
+delegated advantage. The 1 Mi case preserves the same ordering despite more
+system noise. The 8 Mi case is noisier but still has both delegated medians
+below their corresponding inline medians. Combined with the earlier focused
+assembly, this points to a benchmark-context/code-layout/inlining effect rather
+than a different scalar loop algorithm.
+
+For LDC the 65 Ki and 1 Mi cases are effectively equal, as expected from the
+near-identical generated loops. The 8 Mi measurements are not suitable for a
+fine-grained comparison: raw samples vary widely and, importantly, the control
+positions reverse the apparent first-pair ordering. No LDC large-working-set
+delegated/inline conclusion should be drawn from that run.
+
+This probe strengthens two methodological requirements for later R0.5 work:
+small hot-loop differences need duplicate positions/raw samples, and
+large-working-set measurements should be repeated under a more controlled
+runtime environment before promotion claims are made.
+
+No production split is promoted from the DMD delegated advantage yet. A
+focused full-executable/code-placement diagnosis is warranted if the effect is
+important enough to retain; otherwise the broader architectural result is
+already clear: validate once, then execute a simple check-free internal loop.
