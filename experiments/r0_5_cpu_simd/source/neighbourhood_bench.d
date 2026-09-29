@@ -78,11 +78,11 @@ private int runCase(size_t stride)
     enum width=2048, height=512;
     auto src=new float[stride*(height+2)];
     auto dst=new float[width*height];
-    auto ref=new float[width*height];
+    auto reference=new float[width*height];
     fill(src);
-    box3Rows(src,stride,ref,width,height);
+    box3Rows(src,stride,reference,width,height);
     box3Pointer(src,stride,dst,width,height);
-    if(ref!=dst) return 1;
+    if(reference!=dst) return 1;
 
     foreach(_;0..warmups){
         box3Rows(src,stride,dst,width,height);consume(dst,width,height);
