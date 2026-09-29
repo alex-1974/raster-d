@@ -230,3 +230,25 @@ thresholds. Before changing production code, R0.5 should:
   a compilation-boundary effect.
 
 No handwritten SIMD is justified by these results.
+
+
+### Combined-build control
+
+A normal-versus-`--combined` control was attempted with both LDC 1.41.0 and
+DMD 2.111.0. The combined build did not reach the raster benchmark. Both
+compilers failed while compiling Mir's algebraic/annotated modules with the
+same attribute mismatch: a `pure nothrow @nogc` `Algebraic.opEquals`
+instantiation attempted to call an `Annotated.opEquals` that does not satisfy
+those attributes.
+
+Therefore no combined-build timing comparison exists for this probe. The
+failure is a toolchain/dependency build-mode observation, not evidence for or
+against a raster-d compilation-boundary performance effect.
+
+The accompanying normal builds continued to show the compiler-dependent
+pattern. DMD's raster Mir Contiguous1D samples were tightly clustered around
+4.28--4.42 ms (median 4.3248 ms), while the checked contiguous path had a
+0.3033 ms median. LDC's run was noisier during early samples; after the early
+outliers, Mir and checked contiguous samples reached roughly the same
+0.13--0.21 ms regime. This reinforces the need for generated-code inspection
+and independent-process timing before changing production implementation.
