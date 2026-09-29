@@ -1221,3 +1221,44 @@ not justify an unsafe public or production representation.
 R0.5e therefore proceeds to a real neighbourhood/halo kernel. A DMD row-loop
 codegen probe can be retained as a secondary diagnostic if that compiler
 remains important for the eventual consumer hot path.
+
+
+### 3x3 neighbourhood with explicit one-sample halo
+
+A second R0.5e probe measures a 3x3 box sum over a fixed 2048 x 512 output
+region. The input contains an explicit one-sample halo, so border policy is not
+part of the timed kernel. Input row strides are 2050 (minimum dense halo row),
+2112, 2304 and 4096.
+
+| Compiler | Stride | Safe rows | Pointer diagnostic | Pointer control |
+|---|---:|---:|---:|---:|
+| DMD | 2050 | 5.7783 ms | 2.4610 ms | 2.4155 ms |
+| DMD | 2112 | 5.2051 ms | 2.2924 ms | 2.2562 ms |
+| DMD | 2304 | 5.3723 ms | 2.3092 ms | 2.3421 ms |
+| DMD | 4096 | 5.2736 ms | 2.3551 ms | 2.3281 ms |
+| LDC | 2050 | 0.6252 ms | 0.5031 ms | 0.4608 ms |
+| LDC | 2112 | 0.6187 ms | 0.4476 ms | 0.4520 ms |
+| LDC | 2304 | 0.6242 ms | 0.4554 ms | 0.4675 ms |
+| LDC | 4096 | 0.6372 ms | 0.4712 ms | 0.4621 ms |
+
+The principal result is that large parent row stride is not itself expensive
+for this neighbourhood. Relative to stride 2112, stride 4096 changes the
+pointer median by only about 2.7% under DMD and 5.3% under LDC. This supports
+the existing Canonical/ROI model for neighbourhood execution: retaining a
+parent row stride does not inherently impose a large throughput penalty.
+
+Stride 2050 is somewhat slower in the pointer measurements, especially under
+LDC, despite being the physically densest halo layout. It should therefore not
+be assumed that minimum row pitch is always optimal; alignment/cache/codegen
+effects need separate evidence before drawing a layout rule.
+
+The more important result is source form. DMD's safe indexed-row kernel is
+roughly 2.25--2.35x the pointer diagnostic across the stable cases. LDC, unlike
+the earlier pointwise row probe, also shows a material gap for the 3x3 access
+pattern: the safe-row median is roughly 35--40% above the pointer diagnostic
+for strides 2112--4096. The repeated shifted accesses therefore justify a
+focused code-generation/bounds-check diagnostic for this exact kernel.
+
+This remains diagnostic evidence only. It does not justify exposing pointers,
+removing validation, prescribing row alignment, or introducing handwritten
+SIMD.
