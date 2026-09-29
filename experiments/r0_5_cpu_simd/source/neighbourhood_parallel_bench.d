@@ -290,7 +290,7 @@ private int runCase(BenchCase bench, bool negativeRows, bool noInline)
         consume(dst, width, height);
     }
 
-    long[repetitions] serialSamples;
+    auto serialSamples = new long[repetitions];
     foreach (i; 0 .. repetitions)
     {
         const started = MonoTime.currTime;
@@ -341,7 +341,7 @@ private int runCase(BenchCase bench, bool negativeRows, bool noInline)
             consume(dst, width, height);
         }
 
-        long[repetitions] samples;
+        auto samples = new long[repetitions];
         bool executionOk = true;
 
         foreach (i; 0 .. repetitions)
