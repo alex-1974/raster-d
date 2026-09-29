@@ -387,3 +387,79 @@ compare the current Mir loop with D-slice/index and narrowly scoped pointer
 forms under DMD and LDC, then inspect code generation. Any eventual
 compiler-specific production specialization must remain below the common
 raster semantic/validation boundary.
+
+
+## R0.5c — conversion source-form isolation
+
+A follow-up experiment isolated the exact `ubyte -> float` computation from
+the raster validation layer. Four forms were compared with the same input,
+output and correctness fingerprint:
+
+- the current production Mir contiguous 1D kernel;
+- a safe D-slice indexed loop;
+- a raw-pointer diagnostic loop;
+- the full checked raster dispatcher, which reaches the current Mir kernel.
+
+### Large working-set result
+
+At 8,388,608 samples:
+
+| Compiler | Mir | safe D slice | pointer diagnostic | checked dispatch |
+| --- | ---: | ---: | ---: | ---: |
+| DMD 2.111 | 38.3832 ms | 7.2932 ms | 5.3636 ms | 38.7516 ms |
+| LDC 1.41 | 18.7283 ms | 3.1401 ms | 3.2354 ms | 18.6294 ms |
+
+Relative to Mir:
+
+- DMD safe slice: 0.190x, approximately 5.26x faster;
+- DMD pointer: 0.140x, approximately 7.16x faster;
+- LDC safe slice: 0.168x, approximately 5.96x faster;
+- LDC pointer: 0.173x, approximately 5.79x faster.
+
+The LDC large-working-set safe-slice and pointer results are effectively in
+the same performance class, with the safe slice slightly faster in this run.
+The pointer form therefore provides no evidence for an unsafe production path
+on LDC.
+
+At 1,048,576 samples the source-form gap is even larger in the measured run:
+DMD Mir 4.7440 ms versus slice 0.8787 ms and pointer 0.5467 ms; LDC Mir
+2.3011 ms versus slice 0.2138 ms and pointer 0.1622 ms.
+
+### Revised diagnosis
+
+The previous real-raster experiment established that the checked dispatch
+layer adds effectively no material cost. This source-form isolation now shows
+that the principal bottleneck is not the raster validation architecture and is
+not merely a DMD-versus-LDC compiler gap.
+
+The current Mir `ubyte -> float` conversion formulation is substantially
+slower than a direct D-slice loop under both tested compilers.
+
+This result is operation-specific. It does not overturn earlier evidence that
+Mir can compile away effectively for other kernels under LDC. In particular,
+the affine probe showed that LDC could optimize the investigated Mir affine
+form into the same broad SIMD class as the other source forms. The conversion
+result therefore argues for evidence-driven kernel selection rather than a
+global removal of Mir.
+
+### Current decision
+
+The safe D-slice loop is now the leading production candidate for the
+classified contiguous 1D `ubyte -> float` conversion path.
+
+Do not promote the raw-pointer diagnostic path: its DMD advantage over the
+safe slice requires code-generation explanation, while on LDC it provides no
+large-working-set benefit.
+
+Before changing production code:
+
+1. inspect DMD and LDC assembly/LLVM IR for the Mir, safe-slice and pointer
+   conversion forms;
+2. identify why Mir blocks or prevents the efficient conversion lowering;
+3. verify whether the DMD safe-slice gap to pointer is bounds-check related or
+   a deeper vectorization/code-generation issue;
+4. repeat the decisive large-working-set comparison in independent process
+   runs;
+5. if the conclusion survives, replace only the classified contiguous 1D
+   conversion kernel while preserving the existing checked dispatch and
+   generic/strided paths.
