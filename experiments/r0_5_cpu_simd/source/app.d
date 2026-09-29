@@ -6,6 +6,7 @@ import plane_extraction_bench : runPlaneExtractionMatrix;
 import lut_bench : runLutMatrix;
 import reduction_bench : runReductionMatrix;
 import float_reduction_bench : runFloatReductionMatrix;
+import float_reduction_semantics : runFloatReductionSemantics;
 import corpus : fillDeterministic, fingerprint;
 import harness : measurePair;
 import kernels :
@@ -238,6 +239,8 @@ int main()
 
     if (runFloatReductionMatrix() != 0)
         return 1;
+
+    runFloatReductionSemantics();
 
     return 0;
 }
