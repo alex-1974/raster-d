@@ -1,0 +1,10 @@
+name "raster-r0-5-cpu-simd"
+description "R0.5 CPU/SIMD performance research for raster-d"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+
+dflags "-preview=dip1000"
+
+dependency "raster-d" path="../.."
