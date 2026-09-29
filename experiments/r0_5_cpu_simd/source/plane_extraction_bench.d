@@ -54,6 +54,25 @@ private void extractPointer(
         output[i] = input[i * channels];
 }
 
+private Slice!(const(ubyte)*, 1, Universal) makeMirPlane(
+    scope const(ubyte)[] source,
+    size_t pixelCount,
+    size_t channels,
+    size_t channel
+)
+@trusted pure nothrow @nogc
+{
+    assert(channels != 0);
+    assert(channel < channels);
+    assert(source.length == pixelCount * channels);
+
+    return Slice!(const(ubyte)*, 1, Universal)(
+        [pixelCount],
+        [cast(ptrdiff_t) channels],
+        source.ptr + channel
+    );
+}
+
 private void extractMir(
     scope const(ubyte)[] source,
     scope ubyte[] target,
@@ -62,14 +81,11 @@ private void extractMir(
 )
 @safe nothrow @nogc
 {
-    assert(channels != 0);
-    assert(channel < channels);
-    assert(source.length == target.length * channels);
-
-    auto plane = Slice!(const(ubyte)*, 1, Universal)(
-        [target.length],
-        [cast(ptrdiff_t) channels],
-        source.ptr + channel
+    auto plane = makeMirPlane(
+        source,
+        target.length,
+        channels,
+        channel
     );
 
     foreach (i; 0 .. target.length)
