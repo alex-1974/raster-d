@@ -463,3 +463,73 @@ Before changing production code:
 5. if the conclusion survives, replace only the classified contiguous 1D
    conversion kernel while preserving the existing checked dispatch and
    generic/strided paths.
+
+
+## R0.5c — conversion code-generation diagnosis
+
+A standalone code-generation probe compared stable C symbols for the safe
+slice, raw-pointer diagnostic, and Mir production conversion call. The probe
+was compiled with bounds checks disabled only for diagnosis; normative runtime
+evidence remains the safe release benchmark.
+
+### DMD
+
+The safe-slice and pointer probes lower to the same scalar loop:
+
+- byte load with zero extension;
+- scalar integer-to-float conversion;
+- scalar float store;
+- one loop increment/compare.
+
+No SIMD conversion appears in either form. This means the runtime advantage of
+the pointer control over the safe slice observed in one DMD benchmark run is
+not explained by a fundamentally different unchecked conversion loop in this
+diagnostic build.
+
+The Mir probe does not inline the production conversion kernel. It constructs
+the call arguments and emits a call to the separately compiled
+`scalarConvertUbyteToFloatContiguous1D`.
+
+### LDC / LLVM
+
+The safe-slice and pointer probes produce the same broad optimized shape.
+LLVM emits a runtime overlap check and a vector loop operating on eight bytes
+per iteration as two `<4 x i8>` loads, two vector unsigned-integer-to-float
+conversions, and two `<4 x float>` stores, followed by scalar/unrolled tail
+handling.
+
+The LLVM IR explicitly contains:
+
+- vector memory-conflict checking;
+- `load <4 x i8>`;
+- `uitofp <4 x i8> ... to <4 x float>`;
+- `store <4 x float>`.
+
+The Mir probe again does not inline the separately compiled production
+conversion kernel; it tail-calls
+`scalarConvertUbyteToFloatContiguous1D`.
+
+### Refined conclusion
+
+The direct safe D-slice formulation is compiler-friendly:
+
+- DMD produces a compact scalar conversion loop;
+- LDC auto-vectorizes it without unsafe source code.
+
+The code-generation probe does not yet prove that Mir indexing itself is the
+sole cause of the slow production conversion. It proves that the current
+separate production-kernel boundary prevents this probe from exposing or
+optimizing the Mir loop in the caller. The earlier runtime benchmark still
+shows that the retained production Mir path is much slower than the direct
+slice form.
+
+The next diagnostic must therefore inspect the generated body of
+`scalarConvertUbyteToFloatContiguous1D` itself, and compare normal
+separate-library compilation with a same-translation-unit or combined build.
+This follows the previously observed workspace pattern where compilation
+boundaries can materially affect LDC code generation.
+
+Do not introduce compiler-specific production code or handwritten SIMD on the
+basis of this probe. The safe slice remains the leading candidate, but the
+remaining question is whether replacing Mir indexing is necessary or whether
+the same semantics can be recovered through compilation/inlining structure.
