@@ -35,8 +35,8 @@ extern(C) void probeConvertMir(
 )
 @trusted nothrow @nogc
 {
-    auto input = Slice!(const(ubyte)*, 1, Contiguous)(source, length);
-    auto output = Slice!(float*, 1, Contiguous)(target, length);
+    auto input = Slice!(const(ubyte)*, 1, Contiguous)([length], source);
+    auto output = Slice!(float*, 1, Contiguous)([length], target);
 
     const ok = scalarConvertUbyteToFloatContiguous1D(input, output);
     assert(ok);
