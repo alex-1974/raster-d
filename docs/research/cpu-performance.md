@@ -588,3 +588,42 @@ The evidence now separates compiler strategy:
 The next experiment should measure normal versus combined LDC execution and
 inspect the DMD helper bodies. A production change should follow only if those
 results confirm the expected compiler-specific behavior.
+
+
+## R0.5c — DMD Mir helper body and LDC combined-build attempt
+
+Body-level DMD disassembly explains the severe Mir conversion cost. The
+same-TU Mir helper still performs a call to Mir
+`Slice.opIndexAssign` for every output element. The loop therefore consists
+of the byte load and scalar conversion followed by an out-of-line Mir target
+assignment call on each iteration. DMD does not eliminate that abstraction in
+this configuration.
+
+This materially strengthens the case for a direct safe D-slice execution
+kernel for DMD contiguous conversion. The direct slice diagnostic has no
+per-element helper call.
+
+The attempted LDC `dub --combined` benchmark did not produce performance
+evidence because compilation failed inside the pinned Mir dependency
+combination. The failure reports attribute mismatches while instantiating
+Mir Algebraic/Annotated equality (`pure`, `@nogc`, and `nothrow`).
+Therefore no conclusion about combined-build runtime performance may be drawn
+from this attempt.
+
+This combined-build failure is a toolchain/dependency constraint worth
+tracking separately. It does not invalidate the same-TU LDC result: when the
+conversion body is visible to LDC, the Mir indexing abstraction is optimized
+away and the conversion is vectorized.
+
+Current direction:
+
+- DMD contiguous ubyte-to-float: test a safe direct-slice production-equivalent
+  kernel; the existing Mir target assignment is demonstrably unsuitable for
+  this hot loop.
+- LDC: a safe direct-slice kernel is also compiler-friendly and auto-vectorizes,
+  so it may provide the simplest compiler-independent production solution even
+  though Mir can optimize well when visible.
+- Do not require `--combined` as a raster-d performance mechanism while the
+  current dependency/toolchain combination cannot build it.
+- Do not introduce handwritten SIMD; the source-form problem is already
+  sufficient to explain the evidence.
