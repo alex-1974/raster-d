@@ -587,13 +587,15 @@ production SIMD or compiler-specific implementation in M2.1.
 
 ### M2.2 — Point transforms
 
-Status: implementation in progress.
+Status: complete.
 
 Completed M2.2 research selected a same-type compile-time point transform rather
 than a built-in affine numeric operator.
 
-The selected production contract:
+The implemented production contract:
 
+- exposes `RasterTransformError` and
+  `tryTransformRasterPlane!transform()`;
 - accepts a compile-time `alias transform` implementing `T -> T`;
 - requires the transform to be usable as `@safe pure nothrow @nogc`;
 - is generic over existing `isRasterSampleType!T`, including POD samples;
@@ -605,7 +607,11 @@ The selected production contract:
 - performs no implicit conversion, clamping, saturation, FMA selection or
   image-domain interpretation;
 - supports every validated signed affine resident layout;
-- keeps execution specialization and alias-relation machinery internal.
+- uses the existing exact affine relation classifier plus an allocation-free
+  exact fallback for defensive relation-arithmetic failure;
+- keeps execution specialization and alias-relation machinery internal;
+- is qualified through root-import, named-argument and invalid-transform
+  compile probes on both required compilers.
 
 Exact in-place transforms, runtime-selected transforms, cross-type transforms
 and convenience affine/LUT APIs remain deferred.
