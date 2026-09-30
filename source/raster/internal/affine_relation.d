@@ -177,13 +177,16 @@ nothrow
     `raster-d-research/experiments/e5_4f_5c2_consumer_reduction`.
 +/
 package(raster)
-AffineByteOverlapRelation classifySameTypeAffine2DByteOverlap(
-    size_t width,
-    size_t height,
+AffineByteOverlapRelation classifySameTypeAffine2DRectanglesByteOverlap(
+    size_t sourceWidth,
+    size_t sourceHeight,
 
     size_t sourceBase,
     ptrdiff_t sourceRowStrideElements,
     ptrdiff_t sourceSampleStrideElements,
+
+    size_t targetWidth,
+    size_t targetHeight,
 
     size_t targetBase,
     ptrdiff_t targetRowStrideElements,
@@ -197,8 +200,10 @@ nothrow
 @nogc
 {
     if (
-        width == 0
-        || height == 0
+        sourceWidth == 0
+        || sourceHeight == 0
+        || targetWidth == 0
+        || targetHeight == 0
     )
     {
         return
@@ -233,7 +238,35 @@ nothrow
     }
 
 
-    if (height <= width)
+    /*
+     * Both candidate pair counts fit exactly in the 128-bit carrier because
+     * each factor is at most one machine word.
+     *
+     * Choose the orientation with fewer finite outer line pairs:
+     *
+     *     sourceHeight * targetHeight
+     *
+     * versus:
+     *
+     *     sourceWidth * targetWidth
+     *
+     * This preserves the existing equal-shape optimization while admitting
+     * differently shaped source and target rectangles.
+     */
+    const rowPairCount =
+        mul(
+            u128(cast(ulong) sourceHeight),
+            u128(cast(ulong) targetHeight)
+        );
+
+    const columnPairCount =
+        mul(
+            u128(cast(ulong) sourceWidth),
+            u128(cast(ulong) targetWidth)
+        );
+
+
+    if (!ugt(rowPairCount, columnPairCount))
     {
         const sourceStep =
             signedWordFromPtrdiff(
@@ -246,7 +279,7 @@ nothrow
             );
 
 
-        foreach (sourceY; 0 .. height)
+        foreach (sourceY; 0 .. sourceHeight)
         {
             const sourceOuter =
                 multiplyPtrdiffBySize(
@@ -255,7 +288,7 @@ nothrow
                 );
 
 
-            foreach (targetY; 0 .. height)
+            foreach (targetY; 0 .. targetHeight)
             {
                 const targetOuter =
                     multiplyPtrdiffBySize(
@@ -267,10 +300,10 @@ nothrow
                 const relation =
                     classifySameTypeLinePair(
                         sourceStep,
-                        width,
+                        sourceWidth,
 
                         targetStep,
-                        width,
+                        targetWidth,
 
                         sourceOuter,
                         targetOuter,
@@ -303,7 +336,7 @@ nothrow
             );
 
 
-        foreach (sourceX; 0 .. width)
+        foreach (sourceX; 0 .. sourceWidth)
         {
             const sourceOuter =
                 multiplyPtrdiffBySize(
@@ -312,7 +345,7 @@ nothrow
                 );
 
 
-            foreach (targetX; 0 .. width)
+            foreach (targetX; 0 .. targetWidth)
             {
                 const targetOuter =
                     multiplyPtrdiffBySize(
@@ -324,10 +357,10 @@ nothrow
                 const relation =
                     classifySameTypeLinePair(
                         sourceStep,
-                        height,
+                        sourceHeight,
 
                         targetStep,
-                        height,
+                        targetHeight,
 
                         sourceOuter,
                         targetOuter,
@@ -353,6 +386,54 @@ nothrow
         AffineByteOverlapRelation.disjoint;
 }
 
+
+/++
+    Compatibility wrapper for equally shaped same-type affine planes.
+
+    Existing copy and point-transform consumers retain their exact public
+    behavior while the internal relation implementation can also serve
+    differently shaped source/target rectangles such as M2.3 neighbourhood
+    reads versus output writes.
++/
+package(raster)
+AffineByteOverlapRelation classifySameTypeAffine2DByteOverlap(
+    size_t width,
+    size_t height,
+
+    size_t sourceBase,
+    ptrdiff_t sourceRowStrideElements,
+    ptrdiff_t sourceSampleStrideElements,
+
+    size_t targetBase,
+    ptrdiff_t targetRowStrideElements,
+    ptrdiff_t targetSampleStrideElements,
+
+    size_t sampleSize
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    return
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            width,
+            height,
+
+            sourceBase,
+            sourceRowStrideElements,
+            sourceSampleStrideElements,
+
+            width,
+            height,
+
+            targetBase,
+            targetRowStrideElements,
+            targetSampleStrideElements,
+
+            sampleSize
+        );
+}
 
 /++
     Classifies exact physical sample-byte overlap between an affine ubyte
