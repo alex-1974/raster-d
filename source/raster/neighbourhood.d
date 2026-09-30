@@ -739,7 +739,127 @@ unittest
 
 
 /*
- * Non-injective destination and physical overlap are rejected before writing.
+ * One 3 x 3 resident neighbourhood produces exactly one destination sample.
+ */
+unittest
+{
+    ubyte[9] sourceStorage;
+
+    foreach (y; 0 .. 3)
+        foreach (x; 0 .. 3)
+            sourceStorage[y * 3 + x] =
+                logicalNeighbourhoodValue(x, y);
+
+    ubyte[1] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage.ptr, 3, 1)];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 1, 1)];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0,0,3,3)
+        );
+
+    scope auto destination =
+        makeWritableNeighbourhoodTestView!ubyte(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0,0,1,1)
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    assert(tryApplyRasterNeighbourhood3x3!weightedNeighbourhood(
+        source,
+        0,
+        Region2D(1,1,1,1),
+        destination,
+        0,
+        error
+    ));
+
+    assert(
+        destinationStorage[0]
+        == neighbourhoodOracleAt(1,1)
+    );
+}
+
+
+/*
+ * Non-injective destination is rejected before the first write.
+ */
+unittest
+{
+    ubyte[25] sourceStorage;
+    ubyte[1] destinationStorage = [55];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage.ptr, 5, 1)];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 0, 0)];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0,0,5,5)
+        );
+
+    scope auto destination =
+        makeWritableNeighbourhoodTestView!ubyte(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0,0,3,3)
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    assert(!tryApplyRasterNeighbourhood3x3!weightedNeighbourhood(
+        source,
+        0,
+        Region2D(1,1,3,3),
+        destination,
+        0,
+        error
+    ));
+
+    assert(
+        error
+        == RasterNeighbourhood3x3Error.nonInjectiveDestination
+    );
+
+    assert(destinationStorage[0] == 55);
+}
+
+
+/*
+ * Physical overlap is rejected before writing.
  */
 unittest
 {
