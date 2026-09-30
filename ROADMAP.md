@@ -533,13 +533,69 @@ Research provenance:
 
 ## M2 — Fundamental Processing Primitives
 
-Implement only the operations required to validate the engine:
+Status: in progress.
 
-- copy/fill;
-- conversions;
+M2 starts from the completed E5.4 public-operation sequence rather than
+reimplementing already-qualified primitives.
+
+Already present and counted toward M2:
+
+- checked same-type raster-plane copy via `tryCopyRasterPlane()`;
+- exact `ubyte -> float` conversion via
+  `tryConvertUbyteToFloatPlane()`;
+- strict row-major `float -> double` sum via
+  `trySumFloatToDouble()`.
+
+Still required to complete the milestone:
+
+- fill;
 - point transforms;
-- simple reductions;
 - basic neighbourhood kernels.
+
+The M1.7 exact 3 x 3 neighbourhood kernel remains test-local qualification
+machinery and is not counted as a production M2 kernel.
+
+M2 adds only semantic processing primitives. Compiler/source-form tuning,
+SIMD, multithreading and other performance work remain M3 unless a minimal
+correctness implementation requires otherwise.
+
+### M2.1 — Semantic raster-plane fill
+
+Status: implementation in progress.
+
+The first missing primitive is an exact same-type fill over one selected
+writable raster plane.
+
+The intended public contract:
+
+- is generic over every existing `isRasterSampleType!T`;
+- writes one exact `T` value without conversion, clamping or image semantics;
+- supports every validated writable resident layout;
+- permits valid non-injective mappings because repeated writes of the same
+  exact value are semantically idempotent;
+- treats a valid empty plane as a successful no-op;
+- fails only for an invalid destination plane index;
+- allocates nothing and retains no operand;
+- introduces no scheduler, parallelism or public execution-layout API.
+
+R0.5 fill measurements are performance evidence only. They do not select a
+production SIMD or compiler-specific implementation in M2.1.
+
+### M2.2 — Point transforms
+
+Status: not started.
+
+Promote only a narrowly defined generic point-transform semantic after
+reviewing the existing R0.5 affine-transform evidence and the numerical/public
+API contract separately.
+
+### M2.3 — Basic neighbourhood kernels
+
+Status: not started.
+
+Promote a minimal reusable neighbourhood operation only after M2.2. Reuse the
+M1 dependency/halo/streaming contracts; do not promote the M1.7 test oracle or
+invent border policy implicitly.
 
 ---
 
