@@ -624,11 +624,41 @@ Research provenance:
 
 ### M2.3 — Basic neighbourhood kernels
 
-Status: not started.
+Status: implementation in progress.
 
-Promote a minimal reusable neighbourhood operation only after M2.2. Reuse the
-M1 dependency/halo/streaming contracts; do not promote the M1.7 test oracle or
-invent border policy implicitly.
+Completed M2.3 research selects one fixed radius-one / 3 x 3 same-type
+neighbourhood primitive.
+
+The selected production contract:
+
+- consumes an already-materialized RasterView source;
+- uses an explicit resident-relative sourceOutputRegion;
+- requires one resident source sample of halo on every side for non-empty
+  output;
+- exposes no border policy and does not interpret ContextDeficit;
+- invokes a compile-time kernel over a row-major nine-sample snapshot;
+- requires the kernel to be usable as @safe pure nothrow @nogc;
+- requires destination shape to equal sourceOutputRegion shape;
+- requires an injective destination;
+- rejects exact physical overlap between the expanded required-source rectangle
+  and destination before writing;
+- supports validated signed affine source/destination layouts;
+- treats matching empty output as success without kernel invocation;
+- preserves whole-versus-task-local-halo decomposition independence.
+
+M1.1/M1.2 remain responsible for logical dependency planning. The M1.7
+weighted kernel remains test-only evidence and is not promoted as a built-in
+operation.
+
+The production slice also generalizes the package-internal exact same-type
+affine overlap relation to differently shaped source and target rectangles while
+preserving the existing equal-shape wrapper for copy/point-transform consumers.
+
+Research provenance:
+
+    raster-d-research main e4e9352c2443c3fb9f27c94125b683f3e69ff1e7
+    Issue #10 / PR #11
+    docs/research/m2-neighbourhood-contract.md
 
 ---
 
