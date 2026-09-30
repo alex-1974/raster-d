@@ -116,3 +116,8 @@ jobs:
         shell: bash
         run: |
           bash tools/compile-negative/raster_retained_store_internal.sh "$DC"
+
+      - name: Raster block-resolution internal-surface compile probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_block_resolution_internal.sh "$DC"
