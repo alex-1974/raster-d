@@ -450,12 +450,12 @@ Research provenance:
 
 ### M1.6 — Multi-block dependency resolution
 
-Status: implementation in progress.
+Status: complete.
 
 The next production bridge resolves one logical dependency from multiple
 caller-described retained/source blocks.
 
-The package-internal resolver:
+The implemented package-internal resolver:
 
 - accepts caller-owned block keys and logical block regions;
 - validates exact, pairwise-disjoint coverage before any source call or write;
@@ -463,9 +463,11 @@ The package-internal resolver:
 - materializes misses through a caller-supplied retained-source capability;
 - assembles only block/request intersections into one rebased caller-owned
   resident destination;
-- supports multi-plane retained values;
+- supports multi-plane retained values and huge logical origins;
 - treats retained-store insertion rejection as non-fatal to the current request;
 - records hit/miss/store-retention control-flow statistics;
+- leaves M1.4 request-residency admission caller/orchestrator-owned;
+- protects root and direct-internal surfaces with compile-negative probes;
 - introduces no block-size or block-selection policy.
 
 Provider geometry, cache replacement, scheduling, border policy and public
