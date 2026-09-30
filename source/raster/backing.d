@@ -1060,4 +1060,80 @@ unittest
 }
 
 
+
+unittest
+{
+    /*
+     * Resource byte accounting must fail rather than wrap when the retained
+     * physical payload is not representable in size_t.
+     */
+    ResourceEntry[2] resources =
+    [
+        ResourceEntry(
+            null,
+            size_t.max,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            1,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(!result.ok);
+    assert(result.bytes == 0);
+}
+
+
+unittest
+{
+    ResourceEntry[3] resources =
+    [
+        ResourceEntry(
+            null,
+            11,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            13,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            17,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(result.ok);
+    assert(result.bytes == 41);
+}
+
 } // version (unittest)
