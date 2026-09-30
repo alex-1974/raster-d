@@ -207,6 +207,8 @@ Deliverable:
 
 ### R0.6 — Raster-source and adapter boundary research
 
+**Status (2026-09-30): complete as research evidence.**
+
 Research the boundary between `raster-d` and external raster producers.
 
 Reference systems may include:
@@ -362,6 +364,27 @@ The package-internal planner:
 The next M1 slice may use this plan as the stable input to a concrete
 materialization/source boundary, subject to the separate R0.6 source-adapter
 research.
+
+### M1.3 — Synchronous caller-owned materialization
+
+Status: implementation in progress.
+
+ADR 0006 promotes the completed R0.6 source-boundary research into the first
+production materialization orchestration slice.
+
+The package-internal synchronous helper:
+
+- combines RequestMaterializationPlan with a compile-time/callable source and
+  caller-owned WritableRasterView destination;
+- forwards exactly the planned logical valid-input region;
+- requires the resident destination region to match the planned resident input;
+- treats empty valid input as successful without invoking the source;
+- keeps context deficit separate from border policy;
+- distinguishes destination mismatch from source failure;
+- performs no allocation and introduces no public source interface.
+
+Provider tiles, cache blocks, scheduling, async/cancellation, resampling and
+public source metadata remain outside this slice.
 
 ---
 

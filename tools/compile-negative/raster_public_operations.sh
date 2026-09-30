@@ -296,10 +296,12 @@ import raster :
     ContextDeficit,
     ExpandedDependency,
     RequestMaterializationPlan,
+    RequestMaterializationError,
     UbyteToFloatConversionResult,
     convertUbyteToFloatRasterPlane,
     copySameTypeRasterPlane,
     tryMakeWritableRasterView,
+    tryMaterializeRequest,
     tryStrictFloatToDoubleSum;
 D
 
@@ -369,6 +371,56 @@ void invalidExternalMaterializationPlanUse()
 D
 
 
+    cat > "$tmp_dir/internal_materialization_surface.d" <<'D'
+module raster_public_operations_negative_internal_materialization_surface;
+
+import raster.internal.materialization :
+    RequestMaterializationError,
+    tryMaterializeRequest;
+
+import raster.internal.materialization_plan :
+    RequestMaterializationPlan;
+
+import raster.writable_view :
+    WritableRasterView;
+
+import raster.region :
+    Region2D;
+
+struct ExternalSource
+{
+    bool materializeInto(
+        Region2D logicalRegion,
+        scope WritableRasterView!ubyte destination
+    )
+    {
+        return true;
+    }
+}
+
+void invalidExternalMaterializationUse()
+{
+    RequestMaterializationPlan plan;
+    WritableRasterView!ubyte destination;
+    ExternalSource source;
+    RequestMaterializationError error;
+
+    const ok =
+        tryMaterializeRequest(
+            plan,
+            source,
+            destination,
+            error
+        );
+
+    if (ok)
+    {
+        assert(0);
+    }
+}
+D
+
+
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
 
@@ -428,6 +480,7 @@ D
     compile_probe internal_umbrella_surface reject
     compile_probe internal_dependency_surface reject
     compile_probe internal_materialization_plan_surface reject
+    compile_probe internal_materialization_surface reject
     compile_probe writable_escape reject
     compile_probe writable_global reject
 
