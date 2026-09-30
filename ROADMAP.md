@@ -386,6 +386,32 @@ The package-internal synchronous helper:
 Provider tiles, cache blocks, scheduling, async/cancellation, resampling and
 public source metadata remain outside this slice.
 
+### M1.4 — Bounded residency accounting
+
+Status: implementation in progress.
+
+The completed cache-boundary research in `raster-d-research` establishes that
+cache retention and total/request residency are separate accounting domains.
+
+The first production promotion is therefore deliberately narrower than a
+cache:
+
+- physical retained raster-resource payload is counted from the backing's
+  authoritative ResourceEntry byte lengths;
+- shared/interleaved physical allocations are counted once regardless of
+  logical plane count;
+- a package-internal residency byte budget admits and releases working-set
+  obligations without overflow or underflow;
+- over-budget working sets fail explicitly;
+- zero-byte work consumes no budget;
+- cache identity, block geometry, replacement policy, provider identity,
+  concurrency and scheduling remain outside this slice.
+
+Research provenance:
+
+    raster-d-research main ae4dec5d9de4f8d8831d6e50954a851743fcaa4c
+    Issue #3 / PR #4
+
 ---
 
 ## M2 — Fundamental Processing Primitives
