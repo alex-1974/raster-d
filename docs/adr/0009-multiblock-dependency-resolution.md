@@ -70,6 +70,10 @@ successful use attempts to retain the miss result in the store.
 The retained-materialization capability owns allocation/source policy. It may
 itself use M1.3 plus a caller-owned allocation strategy.
 
+Because the resolver is @safe, the capability must be safely callable at this
+boundary. A source adapter may use a narrowly audited @trusted implementation
+to encapsulate validated allocation/import machinery.
+
 ## Cache admission is not request success
 
 A successfully materialized miss can satisfy the current dependency even when
