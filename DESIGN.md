@@ -311,9 +311,29 @@ Generic raster operations must not care whether their samples originated from:
 - WMTS;
 - WMS;
 - a cached mosaic;
-- another processing operation.
+- another processing operation;
+- a scientific grid or other non-image raster source.
 
-A source/backend abstraction will be researched before implementation.
+R0.6 source-boundary research is complete.
+
+ADR 0006 selects the first production boundary as package-internal,
+synchronous and caller-owned:
+
+    RequestMaterializationPlan
+        + source callable/capability
+        + WritableRasterView
+        -> materialization result
+
+The generic orchestration layer receives no provider-tile, cache-block,
+scheduler, image-domain or geospatial metadata.
+
+The caller owns destination storage and lifetime. A source receives the exact
+logical valid-input region and the resident writable destination.
+
+Retained/adopted source output is proven viable by R0.6 as a secondary path,
+but is not part of the first orchestration contract.
+
+A public RasterSource inheritance hierarchy is deliberately not introduced.
 
 ## 7. CPU optimisation strategy
 
