@@ -106,3 +106,8 @@ jobs:
         shell: bash
         run: |
           tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+
+      - name: Raster residency internal-surface compile probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_residency_internal.sh "$DC"

@@ -169,6 +169,55 @@ private alias RasterBackingOwner =
     );
 
 
+private
+struct PhysicalResourceByteCount
+{
+    bool ok;
+
+    size_t bytes;
+}
+
+
+/++
+    Sums the byte lengths of the physical resources retained by one backing.
+
+    Each ResourceEntry represents one physical resource and is therefore
+    counted exactly once even when multiple logical planes reference it.
++/
+private
+PhysicalResourceByteCount physicalResourceByteCount(
+    return ref RasterBacking backing
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    size_t total;
+
+    foreach (ref const resource; backing.resources_)
+    {
+        if (
+            resource.byteLength
+            > size_t.max - total
+        )
+        {
+            return
+                PhysicalResourceByteCount.init;
+        }
+
+        total +=
+            resource.byteLength;
+    }
+
+    return
+        PhysicalResourceByteCount(
+            true,
+            total
+        );
+}
+
+
 /++
     Creates the untyped retained owner inside the raster-d library.
 
@@ -332,6 +381,50 @@ public:
     nothrow
     {
         return owner_.refCountedStore.isInitialized;
+    }
+
+
+    /++
+        Attempts to return the physical raster-resource payload retained by this
+        lease.
+
+        Resource metadata and owner bookkeeping are deliberately excluded.
+
+        Each retained ResourceEntry is counted exactly once. This prevents
+        double-counting when several logical planes share one physical
+        allocation.
+
+        Failure returns false and stores zero in byteCount.
+    +/
+    package(raster)
+    bool tryPhysicalResourceBytes(
+        out size_t byteCount
+    )
+    @trusted
+    nothrow
+    @nogc
+    {
+        byteCount = 0;
+
+        if (!owner_.refCountedStore.isInitialized)
+        {
+            return false;
+        }
+
+        const result =
+            owner_.borrow!(
+                physicalResourceByteCount
+            );
+
+        if (!result.ok)
+        {
+            return false;
+        }
+
+        byteCount =
+            result.bytes;
+
+        return true;
     }
 
 
@@ -966,5 +1059,81 @@ unittest
     assert(writable.planeCount == 0);
 }
 
+
+
+unittest
+{
+    /*
+     * Resource byte accounting must fail rather than wrap when the retained
+     * physical payload is not representable in size_t.
+     */
+    ResourceEntry[2] resources =
+    [
+        ResourceEntry(
+            null,
+            size_t.max,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            1,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(!result.ok);
+    assert(result.bytes == 0);
+}
+
+
+unittest
+{
+    ResourceEntry[3] resources =
+    [
+        ResourceEntry(
+            null,
+            11,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            13,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            17,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(result.ok);
+    assert(result.bytes == 41);
+}
 
 } // version (unittest)
