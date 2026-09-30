@@ -136,6 +136,7 @@ import raster :
     WritableRasterView,
     tryConvertUbyteToFloatPlane,
     tryCopyRasterPlane,
+    tryFillRasterPlane,
     trySumFloatToDouble;
 
 @safe
@@ -179,6 +180,13 @@ bool exercisePublicRasterOperations(
             copyError
         );
 
+    const fillOk =
+        tryFillRasterPlane(
+            byteDestination,
+            0,
+            cast(ubyte) 23
+        );
+
     UbyteToFloatConversionError conversionError;
 
     const conversionOk =
@@ -195,6 +203,8 @@ bool exercisePublicRasterOperations(
         && (!floatWritableOk || floatDestination.planeCount != 0)
         && (sumOk || sum == 0.0)
         && (copyOk || copyError != RasterCopyError.none)
+        && (fillOk || byteDestination.planeCount == 0)
+        && (fillOk || byteDestination.planeCount == 0)
         && (
             conversionOk
             || conversionError != UbyteToFloatConversionError.none
@@ -257,6 +267,13 @@ bool exercisePublicRasterNamedArguments(
             error: copyError
         );
 
+    const fillOk =
+        tryFillRasterPlane(
+            destination: byteDestination,
+            planeIndex: 0,
+            value: cast(ubyte) 23
+        );
+
     UbyteToFloatConversionError conversionError;
 
     const conversionOk =
@@ -298,6 +315,7 @@ import raster :
     RequestMaterializationPlan,
     RequestMaterializationError,
     UbyteToFloatConversionResult,
+    tryFillRasterPlaneScalar,
     convertUbyteToFloatRasterPlane,
     copySameTypeRasterPlane,
     tryMakeWritableRasterView,
@@ -421,6 +439,33 @@ void invalidExternalMaterializationUse()
 D
 
 
+    cat > "$tmp_dir/internal_fill_surface.d" <<'D'
+module raster_public_operations_negative_internal_fill_surface;
+
+import raster.internal.fill_dispatch :
+    tryFillRasterPlaneScalar;
+
+import raster.writable_view :
+    WritableRasterView;
+
+void invalidExternalFillDispatchUse()
+{
+    WritableRasterView!ubyte destination;
+
+    const ok =
+        tryFillRasterPlaneScalar(
+            destination,
+            0,
+            cast(ubyte) 7
+        );
+
+    if (ok)
+    {
+        assert(0);
+    }
+}
+D
+
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
 
@@ -481,6 +526,7 @@ D
     compile_probe internal_dependency_surface reject
     compile_probe internal_materialization_plan_surface reject
     compile_probe internal_materialization_surface reject
+    compile_probe internal_fill_surface reject
     compile_probe writable_escape reject
     compile_probe writable_global reject
 

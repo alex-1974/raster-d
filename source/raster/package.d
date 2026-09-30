@@ -37,6 +37,9 @@ public import raster.writable_view :
 public import raster.reduction :
     trySumFloatToDouble;
 
+public import raster.fill :
+    tryFillRasterPlane;
+
 public import raster.copy :
     RasterCopyError,
     tryCopyRasterPlane;
