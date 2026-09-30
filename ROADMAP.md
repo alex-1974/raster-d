@@ -418,21 +418,23 @@ Research provenance:
 
 ### M1.5 — Bounded generic retained store
 
-Status: implementation in progress.
+Status: complete.
 
 The completed cache-identity research establishes caller-owned semantic identity
 as the generic reuse boundary.
 
-The first production retained-store slice therefore:
+The implemented production retained-store slice:
 
 - is generic over caller-owned Key;
 - stores typed RasterLease values;
 - specializes hash/equality at compile time;
 - has fixed entry capacity;
 - has a separate store-retained physical-byte limit;
-- rejects duplicate/full/over-budget insertion explicitly;
+- rejects duplicate/full/invalid/over-budget insertion explicitly;
+- leaves rejected insertion state unchanged;
 - returns independently retained lease copies on lookup;
-- supports explicit clear of store-owned entries;
+- supports explicit clear of store-owned entries and accounting;
+- protects root and direct-internal surfaces with compile-negative probes;
 - defines no automatic eviction or replacement policy.
 
 The M1.4 ResidencyBudget remains a separate request/working-set admission
