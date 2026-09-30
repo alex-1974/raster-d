@@ -38,6 +38,7 @@ The retained raster foundation includes:
 - checked physical-range and affine-overlap analysis;
 - strict `trySumFloatToDouble()`;
 - checked `tryCopyRasterPlane()`;
+- generic exact `tryFillRasterPlane()`;
 - exact `tryConvertUbyteToFloatPlane()`.
 
 Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
