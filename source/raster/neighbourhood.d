@@ -679,6 +679,133 @@ unittest
 
 
 /*
+ * Independently materialized task-local halos reassemble exactly to the whole
+ * result. This qualifies the public operation itself rather than only the M1.7
+ * test-local oracle.
+ */
+unittest
+{
+    enum size_t sourceWidth = 5;
+    enum size_t sourceHeight = 5;
+    enum size_t outputWidth = 3;
+    enum size_t outputHeight = 3;
+
+    ubyte[sourceWidth * sourceHeight] wholeSourceStorage;
+
+    foreach (y; 0 .. sourceHeight)
+        foreach (x; 0 .. sourceWidth)
+            wholeSourceStorage[y * sourceWidth + x] =
+                logicalNeighbourhoodValue(x, y);
+
+    ubyte[outputWidth * outputHeight] wholeDestinationStorage;
+
+    const PlaneDescriptor[1] wholeSourceDescriptors =
+        [PlaneDescriptor(wholeSourceStorage.ptr, sourceWidth, 1)];
+
+    const PlaneDescriptor[1] wholeDestinationDescriptors =
+        [PlaneDescriptor(wholeDestinationStorage.ptr, outputWidth, 1)];
+
+    const ResourceEntry[1] wholeDestinationResources =
+    [
+        ResourceEntry(
+            wholeDestinationStorage.ptr,
+            wholeDestinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto wholeSource =
+        makeRasterViewAssumeValidated!ubyte(
+            wholeSourceDescriptors[],
+            Region2D(0,0,sourceWidth,sourceHeight)
+        );
+
+    scope auto wholeDestination =
+        makeWritableNeighbourhoodTestView!ubyte(
+            wholeDestinationResources[],
+            wholeDestinationDescriptors[],
+            Region2D(0,0,outputWidth,outputHeight)
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    assert(tryApplyRasterNeighbourhood3x3!weightedNeighbourhood(
+        wholeSource,
+        0,
+        Region2D(1,1,outputWidth,outputHeight),
+        wholeDestination,
+        0,
+        error
+    ));
+
+    ubyte[outputWidth * outputHeight] streamed;
+
+    foreach (taskIndex; 0 .. 2)
+    {
+        const size_t outputY = taskIndex == 0 ? 0 : 1;
+        const size_t taskHeight = taskIndex == 0 ? 1 : 2;
+        const size_t residentHeight = taskHeight + 2;
+
+        ubyte[sourceWidth * 4] taskSourceStorage;
+        ubyte[outputWidth * 2] taskDestinationStorage;
+
+        foreach (residentY; 0 .. residentHeight)
+            foreach (x; 0 .. sourceWidth)
+                taskSourceStorage[residentY * sourceWidth + x] =
+                    logicalNeighbourhoodValue(x, outputY + residentY);
+
+        const PlaneDescriptor[1] taskSourceDescriptors =
+            [PlaneDescriptor(taskSourceStorage.ptr, sourceWidth, 1)];
+
+        const PlaneDescriptor[1] taskDestinationDescriptors =
+            [PlaneDescriptor(taskDestinationStorage.ptr, outputWidth, 1)];
+
+        const ResourceEntry[1] taskDestinationResources =
+        [
+            ResourceEntry(
+                taskDestinationStorage.ptr,
+                taskDestinationStorage.sizeof,
+                null,
+                null,
+                ResourceAccess.readWrite
+            )
+        ];
+
+        scope auto taskSource =
+            makeRasterViewAssumeValidated!ubyte(
+                taskSourceDescriptors[],
+                Region2D(0,0,sourceWidth,residentHeight)
+            );
+
+        scope auto taskDestination =
+            makeWritableNeighbourhoodTestView!ubyte(
+                taskDestinationResources[],
+                taskDestinationDescriptors[],
+                Region2D(0,0,outputWidth,taskHeight)
+            );
+
+        assert(tryApplyRasterNeighbourhood3x3!weightedNeighbourhood(
+            taskSource,
+            0,
+            Region2D(1,1,outputWidth,taskHeight),
+            taskDestination,
+            0,
+            error
+        ));
+
+        foreach (y; 0 .. taskHeight)
+            foreach (x; 0 .. outputWidth)
+                streamed[(outputY + y) * outputWidth + x] =
+                    taskDestinationStorage[y * outputWidth + x];
+    }
+
+    assert(streamed == wholeDestinationStorage);
+}
+
+
+/*
  * Structural failures occur before writing.
  */
 unittest
