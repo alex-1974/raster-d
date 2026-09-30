@@ -86,6 +86,7 @@ jobs:
           tools/compile-negative/raster_execution_lifetime.sh "$DC"
           tools/compile-negative/raster_target_lifetime.sh "$DC"
           tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+          tools/compile-negative/raster_neighbourhood_fast_path_internal.sh "$DC"
 
       - name: Raster retained-import external link probe
         shell: bash
@@ -190,6 +191,7 @@ jobs:
           tools/compile-negative/raster_execution_lifetime.sh "$DC"
           tools/compile-negative/raster_target_lifetime.sh "$DC"
           tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+          tools/compile-negative/raster_neighbourhood_fast_path_internal.sh "$DC"
 
       - name: Raster retained-import external link probe
         shell: bash
