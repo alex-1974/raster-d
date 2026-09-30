@@ -316,15 +316,26 @@ Initial focus:
 
 ## M1 — Regions, Streaming and Cache
 
-Implement:
+**Status (2026-09-30): complete.**
+
+Implemented and qualified:
 
 - requested regions;
 - halo/context propagation;
-- cache blocks;
-- bounded memory;
-- neighbouring source access;
-- streamed processing;
-- whole-image/streamed equivalence tests.
+- caller-described reusable retained/source blocks;
+- bounded request/working-set residency accounting;
+- separately bounded retained-store memory;
+- neighbouring multi-block source access;
+- sequential streamed processing qualification;
+- whole-request/streamed equivalence tests.
+
+M1 deliberately does **not** define engine-selected cache-block geometry,
+automatic replacement/eviction, a unified total-process memory manager,
+scheduler ownership, worker pools or public cache/source abstractions. Those
+are deferred policy/execution concerns, not incomplete M1 requirements.
+
+The completion audit closes M1 against the contracts accepted by ADR 0004
+through ADR 0009 and the M1.7 production-stack equivalence qualification.
 
 ### M1.1 — Request/dependency geometry
 

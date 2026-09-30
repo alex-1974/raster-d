@@ -44,10 +44,15 @@ Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
 types, affine-relation machinery, checked-wide arithmetic and operation
 dispatch internals remain non-public.
 
-R0.3 research has additionally demonstrated decomposition-independent streamed
+R0.3 research additionally demonstrated decomposition-independent streamed
 identity and neighbourhood/halo execution with bounded raster residency.
-Those research types are not promoted into the stable production API merely by
-the repository pivot.
+
+M1 has now promoted and qualified the smallest production contracts needed for
+requested-region dependency planning, synchronous caller-owned materialization,
+bounded request residency, bounded retained reuse, multi-block dependency
+assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
+decomposition, cache-block selection/replacement and scheduling remain outside
+the public raster contract.
 
 The public API remains experimental. Performance-sensitive implementation is
 developed from measured evidence and validated with both DMD and LDC.
