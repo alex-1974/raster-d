@@ -57,7 +57,12 @@ The caller must ensure:
 - mutable/changing sources update their key when required;
 - equality is stable while a key is stored;
 - hashing is stable while a key is stored;
-- `sameKey(a, b) => hashKey(a) == hashKey(b)`.
+- `sameKey(a, b) => hashKey(a) == hashKey(b)`;
+- key copy/move/reset operations and the supplied hash/equality callbacks are
+  compatible with the store's `nothrow` / `@nogc` control-plane paths.
+
+A key type or callback set that cannot satisfy those compile-time attributes is
+not a valid instantiation of this internal store shape.
 
 The store cannot infer whether a caller key omitted a semantic distinction.
 
@@ -150,12 +155,13 @@ When entry capacity or retained-byte capacity is exhausted, insertion fails.
 This keeps identity, ownership and memory accounting stable before replacement
 policy is promoted.
 
-## Empty and zero-byte retained values
-
-A valid retained lease whose physical resource payload is zero bytes may be
-stored and consumes one entry slot but zero retained-byte budget.
+## Invalid retained values
 
 An uninitialized lease is invalid and insertion fails.
+
+M1.5 does not add a separate semantic contract for zero-byte retained raster
+representations; their validity remains governed by the existing raster
+construction/import contracts.
 
 ## Public surface
 
