@@ -533,24 +533,23 @@ Research provenance:
 
 ## M2 — Fundamental Processing Primitives
 
-Status: in progress.
+Status: complete.
 
 M2 starts from the completed E5.4 public-operation sequence rather than
 reimplementing already-qualified primitives.
 
-Already present and counted toward M2:
+Implemented and counted toward M2:
 
 - checked same-type raster-plane copy via `tryCopyRasterPlane()`;
 - exact `ubyte -> float` conversion via
   `tryConvertUbyteToFloatPlane()`;
 - strict row-major `float -> double` sum via
-  `trySumFloatToDouble()`.
-
-Still required to complete the milestone:
-
-- fill;
-- point transforms;
-- basic neighbourhood kernels.
+  `trySumFloatToDouble()`;
+- exact same-type fill via `tryFillRasterPlane()`;
+- generic compile-time point transforms via
+  `tryTransformRasterPlane!transform()`;
+- generic fixed radius-one neighbourhood kernels via
+  `tryApplyRasterNeighbourhood3x3!kernel()`.
 
 The M1.7 exact 3 x 3 neighbourhood kernel remains test-local qualification
 machinery and is not counted as a production M2 kernel.
@@ -624,13 +623,15 @@ Research provenance:
 
 ### M2.3 — Basic neighbourhood kernels
 
-Status: implementation in progress.
+Status: complete.
 
 Completed M2.3 research selects one fixed radius-one / 3 x 3 same-type
 neighbourhood primitive.
 
-The selected production contract:
+The implemented production contract:
 
+- exposes `RasterNeighbourhood3x3Error` and
+  `tryApplyRasterNeighbourhood3x3!kernel()`;
 - consumes an already-materialized RasterView source;
 - uses an explicit resident-relative sourceOutputRegion;
 - requires one resident source sample of halo on every side for non-empty
@@ -644,7 +645,9 @@ The selected production contract:
   and destination before writing;
 - supports validated signed affine source/destination layouts;
 - treats matching empty output as success without kernel invocation;
-- preserves whole-versus-task-local-halo decomposition independence.
+- preserves whole-versus-task-local-halo decomposition independence;
+- is qualified through root-import, named-argument and invalid-kernel compile
+  probes on both required compilers.
 
 M1.1/M1.2 remain responsible for logical dependency planning. The M1.7
 weighted kernel remains test-only evidence and is not promoted as a built-in
