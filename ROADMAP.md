@@ -326,7 +326,7 @@ Implement:
 
 ### M1.1 — Request/dependency geometry
 
-Status: design in progress.
+Status: implementation in progress.
 
 ADR 0004 defines the first production promotion from R0.3:
 
