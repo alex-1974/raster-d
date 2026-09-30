@@ -557,6 +557,225 @@ unittest
 }
 
 
+private
+struct NeighbourhoodPair
+{
+    ushort a;
+    ushort b;
+}
+
+
+@safe
+pure
+nothrow
+@nogc
+private
+NeighbourhoodPair centerPair(
+    ref const(NeighbourhoodPair)[9] neighbourhood
+)
+{
+    return neighbourhood[4];
+}
+
+
+@safe
+pure
+nothrow
+@nogc
+private
+float weightedFloatNeighbourhood(
+    ref const(float)[9] n
+)
+{
+    return
+          n[0]
+        + n[1] * 2.0f
+        + n[2] * 3.0f
+        + n[3] * 5.0f
+        + n[4] * 7.0f
+        + n[5] * 11.0f
+        + n[6] * 13.0f
+        + n[7] * 17.0f
+        + n[8] * 19.0f;
+}
+
+
+/*
+ * The Canonical executor remains generic over raster sample types.
+ */
+unittest
+{
+    NeighbourhoodPair[9] sourceStorage;
+
+    foreach (index; 0 .. sourceStorage.length)
+    {
+        sourceStorage[index] =
+            NeighbourhoodPair(
+                cast(ushort) index,
+                cast(ushort)(index + 100)
+            );
+    }
+
+    NeighbourhoodPair[1] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage.ptr, 3, 1)];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 1, 1)];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!NeighbourhoodPair(
+            sourceDescriptors[],
+            Region2D(0,0,3,3)
+        );
+
+    scope auto destination =
+        makeWritableNeighbourhoodTestView!NeighbourhoodPair(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0,0,1,1)
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    assert(
+        tryApplyRasterNeighbourhood3x3!centerPair(
+            source,
+            0,
+            Region2D(1,1,1,1),
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(
+        destinationStorage[0]
+        == sourceStorage[4]
+    );
+}
+
+
+/*
+ * Float + negative Canonical source rows exercises the qualified LDC 2.111
+ * row-boundary path and the ordinary Canonical executor on other compilers.
+ *
+ * Both must preserve identical public semantics.
+ */
+unittest
+{
+    enum size_t pitch = 7;
+
+    float[pitch * 5] sourceStorage;
+
+    foreach (y; 0 .. 5)
+    {
+        foreach (x; 0 .. 5)
+        {
+            sourceStorage[
+                (4 - y) * pitch + x
+            ] =
+                cast(float)(
+                    x + y * 10
+                );
+        }
+    }
+
+    float[9] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr + 4 * pitch,
+            -cast(ptrdiff_t) pitch,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 3, 1)];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!float(
+            sourceDescriptors[],
+            Region2D(0,0,5,5)
+        );
+
+    scope auto destination =
+        makeWritableNeighbourhoodTestView!float(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0,0,3,3)
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    assert(
+        tryApplyRasterNeighbourhood3x3!weightedFloatNeighbourhood(
+            source,
+            0,
+            Region2D(1,1,3,3),
+            destination,
+            0,
+            error
+        )
+    );
+
+    foreach (y; 0 .. 3)
+    {
+        foreach (x; 0 .. 3)
+        {
+            float[9] neighbourhood;
+            size_t index;
+
+            foreach (dy; 0 .. 3)
+            {
+                foreach (dx; 0 .. 3)
+                {
+                    neighbourhood[index++] =
+                        cast(float)(
+                            (x + dx)
+                            + (y + dy) * 10
+                        );
+                }
+            }
+
+            assert(
+                destinationStorage[
+                    y * 3 + x
+                ]
+                == weightedFloatNeighbourhood(
+                    neighbourhood
+                )
+            );
+        }
+    }
+}
+
+
 /*
  * Universal/sample-strided source and negative-row destination.
  */
