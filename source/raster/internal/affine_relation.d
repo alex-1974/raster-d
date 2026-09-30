@@ -3017,3 +3017,224 @@ unittest
 }
 
 }
+
+
+version (unittest)
+{
+
+/*
+ * The asymmetric relation is behaviorally compatible with the established
+ * equal-shape wrapper.
+ */
+unittest
+{
+    const general =
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            4,
+            1,
+
+            64,
+            0,
+            2,
+
+            4,
+            1,
+
+            65,
+            0,
+            2,
+
+            1
+        );
+
+    const compatibility =
+        classifySameTypeAffine2DByteOverlap(
+            4,
+            1,
+
+            64,
+            0,
+            2,
+
+            65,
+            0,
+            2,
+
+            1
+        );
+
+    assert(general == compatibility);
+    assert(general == AffineByteOverlapRelation.disjoint);
+}
+
+
+/*
+ * Differently shaped rectangles can be exactly disjoint.
+ */
+unittest
+{
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            5,
+            3,
+
+            64,
+            10,
+            2,
+
+            2,
+            2,
+
+            65,
+            10,
+            2,
+
+            1
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+}
+
+
+/*
+ * Differently shaped rectangles detect one genuine shared sample.
+ */
+unittest
+{
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            5,
+            3,
+
+            64,
+            10,
+            2,
+
+            2,
+            2,
+
+            66,
+            10,
+            2,
+
+            1
+        )
+        == AffineByteOverlapRelation.overlap
+    );
+}
+
+
+/*
+ * Overlapping address envelopes still do not imply sample-byte overlap for
+ * differently shaped interleaved sample sets.
+ *
+ * Source starts:
+ *     64,66,68,70,72
+ *
+ * Target starts:
+ *     65,67
+ *
+ * Their address envelopes overlap, but no one-byte sample does.
+ */
+unittest
+{
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            5,
+            1,
+
+            64,
+            0,
+            2,
+
+            2,
+            1,
+
+            65,
+            0,
+            2,
+
+            1
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+}
+
+
+/*
+ * Signed traversal remains exact across different rectangle dimensions.
+ */
+unittest
+{
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            3,
+            2,
+
+            74,
+            -10,
+            -2,
+
+            2,
+            1,
+
+            62,
+            0,
+            2,
+
+            1
+        )
+        == AffineByteOverlapRelation.overlap
+    );
+}
+
+
+/*
+ * Either empty rectangle is disjoint and does not observe stride extremes.
+ */
+unittest
+{
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            0,
+            size_t.max,
+
+            0,
+            ptrdiff_t.min,
+            ptrdiff_t.max,
+
+            size_t.max,
+            size_t.max,
+
+            size_t.max,
+            ptrdiff_t.max,
+            ptrdiff_t.min,
+
+            1
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+
+    assert(
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            size_t.max,
+            size_t.max,
+
+            0,
+            ptrdiff_t.min,
+            ptrdiff_t.max,
+
+            size_t.max,
+            0,
+
+            size_t.max,
+            ptrdiff_t.max,
+            ptrdiff_t.min,
+
+            1
+        )
+        == AffineByteOverlapRelation.disjoint
+    );
+}
+
+} // version (unittest)
