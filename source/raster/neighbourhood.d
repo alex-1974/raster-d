@@ -13,6 +13,9 @@ import raster.internal.affine_relation :
     affine2DMappingIsInjective,
     classifySameTypeAffine2DRectanglesByteOverlap;
 
+import raster.internal.neighbourhood_dispatch :
+    executeApprovedNeighbourhood3x3;
+
 import raster.region : Region2D;
 import raster.view : RasterView;
 import raster.writable_view : WritableRasterView;
@@ -312,6 +315,32 @@ nothrow
             break;
     }
 
+    if (
+        requiredSourceSampleStrideElements == 1
+        && destinationSampleStrideElements == 1
+    )
+    {
+        executeApprovedNeighbourhood3x3!kernel(
+            sourceBase,
+            requiredSourceRowStrideElements,
+            1,
+            1,
+            destination.width,
+            destination.height,
+            destinationBase,
+            destinationRowStrideElements
+        );
+
+        return true;
+    }
+
+
+    /*
+     * Generic validated affine fallback.
+     *
+     * Universal/sample-strided layouts retain the original semantic execution
+     * path. No layout support is removed by the M3.1 optimization.
+     */
     foreach (y; 0 .. destination.height)
     {
         foreach (x; 0 .. destination.width)
@@ -337,7 +366,9 @@ nothrow
             }
 
             const transformed =
-                invokeNeighbourhood3x3Kernel!kernel(neighbourhood);
+                invokeNeighbourhood3x3Kernel!kernel(
+                    neighbourhood
+                );
 
             const writeOk =
                 destination.trySetSample(
