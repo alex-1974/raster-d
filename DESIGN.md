@@ -263,7 +263,15 @@ docs/architecture/raster-operations.md
 ROADMAP.md
 ```
 
-The wider source/cache/scheduling architecture remains experimental. Image-domain APIs belong to the separate `imagery-d` project.
+Source, reuse/cache and scheduling architecture is promoted incrementally.
+
+Production now contains only the generic pieces justified by research:
+request/dependency geometry, caller-owned synchronous materialization,
+bounded residency accounting and the M1.5 package-internal bounded retained
+store. Replacement/eviction policy, cache-block selection, concurrency and
+scheduling remain experimental.
+
+Image-domain APIs belong to the separate `imagery-d` project.
 
 ## 5. Region-first processing
 
@@ -334,6 +342,48 @@ Retained/adopted source output is proven viable by R0.6 as a secondary path,
 but is not part of the first orchestration contract.
 
 A public RasterSource inheritance hierarchy is deliberately not introduced.
+
+### 6.1 Bounded retained reuse
+
+ADR 0007 and ADR 0008 promote only the storage-neutral parts of reusable
+retained raster data.
+
+The production model keeps three concerns separate:
+
+```text
+caller-owned semantic Key
+        |
+        v
+package-internal retained lookup/store
+        |
+        v
+typed RasterLease ownership
+```
+
+and independently:
+
+```text
+request / operation residency admission
+!=
+store-retained byte budget
+```
+
+The M1.5 retained store:
+
+- is generic over caller-owned Key;
+- does not define source, generation, schema or provider identity;
+- uses compile-time hash/equality specialization;
+- owns a fixed entry capacity and a separate retained physical-byte limit;
+- measures retained payload through the M1.4 backing-resource byte accounting;
+- returns independently retained RasterLease copies;
+- fails explicitly when duplicate, full, invalid or over its retained-byte
+  limit;
+- performs no automatic eviction.
+
+Provider tiles, cache-block geometry, replacement policy, concurrency and
+scheduling remain outside this contract.
+
+A public RasterCache or public key hierarchy is deliberately not introduced.
 
 ## 7. CPU optimisation strategy
 

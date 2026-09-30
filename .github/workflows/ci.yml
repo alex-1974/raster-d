@@ -111,3 +111,8 @@ jobs:
         shell: bash
         run: |
           bash tools/compile-negative/raster_residency_internal.sh "$DC"
+
+      - name: Raster retained-store internal-surface compile probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_retained_store_internal.sh "$DC"

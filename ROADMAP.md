@@ -416,6 +416,38 @@ Research provenance:
     raster-d-research main ae4dec5d9de4f8d8831d6e50954a851743fcaa4c
     Issue #3 / PR #4
 
+### M1.5 — Bounded generic retained store
+
+Status: complete.
+
+The completed cache-identity research establishes caller-owned semantic identity
+as the generic reuse boundary.
+
+The implemented production retained-store slice:
+
+- is generic over caller-owned Key;
+- stores typed RasterLease values;
+- specializes hash/equality at compile time;
+- has fixed entry capacity;
+- has a separate store-retained physical-byte limit;
+- rejects duplicate/full/invalid/over-budget insertion explicitly;
+- leaves rejected insertion state unchanged;
+- returns independently retained lease copies on lookup;
+- supports explicit clear of store-owned entries and accounting;
+- protects root and direct-internal surfaces with compile-negative probes;
+- defines no automatic eviction or replacement policy.
+
+The M1.4 ResidencyBudget remains a separate request/working-set admission
+contract and is not repurposed as a retained-store cache budget.
+
+Provider/source/schema identity types, cache-block geometry, concurrency and
+scheduling remain outside this slice.
+
+Research provenance:
+
+    raster-d-research main 3371e2f6474d5f3adee49d1741392598b30e81c9
+    Issue #5 / PR #6
+
 ---
 
 ## M2 — Fundamental Processing Primitives
