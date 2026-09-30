@@ -384,10 +384,13 @@ import raster.internal.materialization_plan :
 import raster.writable_view :
     WritableRasterView;
 
+import raster.region :
+    Region2D;
+
 struct ExternalSource
 {
     bool materializeInto(
-        import("raster.region").Region2D logicalRegion,
+        Region2D logicalRegion,
         scope WritableRasterView!ubyte destination
     )
     {
