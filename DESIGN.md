@@ -298,6 +298,45 @@ qualified in-place operation remains deferred.
 Runtime delegates, image-domain adjustment semantics, compiler-specific source
 forms, SIMD and threading are not part of this semantic API.
 
+M2.3 adds one fixed radius-one neighbourhood semantic through
+`tryApplyRasterNeighbourhood3x3!kernel()`.
+
+Its resident execution model is:
+
+```text
+already-materialized RasterView!T
+        +
+resident-relative sourceOutputRegion
+        +
+complete one-sample halo
+        +
+compile-time @safe pure nothrow @nogc nine-sample kernel
+        +
+injective physically disjoint WritableRasterView!T
+        ->
+same-type neighbourhood output
+```
+
+The operation does not derive logical dependencies. M1.1/M1.2 remain the
+authority for logical request expansion, ContextDeficit and resident-output
+planning. A caller may use a materialization plan's residentOutput as the
+source-relative output region after supplying complete resident context.
+
+M2.3 defines no clamp, mirror, wrap or constant border behavior. Missing
+resident context is an explicit operation failure. A higher layer may instead
+synthesize border samples according to an explicit policy before invoking the
+neighbourhood operation.
+
+The public kernel receives only a row-major nine-value snapshot; source
+pointers, strides, Mir types and execution-layout machinery remain internal.
+The required source rectangle is two samples wider and taller than the output,
+so the internal affine-relation layer supports exact differently shaped
+same-type rectangle overlap while retaining the old equal-shape relation for
+existing consumers.
+
+R0.5 compiler/layout-specific neighbourhood source forms remain M3 internal
+optimization work.
+
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text
