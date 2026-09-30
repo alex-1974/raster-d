@@ -326,7 +326,7 @@ Implement:
 
 ### M1.1 — Request/dependency geometry
 
-Status: implementation in progress.
+Status: complete.
 
 ADR 0004 defines the first production promotion from R0.3:
 
@@ -338,9 +338,30 @@ ADR 0004 defines the first production promotion from R0.3:
   geometry;
 - border policy remains outside dependency derivation.
 
-The first implementation slice is a package-internal checked dependency module
-with DMD/LDC coverage, followed by a concrete request/materialization planning
-consumer.
+The package-internal checked dependency module and its DMD/LDC/public-surface
+coverage are implemented.
+
+### M1.2 — Request-to-resident materialization planning
+
+Status: complete.
+
+ADR 0005 defines the metadata-only bridge from logical dependency geometry to
+resident descriptor geometry.
+
+The package-internal planner:
+
+- consumes M1.1 dependency derivation;
+- retains logical valid-input and context-deficit information;
+- rebases resident input geometry to descriptor origin (0, 0);
+- derives the output ROI inside resident storage from logical region
+  differences;
+- keeps large logical coordinates out of resident pointer geometry;
+- performs no allocation and introduces no source, cache, provider or scheduler
+  API.
+
+The next M1 slice may use this plan as the stable input to a concrete
+materialization/source boundary, subject to the separate R0.6 source-adapter
+research.
 
 ---
 
