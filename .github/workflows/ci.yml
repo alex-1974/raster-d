@@ -1,10 +1,12 @@
-name: CI
+name: Fast
 
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
+    branches:
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -20,52 +22,15 @@ jobs:
         include:
           - name: Linux x86-64 / DMD
             os: ubuntu-24.04
-            compiler: dmd
-            experimental: false
+            compiler: dmd-2.111.0
+            dub: 1.40.0
 
           - name: Linux x86-64 / LDC
             os: ubuntu-24.04
-            compiler: ldc
-            experimental: false
-
-          - name: Linux ARM64 / LDC
-            os: ubuntu-24.04-arm
-            compiler: ldc
-            experimental: false
-
-          - name: Windows x86-64 / DMD
-            os: windows-2025
-            compiler: dmd
-            experimental: false
-
-          - name: Windows x86-64 / LDC
-            os: windows-2025
-            compiler: ldc
-            experimental: false
-
-          - name: macOS x86-64 / DMD
-            os: macos-15-intel
-            compiler: dmd
-            experimental: false
-
-          - name: macOS x86-64 / LDC
-            os: macos-15-intel
-            compiler: ldc
-            experimental: false
-
-          - name: macOS ARM64 / LDC
-            os: macos-15
-            compiler: ldc
-            experimental: false
-
-          - name: Windows ARM64 / LDC
-            os: windows-11-arm
-            compiler: ldc
-            experimental: true
+            compiler: ldc-1.41.0
+            dub: 1.40.0
 
     runs-on: ${{ matrix.os }}
-
-    continue-on-error: ${{ matrix.experimental }}
 
     steps:
       - name: Checkout
@@ -75,28 +40,30 @@ jobs:
         uses: dlang-community/setup-dlang@v2
         with:
           compiler: ${{ matrix.compiler }}
+          dub: ${{ matrix.dub }}
           dc_format: shortname
 
       - name: Environment
         shell: bash
         run: |
-          echo "Runner OS:   $RUNNER_OS"
-          echo "Runner arch: $RUNNER_ARCH"
-          echo "DC:          $DC"
+          echo "Runner OS:         $RUNNER_OS"
+          echo "Runner arch:       $RUNNER_ARCH"
+          echo "Requested compiler: ${{ matrix.compiler }}"
+          echo "DC:                $DC"
           echo
 
-          "$DC" --version || true
+          "$DC" --version
           dub --version
 
       - name: Build
         shell: bash
         run: |
-          dub build
+          dub build --compiler="$DC"
 
       - name: Test
         shell: bash
         run: |
-          dub test
+          dub test --compiler="$DC"
 
       - name: Raster lifetime compile probes
         shell: bash
