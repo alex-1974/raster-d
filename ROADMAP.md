@@ -448,6 +448,35 @@ Research provenance:
     raster-d-research main 3371e2f6474d5f3adee49d1741392598b30e81c9
     Issue #5 / PR #6
 
+### M1.6 — Multi-block dependency resolution
+
+Status: implementation in progress.
+
+The next production bridge resolves one logical dependency from multiple
+caller-described retained/source blocks.
+
+The package-internal resolver:
+
+- accepts caller-owned block keys and logical block regions;
+- validates exact, pairwise-disjoint coverage before any source call or write;
+- performs retained-store lookup first;
+- materializes misses through a caller-supplied retained-source capability;
+- assembles only block/request intersections into one rebased caller-owned
+  resident destination;
+- supports multi-plane retained values;
+- treats retained-store insertion rejection as non-fatal to the current request;
+- records hit/miss/store-retention control-flow statistics;
+- introduces no block-size or block-selection policy.
+
+Provider geometry, cache replacement, scheduling, border policy and public
+source/cache APIs remain outside this slice.
+
+Research provenance:
+
+    R0.3b / E3.3 neighbourhood-halo equivalence
+    cache-boundary E7.3 / E7.4
+    cache-identity E8.1-E8.5
+
 ---
 
 ## M2 — Fundamental Processing Primitives
