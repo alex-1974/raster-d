@@ -388,24 +388,28 @@ public source metadata remain outside this slice.
 
 ### M1.4 — Bounded residency accounting
 
-Status: implementation in progress.
+Status: complete.
 
 The completed cache-boundary research in `raster-d-research` establishes that
 cache retention and total/request residency are separate accounting domains.
 
 The first production promotion is therefore deliberately narrower than a
-cache:
+cache.
 
-- physical retained raster-resource payload is counted from the backing's
+The implemented package-internal contract:
+
+- counts physical retained raster-resource payload from the backing's
   authoritative ResourceEntry byte lengths;
-- shared/interleaved physical allocations are counted once regardless of
-  logical plane count;
-- a package-internal residency byte budget admits and releases working-set
+- counts shared/interleaved physical allocations once regardless of logical
+  plane count;
+- provides a residency byte budget that admits and releases working-set
   obligations without overflow or underflow;
-- over-budget working sets fail explicitly;
-- zero-byte work consumes no budget;
-- cache identity, block geometry, replacement policy, provider identity,
-  concurrency and scheduling remain outside this slice.
+- rejects over-budget working sets explicitly without mutating accounting;
+- treats zero-byte work as valid and budget-neutral;
+- protects both root and direct-internal surfaces with compile-negative probes.
+
+Cache identity, block geometry, replacement policy, provider identity,
+concurrency and scheduling remain outside this slice.
 
 Research provenance:
 
