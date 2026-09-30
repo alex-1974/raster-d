@@ -667,13 +667,57 @@ Research provenance:
 
 ## M3 — CPU Performance
 
-Optimise proven hot paths using:
+Status: in progress.
 
-- LDC/LLVM;
-- SIMD-friendly loops;
-- layout specialisation;
-- multithreading;
-- reusable workspaces.
+Optimise proven hot paths using measured, replaceable internal execution forms
+without changing public raster semantics.
+
+### M3.1 — Canonical 3 x 3 neighbourhood fast path
+
+Status: complete.
+
+Completed research selects the current public M2.3 neighbourhood operation as
+the first Production hot-path optimization.
+
+The implemented execution strategy:
+
+- preserves the complete public
+  `tryApplyRasterNeighbourhood3x3!kernel()` API and error contract;
+- keeps all existing structural validation before execution;
+- dispatches sample-stride-one source/destination layouts to a package-internal
+  check-free Canonical executor;
+- retains the existing generic semantic path for Universal/sample-strided and
+  otherwise unqualified layouts;
+- keeps positive and negative Canonical row strides semantically supported;
+- uses a centralized compiler capability for one qualified specialization:
+  `float`, negative source row stride, LDC with frontend 2.111;
+- keeps DMD and later LDC frontend generations on the ordinary Canonical
+  executor until separate evidence justifies another source form;
+- introduces no public compiler/layout switch, handwritten SIMD or hidden
+  parallelism.
+
+Stable local XPS evidence for 2048 x 512 shows roughly:
+
+- DMD Canonical: 3.27-3.64x faster than the former public semantic loop;
+- LDC Canonical: 2.10-2.46x faster;
+- LDC negative-row out-of-line row kernel: a further 12-14% over integrated
+  Canonical;
+- DMD negative-row out-of-line form: neutral to materially worse.
+
+Final LDC 1.41 / LLVM 19.1.7 code generation confirms that the integrated
+versioning guard includes signed outer row stride and selects scalar execution
+for negative rows, while the row-local boundary preserves the eight-float AVX2
+loop.
+
+Research provenance:
+
+    raster-d-research main 5ff4f488919a3786ae0793977027e4b19081babf
+    Issue #12 / PR #13
+    docs/research/m3-production-hotpath-audit.md
+
+Later M3 slices may address fill, point transform, strict reduction, additional
+compiler generations, AArch64 and caller-owned parallel execution only after
+their own evidence.
 
 ---
 

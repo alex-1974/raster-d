@@ -541,6 +541,43 @@ Likely optimisation dimensions include:
 
 LDC/LLVM auto-vectorisation should be evaluated before explicit SIMD is used.
 
+M3.1 promotes the first measured public-operation fast path while preserving
+this separation.
+
+For `tryApplyRasterNeighbourhood3x3!kernel()`, the public M2.3 validation and
+error semantics remain authoritative. After successful validation:
+
+```text
+sampleStride == 1 for source and destination
+        -> package-internal Canonical executor
+
+otherwise
+        -> existing generic semantic executor
+```
+
+The Canonical executor uses already-approved pointers/row strides and performs
+no repeated per-sample view validation.
+
+Compiler-specific source-form selection is centralized. The first qualified
+specialization is deliberately narrow:
+
+```text
+T == float
+AND LDC
+AND D frontend == 2.111
+AND source row stride < 0
+        -> preserved out-of-line row-kernel boundary
+```
+
+Stable local benchmark and code-generation evidence shows that this boundary
+restores row-local vector execution for the qualified LDC generation while the
+same source form is not beneficial on DMD. Later LDC frontend generations do
+not inherit the specialization automatically.
+
+Universal/sample-strided layouts remain fully supported through the existing
+generic path. No public execution-layout, compiler, pointer or SIMD vocabulary
+is introduced.
+
 ## 8. Parallel execution
 
 Raster operations should not each invent their own threading model.

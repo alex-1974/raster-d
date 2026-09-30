@@ -121,3 +121,8 @@ jobs:
         shell: bash
         run: |
           bash tools/compile-negative/raster_block_resolution_internal.sh "$DC"
+
+      - name: Raster neighbourhood fast-path internal-surface compile probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_neighbourhood_fast_path_internal.sh "$DC"
