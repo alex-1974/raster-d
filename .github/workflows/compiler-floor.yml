@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
+      - 'hotfix/**'
   pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
