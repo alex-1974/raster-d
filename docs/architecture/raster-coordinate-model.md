@@ -164,6 +164,31 @@ or equivalent metadata.
 
 The exact higher-level type is intentionally not frozen here.
 
+## Request materialization planning
+
+ADR 0005 defines the package-internal metadata bridge between logical
+dependency geometry and resident descriptor geometry.
+
+For a logical output request and its derived valid input, the planner records:
+
+- the complete logical ExpandedDependency;
+- residentInput rebased to Region2D(0, 0, validInput.width, validInput.height);
+- residentOutput, which locates the requested output inside that resident input.
+
+Example:
+
+    logical output:  Region2D(1010, 2011, 4, 3)
+    logical input:   Region2D(1009, 2010, 6, 5)
+    resident input:  Region2D(0, 0, 6, 5)
+    resident output: Region2D(1, 1, 4, 3)
+
+The resident output offset is derived from the logical region difference.
+It is not inferred from requested halo margins because logical-edge clipping may
+reduce the materialized context on one or more sides.
+
+The planner is metadata-only. It does not allocate storage, create a
+RasterLease, define a source/provider interface or select a border policy.
+
 ## Why global coordinates are not stored in RasterView
 
 Keeping global placement outside RasterView has several advantages:
