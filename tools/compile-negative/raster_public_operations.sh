@@ -292,12 +292,48 @@ import raster :
     RasterTargetPlane,
     SameTypeRasterCopyError,
     SumReductionSemantics,
+    DependencyMargins,
+    ContextDeficit,
+    ExpandedDependency,
     UbyteToFloatConversionResult,
     convertUbyteToFloatRasterPlane,
     copySameTypeRasterPlane,
     tryMakeWritableRasterView,
     tryStrictFloatToDoubleSum;
 D
+
+    cat > "$tmp_dir/internal_dependency_surface.d" <<'D'
+module raster_public_operations_negative_internal_dependency_surface;
+
+import raster.internal.dependency :
+    ContextDeficit,
+    DependencyMargins,
+    ExpandedDependency,
+    tryExpandDependency;
+
+void invalidExternalDependencyUse()
+{
+    ExpandedDependency result;
+
+    const ok =
+        tryExpandDependency(
+            Region2D.init,
+            Region2D.init,
+            DependencyMargins.init,
+            result
+        );
+
+    ContextDeficit deficit = result.contextDeficit;
+
+    if (ok && deficit.left != 0)
+    {
+        assert(0);
+    }
+}
+
+import raster.region : Region2D;
+D
+
 
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
@@ -356,6 +392,7 @@ D
     fi
 
     compile_probe internal_umbrella_surface reject
+    compile_probe internal_dependency_surface reject
     compile_probe writable_escape reject
     compile_probe writable_global reject
 
