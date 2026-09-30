@@ -561,21 +561,25 @@ correctness implementation requires otherwise.
 
 ### M2.1 — Semantic raster-plane fill
 
-Status: implementation in progress.
+Status: complete.
 
 The first missing primitive is an exact same-type fill over one selected
 writable raster plane.
 
-The intended public contract:
+The implemented public contract:
 
 - is generic over every existing `isRasterSampleType!T`;
 - writes one exact `T` value without conversion, clamping or image semantics;
-- supports every validated writable resident layout;
+- supports contiguous, padded, interleaved and signed-stride writable layouts;
 - permits valid non-injective mappings because repeated writes of the same
   exact value are semantically idempotent;
+- supports POD struct samples in addition to numeric samples;
 - treats a valid empty plane as a successful no-op;
 - fails only for an invalid destination plane index;
 - allocates nothing and retains no operand;
+- exposes only `tryFillRasterPlane()`; execution details remain internal;
+- is qualified through root import and direct-internal rejection probes on DMD
+  and LDC;
 - introduces no scheduler, parallelism or public execution-layout API.
 
 R0.5 fill measurements are performance evidence only. They do not select a
