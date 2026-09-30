@@ -244,12 +244,30 @@ first write. Mir adapters, contiguous targets, affine relation machinery and
 defensive wide-arithmetic fallback remain replaceable internals.
 
 
-E5.4g.5 closes the public-operation boundary without adding another execution
-abstraction. External consumers see semantic raster views, lease-bound writable
-views and the three reviewed operations only. Lifetime probes require writable
-capabilities to remain tied to their leases; public operation probes compile
-through the umbrella package with named arguments; compile-negative probes keep
-raw certification and all execution/relation machinery inaccessible.
+E5.4g.5 closed the initial public-operation boundary without adding another
+execution abstraction. At that checkpoint external consumers saw semantic
+raster views, lease-bound writable views and the three reviewed E5.4 operations
+only. Lifetime probes require writable capabilities to remain tied to their
+leases; public operation probes compile through the umbrella package with named
+arguments; compile-negative probes keep raw certification and all
+execution/relation machinery inaccessible.
+
+M2.1 extends that reviewed public operation surface with
+`tryFillRasterPlane()`.
+
+Fill is generic over the existing raw raster sample contract and writes one
+exact `T` value into one selected writable plane. It introduces no numeric
+conversion or image interpretation.
+
+Unlike copy and conversion, fill does not require destination injectivity.
+Raster strides are expressed in elements of `T`, so distinct sample starts do
+not partially overlap; when several logical coordinates resolve to the same
+sample start, repeated writes of the same exact value are semantically
+idempotent.
+
+The current implementation is a scalar correctness path over the semantic
+WritableRasterView boundary. Compiler-specific source forms, SIMD and other
+fast paths remain internal M3 concerns.
 
 Detailed evidence and implementation sequencing are maintained in:
 
