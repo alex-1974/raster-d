@@ -145,7 +145,7 @@ struct TestSource
         Region2D logicalRegion,
         out RasterLease!ubyte lease
     )
-    @system
+    @trusted
     {
         lease =
             RasterLease!ubyte.init;
