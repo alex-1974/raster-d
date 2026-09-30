@@ -479,6 +479,40 @@ Research provenance:
     cache-boundary E7.3 / E7.4
     cache-identity E8.1-E8.5
 
+### M1.7 — Whole-vs-streamed production-stack equivalence
+
+Status: implementation in progress.
+
+This is a qualification slice rather than a new execution abstraction.
+
+The test harness drives the existing M1.1-M1.6 production machinery through:
+
+- whole-request execution;
+- horizontal strips;
+- vertical strips;
+- regular rectangular tasks;
+- deliberately irregular/T-junction tasks;
+- one-pixel tasks on a small fixture.
+
+Each task derives a one-pixel neighbourhood dependency, admits bounded
+task-local residency through M1.4, assembles the resident dependency through
+M1.6 using M1.5 retained reuse, executes an exact test-local 3 x 3 kernel, and
+reassembles only the requested output.
+
+The intended completion invariant is exact byte equality between whole and
+streamed output while preserving:
+
+- logical/resident coordinate separation;
+- explicit ContextDeficit at logical-image boundaries;
+- caller-owned block geometry;
+- separate request-residency and retained-store accounting;
+- no production ProcessingTask/Decomposition type;
+- no scheduler, worker pool or border policy.
+
+Research provenance:
+
+    R0.3b / E3.3 exact neighbourhood / halo equivalence
+
 ---
 
 ## M2 — Fundamental Processing Primitives
