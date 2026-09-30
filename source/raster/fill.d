@@ -436,8 +436,8 @@ unittest
     [
         PlaneDescriptor(
             storage.ptr,
-            ptrdiff_t.min,
-            ptrdiff_t.min
+            1,
+            1
         )
     ];
 
@@ -446,10 +446,10 @@ unittest
             resources[],
             descriptors[],
             Region2D(
-                size_t.max,
-                size_t.max,
                 0,
-                7
+                0,
+                0,
+                1
             )
         );
 
