@@ -269,6 +269,35 @@ The current implementation is a scalar correctness path over the semantic
 WritableRasterView boundary. Compiler-specific source forms, SIMD and other
 fast paths remain internal M3 concerns.
 
+M2.2 extends the public operation surface with
+`tryTransformRasterPlane!transform()`.
+
+The fundamental point-transform contract is deliberately generic and same-type:
+
+```text
+RasterView!T source plane
+        +
+compile-time @safe pure nothrow @nogc T -> T transform
+        +
+injective, physically disjoint WritableRasterView!T destination plane
+        ->
+transformed destination
+```
+
+Raster-d owns structural validation, layout traversal, lifetime/write
+capability and source/destination physical-relation checking. The supplied
+transform owns arithmetic and value semantics, including NaN/Inf behavior,
+signed zero, saturation if explicitly coded, and any fused or unfused
+floating-point expression graph.
+
+Matching empty planes succeed without transform invocation. Structural failures
+are detected before the first destination write. The first M2.2 contract rejects
+all source/destination overlap, including exact in-place mapping; a separately
+qualified in-place operation remains deferred.
+
+Runtime delegates, image-domain adjustment semantics, compiler-specific source
+forms, SIMD and threading are not part of this semantic API.
+
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text
