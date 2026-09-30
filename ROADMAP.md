@@ -324,6 +324,24 @@ Implement:
 - streamed processing;
 - whole-image/streamed equivalence tests.
 
+### M1.1 — Request/dependency geometry
+
+Status: design in progress.
+
+ADR 0004 defines the first production promotion from R0.3:
+
+- Region2D remains the shared public rectangular geometry value;
+- request-bounded dependency margins and context deficit are production
+  semantics;
+- dependency-specific types and helpers remain package-internal initially;
+- logical/global dependency geometry remains separate from resident RasterView
+  geometry;
+- border policy remains outside dependency derivation.
+
+The first implementation slice is a package-internal checked dependency module
+with DMD/LDC coverage, followed by a concrete request/materialization planning
+consumer.
+
 ---
 
 ## M2 — Fundamental Processing Primitives

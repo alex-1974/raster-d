@@ -269,18 +269,33 @@ The wider source/cache/scheduling architecture remains experimental. Image-domai
 
 The engine should be able to request and compute only the area actually needed.
 
-A desired model is:
+ADR 0004 promotes the R0.3 request-bounded dependency semantics into
+production architecture without introducing a new public API.
 
-    consumer requests output region
-                 ↓
-        operation determines dependencies
-                 ↓
-        required input region + halo
-                 ↓
-           source/cache request
+The production model is:
 
-Whether this becomes a demand-driven graph, an explicit region pipeline or
-another architecture will be decided during R0.
+    logical output request
+             |
+             v
+    operation dependency margins
+             |
+             v
+    valid logical input region
+             +
+    directional context deficit
+
+Logical/global request and dependency geometry remains separate from resident
+RasterView descriptor geometry.
+
+A context deficit records required logical context outside the valid extent.
+It does not select a border policy.
+
+Processing-task boundaries are not logical-image boundaries. Tasks may
+materialize overlapping halo input while producing disjoint output regions.
+
+Dependency margins, context deficit and dependency-derivation helpers remain
+package-internal initially. Region2D remains the public rectangular geometry
+value.
 
 Fixed tiles must not become an accidental limitation of the processing API.
 
