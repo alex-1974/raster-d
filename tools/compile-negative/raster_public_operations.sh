@@ -295,6 +295,7 @@ import raster :
     DependencyMargins,
     ContextDeficit,
     ExpandedDependency,
+    RequestMaterializationPlan,
     UbyteToFloatConversionResult,
     convertUbyteToFloatRasterPlane,
     copySameTypeRasterPlane,
@@ -332,6 +333,39 @@ void invalidExternalDependencyUse()
 }
 
 import raster.region : Region2D;
+D
+
+
+    cat > "$tmp_dir/internal_materialization_plan_surface.d" <<'D'
+module raster_public_operations_negative_internal_materialization_plan_surface;
+
+import raster.internal.materialization_plan :
+    RequestMaterializationPlan,
+    tryPlanRequestMaterialization;
+
+import raster.internal.dependency :
+    DependencyMargins;
+
+import raster.region :
+    Region2D;
+
+void invalidExternalMaterializationPlanUse()
+{
+    RequestMaterializationPlan plan;
+
+    const ok =
+        tryPlanRequestMaterialization(
+            Region2D.init,
+            Region2D.init,
+            DependencyMargins.init,
+            plan
+        );
+
+    if (ok && plan.residentInput.width != 0)
+    {
+        assert(0);
+    }
+}
 D
 
 
@@ -393,6 +427,7 @@ D
 
     compile_probe internal_umbrella_surface reject
     compile_probe internal_dependency_surface reject
+    compile_probe internal_materialization_plan_surface reject
     compile_probe writable_escape reject
     compile_probe writable_global reject
 
