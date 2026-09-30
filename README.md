@@ -146,8 +146,17 @@ packages are not compatible with current macOS 15 runners:
 | macOS ARM64 | — | 1.41.0 |
 | Windows ARM64 | experimental | experimental |
 
-Current DMD and LDC releases remain part of the normal CI matrix. See `RESEARCH.md` and the retained
-`docs/research/compiler-floor-audit.md` in raster-d-research for the evidence and boundary tests.
+Normal `develop` integration uses the controlled fast compiler floor:
+
+- DMD 2.111.0;
+- LDC 1.41.0.
+
+Release qualification additionally exercises the controlled compiler-generation
+matrix DMD 2.111.0 / 2.112.1 / 2.113.0 and LDC 1.41.0 / 1.42.0 / 1.43.0,
+plus the supported platform matrix and the minimum compiler-package floor.
+
+See `RESEARCH.md` and the retained `docs/research/compiler-floor-audit.md` in
+`raster-d-research` for the evidence and boundary tests.
 
 ## Workspace context
 
