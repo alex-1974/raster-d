@@ -361,13 +361,13 @@ The package-internal planner:
 - performs no allocation and introduces no source, cache, provider or scheduler
   API.
 
-The next M1 slice may use this plan as the stable input to a concrete
-materialization/source boundary, subject to the separate R0.6 source-adapter
+M1.3 uses this plan as the stable input to the concrete synchronous
+materialization/source boundary selected by the completed R0.6 source-adapter
 research.
 
 ### M1.3 — Synchronous caller-owned materialization
 
-Status: implementation in progress.
+Status: complete.
 
 ADR 0006 promotes the completed R0.6 source-boundary research into the first
 production materialization orchestration slice.
