@@ -254,6 +254,7 @@ raw certification and all execution/relation machinery inaccessible.
 Detailed evidence and implementation sequencing are maintained in:
 
 ```text
+raster-d-research repository:
 docs/research/memory-model.md
 docs/research/raster-core-types.md
 docs/architecture/raster-construction.md

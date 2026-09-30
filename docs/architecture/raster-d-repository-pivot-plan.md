@@ -114,7 +114,7 @@ in the same atomic migration.
 
 Known active consumers include:
 
-- `experiments/r0_3_regions_streaming`;
+- `raster-d-research/experiments/r0_3_regions_streaming`;
 - `tests/external/raster_import_link`.
 
 The external regression package itself should also use a `raster-d`-based

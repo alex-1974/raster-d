@@ -77,7 +77,7 @@ Establish benchmark metrics before optimising implementation.
 
 Deliverable:
 
-    docs/research/constraints.md
+    raster-d-research: docs/research/constraints.md
 
 ### R0.1 — Reference architecture research
 
@@ -106,7 +106,7 @@ Focus on:
 
 Deliverable:
 
-    docs/research/reference-engines.md
+    raster-d-research: docs/research/reference-engines.md
 
 ### R0.2 — Memory-model research
 
@@ -132,7 +132,7 @@ Prototype:
 
 Deliverable:
 
-    docs/research/memory-model.md
+    raster-d-research: docs/research/memory-model.md
 
 ### R0.3 — Region, dependency and streaming model
 
@@ -176,7 +176,7 @@ Research:
 
 Deliverable:
 
-    docs/research/execution.md
+    raster-d-research: docs/research/execution.md
 
 ### R0.5 — CPU and SIMD research
 
@@ -203,7 +203,7 @@ Compare:
 
 Deliverable:
 
-    docs/research/cpu-performance.md
+    raster-d-research: docs/research/cpu-performance.md
 
 ### R0.6 — Raster-source and adapter boundary research
 
@@ -225,7 +225,7 @@ policy outside the core library.
 
 Deliverable:
 
-    docs/research/io-sources.md
+    raster-d-research: docs/research/io-sources.md
 
 ### R0.7 — Representative raster workload corpus
 
