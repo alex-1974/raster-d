@@ -466,6 +466,280 @@ void invalidExternalFillDispatchUse()
 }
 D
 
+    cat > "$tmp_dir/point_transform_surface.d" <<'D'
+module raster_public_operations_point_transform_positive;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+@safe
+pure
+nothrow
+@nogc
+ubyte increment(ubyte value)
+{
+    return cast(ubyte)(value + 1);
+}
+
+@safe
+bool exercisePointTransform(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterTransformError error;
+
+    const ok =
+        tryTransformRasterPlane!increment(
+            sourceLease.view(),
+            0,
+            destination,
+            0,
+            error
+        );
+
+    return
+        !writableOk
+        || ok
+        || error != RasterTransformError.none;
+}
+D
+
+
+    cat > "$tmp_dir/point_transform_named_arguments.d" <<'D'
+module raster_public_operations_point_transform_named_arguments;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+@safe
+pure
+nothrow
+@nogc
+ubyte increment(ubyte value)
+{
+    return cast(ubyte)(value + 1);
+}
+
+@safe
+bool exercisePointTransformNamed(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            success: writableOk
+        );
+
+    RasterTransformError error;
+
+    const ok =
+        tryTransformRasterPlane!increment(
+            source: sourceLease.view(),
+            sourcePlaneIndex: 0,
+            destination: destination,
+            destinationPlaneIndex: 0,
+            error: error
+        );
+
+    return
+        !writableOk
+        || ok
+        || error != RasterTransformError.none;
+}
+D
+
+
+    cat > "$tmp_dir/point_transform_impure.d" <<'D'
+module raster_public_operations_point_transform_negative_impure;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+ubyte state;
+
+@safe
+nothrow
+@nogc
+ubyte impureTransform(ubyte value)
+{
+    state = value;
+    return value;
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterTransformError error;
+
+    tryTransformRasterPlane!impureTransform(
+        sourceLease.view(),
+        0,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/point_transform_throwing.d" <<'D'
+module raster_public_operations_point_transform_negative_throwing;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+@safe
+pure
+ubyte throwingTransform(ubyte value)
+{
+    if (value == 0)
+        throw new Exception("zero");
+
+    return value;
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterTransformError error;
+
+    tryTransformRasterPlane!throwingTransform(
+        sourceLease.view(),
+        0,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/point_transform_allocating.d" <<'D'
+module raster_public_operations_point_transform_negative_allocating;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+@safe
+pure
+nothrow
+ubyte allocatingTransform(ubyte value)
+{
+    auto storage = new ubyte[1];
+    storage[0] = value;
+    return storage[0];
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterTransformError error;
+
+    tryTransformRasterPlane!allocatingTransform(
+        sourceLease.view(),
+        0,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/point_transform_system.d" <<'D'
+module raster_public_operations_point_transform_negative_system;
+
+import raster :
+    RasterLease,
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+@system
+pure
+nothrow
+@nogc
+ubyte systemTransform(ubyte value)
+{
+    return value;
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterTransformError error;
+
+    tryTransformRasterPlane!systemTransform(
+        sourceLease.view(),
+        0,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
 
@@ -515,12 +789,20 @@ void invalidGlobal(
 D
 
     compile_probe public_surface pass
+    compile_probe point_transform_surface pass
 
     if compiler_supports_named_arguments; then
         compile_probe named_arguments pass
+        compile_probe point_transform_named_arguments pass
     else
         echo 'SKIP named_arguments: compiler does not support D named-argument syntax'
+        echo 'SKIP point_transform_named_arguments: compiler does not support D named-argument syntax'
     fi
+
+    compile_probe point_transform_impure reject
+    compile_probe point_transform_throwing reject
+    compile_probe point_transform_allocating reject
+    compile_probe point_transform_system reject
 
     compile_probe internal_umbrella_surface reject
     compile_probe internal_dependency_surface reject

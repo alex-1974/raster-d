@@ -587,11 +587,40 @@ production SIMD or compiler-specific implementation in M2.1.
 
 ### M2.2 — Point transforms
 
-Status: not started.
+Status: complete.
 
-Promote only a narrowly defined generic point-transform semantic after
-reviewing the existing R0.5 affine-transform evidence and the numerical/public
-API contract separately.
+Completed M2.2 research selected a same-type compile-time point transform rather
+than a built-in affine numeric operator.
+
+The implemented production contract:
+
+- exposes `RasterTransformError` and
+  `tryTransformRasterPlane!transform()`;
+- accepts a compile-time `alias transform` implementing `T -> T`;
+- requires the transform to be usable as `@safe pure nothrow @nogc`;
+- is generic over existing `isRasterSampleType!T`, including POD samples;
+- operates out-of-place from one RasterView plane to one WritableRasterView
+  plane;
+- requires equal logical shape and an injective destination;
+- rejects any physical source/destination sample-byte overlap before writing;
+- treats matching empty planes as success without invoking the transform;
+- performs no implicit conversion, clamping, saturation, FMA selection or
+  image-domain interpretation;
+- supports every validated signed affine resident layout;
+- uses the existing exact affine relation classifier plus an allocation-free
+  exact fallback for defensive relation-arithmetic failure;
+- keeps execution specialization and alias-relation machinery internal;
+- is qualified through root-import, named-argument and invalid-transform
+  compile probes on both required compilers.
+
+Exact in-place transforms, runtime-selected transforms, cross-type transforms
+and convenience affine/LUT APIs remain deferred.
+
+Research provenance:
+
+    raster-d-research main bf150645c0ed6e91d43e0fbda94f7a7bf80e2a1b
+    Issue #8 / PR #9
+    docs/research/m2-point-transform-contract.md
 
 ### M2.3 — Basic neighbourhood kernels
 

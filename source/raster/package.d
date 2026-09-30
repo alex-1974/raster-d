@@ -40,6 +40,10 @@ public import raster.reduction :
 public import raster.fill :
     tryFillRasterPlane;
 
+public import raster.transform :
+    RasterTransformError,
+    tryTransformRasterPlane;
+
 public import raster.copy :
     RasterCopyError,
     tryCopyRasterPlane;
