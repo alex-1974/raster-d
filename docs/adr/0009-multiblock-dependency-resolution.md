@@ -82,6 +82,30 @@ budget.
 
 Therefore store insertion failure is not request resolution failure.
 
+
+## Residency admission responsibility
+
+M1.6 does not silently reserve or reinterpret the M1.4 ResidencyBudget.
+
+The caller/orchestrator remains responsible for admitting the resident
+working set represented by:
+
+- the caller-owned destination;
+- any transient retained source-miss lease;
+- other operation-specific resident workspace.
+
+The retained-materialization capability must therefore be invoked only in a
+context whose residency policy permits that materialization.
+
+This preserves the established distinction:
+
+    request / operation residency admission
+    !=
+    store-retained byte budget
+
+M1.6 resolves already-admitted resident work; it does not become a hidden
+engine-level memory manager.
+
 ## Coordinate model
 
 Logical placement remains outside RasterView. Block placement and requested
