@@ -481,7 +481,7 @@ Research provenance:
 
 ### M1.7 — Whole-vs-streamed production-stack equivalence
 
-Status: implementation in progress.
+Status: complete.
 
 This is a qualification slice rather than a new execution abstraction.
 
@@ -499,7 +499,7 @@ task-local residency through M1.4, assembles the resident dependency through
 M1.6 using M1.5 retained reuse, executes an exact test-local 3 x 3 kernel, and
 reassembles only the requested output.
 
-The intended completion invariant is exact byte equality between whole and
+The completed qualification proves exact byte equality between whole and
 streamed output while preserving:
 
 - logical/resident coordinate separation;
@@ -508,6 +508,11 @@ streamed output while preserving:
 - separate request-residency and retained-store accounting;
 - no production ProcessingTask/Decomposition type;
 - no scheduler, worker pool or border policy.
+
+The qualification also covers non-zero and near-size_t.max logical origins,
+retained hit/miss reuse, task-local residency lower than whole-request
+residency for streamed decompositions, explicit logical-edge ContextDeficit,
+and empty-output zero-work planning on both DMD and LDC.
 
 Research provenance:
 
