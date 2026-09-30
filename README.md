@@ -39,6 +39,7 @@ The retained raster foundation includes:
 - strict `trySumFloatToDouble()`;
 - checked `tryCopyRasterPlane()`;
 - generic exact `tryFillRasterPlane()`;
+- generic compile-time `tryTransformRasterPlane!transform()`;
 - exact `tryConvertUbyteToFloatPlane()`.
 
 Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
