@@ -740,6 +740,306 @@ void invalidUse(
 D
 
 
+    cat > "$tmp_dir/neighbourhood_surface.d" <<'D'
+module raster_public_operations_neighbourhood_positive;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+@safe
+pure
+nothrow
+@nogc
+ubyte center(ref const(ubyte)[9] neighbourhood)
+{
+    return neighbourhood[4];
+}
+
+@safe
+bool exerciseNeighbourhood(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            writableOk
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    const ok =
+        tryApplyRasterNeighbourhood3x3!center(
+            sourceLease.view(),
+            0,
+            Region2D.init,
+            destination,
+            0,
+            error
+        );
+
+    return
+        !writableOk
+        || ok
+        || error != RasterNeighbourhood3x3Error.none;
+}
+D
+
+
+    cat > "$tmp_dir/neighbourhood_named_arguments.d" <<'D'
+module raster_public_operations_neighbourhood_named_arguments;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+@safe
+pure
+nothrow
+@nogc
+ubyte center(ref const(ubyte)[9] neighbourhood)
+{
+    return neighbourhood[4];
+}
+
+@safe
+bool exerciseNeighbourhoodNamed(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+
+    scope auto destination =
+        destinationLease.tryWritableView(
+            success: writableOk
+        );
+
+    RasterNeighbourhood3x3Error error;
+
+    const ok =
+        tryApplyRasterNeighbourhood3x3!center(
+            source: sourceLease.view(),
+            sourcePlaneIndex: 0,
+            sourceOutputRegion: Region2D.init,
+            destination: destination,
+            destinationPlaneIndex: 0,
+            error: error
+        );
+
+    return
+        !writableOk
+        || ok
+        || error != RasterNeighbourhood3x3Error.none;
+}
+D
+
+
+    cat > "$tmp_dir/neighbourhood_impure.d" <<'D'
+module raster_public_operations_neighbourhood_negative_impure;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+ubyte state;
+
+@safe
+nothrow
+@nogc
+ubyte impureKernel(ref const(ubyte)[9] neighbourhood)
+{
+    state = neighbourhood[4];
+    return neighbourhood[4];
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+    scope auto destination =
+        destinationLease.tryWritableView(writableOk);
+
+    RasterNeighbourhood3x3Error error;
+
+    tryApplyRasterNeighbourhood3x3!impureKernel(
+        sourceLease.view(),
+        0,
+        Region2D.init,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/neighbourhood_throwing.d" <<'D'
+module raster_public_operations_neighbourhood_negative_throwing;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+@safe
+pure
+ubyte throwingKernel(ref const(ubyte)[9] neighbourhood)
+{
+    if (neighbourhood[4] == 0)
+        throw new Exception("zero");
+
+    return neighbourhood[4];
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+    scope auto destination =
+        destinationLease.tryWritableView(writableOk);
+
+    RasterNeighbourhood3x3Error error;
+
+    tryApplyRasterNeighbourhood3x3!throwingKernel(
+        sourceLease.view(),
+        0,
+        Region2D.init,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/neighbourhood_allocating.d" <<'D'
+module raster_public_operations_neighbourhood_negative_allocating;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+@safe
+pure
+nothrow
+ubyte allocatingKernel(ref const(ubyte)[9] neighbourhood)
+{
+    auto storage = new ubyte[1];
+    storage[0] = neighbourhood[4];
+    return storage[0];
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+    scope auto destination =
+        destinationLease.tryWritableView(writableOk);
+
+    RasterNeighbourhood3x3Error error;
+
+    tryApplyRasterNeighbourhood3x3!allocatingKernel(
+        sourceLease.view(),
+        0,
+        Region2D.init,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/neighbourhood_system.d" <<'D'
+module raster_public_operations_neighbourhood_negative_system;
+
+import raster :
+    RasterLease,
+    RasterNeighbourhood3x3Error,
+    Region2D,
+    tryApplyRasterNeighbourhood3x3;
+
+@system
+pure
+nothrow
+@nogc
+ubyte systemKernel(ref const(ubyte)[9] neighbourhood)
+{
+    return neighbourhood[4];
+}
+
+@safe
+void invalidUse(
+    ref RasterLease!ubyte sourceLease,
+    ref RasterLease!ubyte destinationLease
+)
+{
+    bool writableOk;
+    scope auto destination =
+        destinationLease.tryWritableView(writableOk);
+
+    RasterNeighbourhood3x3Error error;
+
+    tryApplyRasterNeighbourhood3x3!systemKernel(
+        sourceLease.view(),
+        0,
+        Region2D.init,
+        destination,
+        0,
+        error
+    );
+}
+D
+
+
+    cat > "$tmp_dir/internal_asymmetric_relation_surface.d" <<'D'
+module raster_public_operations_negative_internal_asymmetric_relation_surface;
+
+import raster.internal.affine_relation :
+    classifySameTypeAffine2DRectanglesByteOverlap;
+
+void invalidExternalRelationUse()
+{
+    cast(void)
+        classifySameTypeAffine2DRectanglesByteOverlap(
+            1,
+            1,
+            0,
+            1,
+            1,
+            1,
+            1,
+            8,
+            1,
+            1,
+            1
+        );
+}
+D
+
+
     cat > "$tmp_dir/writable_escape.d" <<'D'
 module raster_public_operations_negative_writable_escape;
 
@@ -790,21 +1090,29 @@ D
 
     compile_probe public_surface pass
     compile_probe point_transform_surface pass
+    compile_probe neighbourhood_surface pass
 
     if compiler_supports_named_arguments; then
         compile_probe named_arguments pass
         compile_probe point_transform_named_arguments pass
+        compile_probe neighbourhood_named_arguments pass
     else
         echo 'SKIP named_arguments: compiler does not support D named-argument syntax'
         echo 'SKIP point_transform_named_arguments: compiler does not support D named-argument syntax'
+        echo 'SKIP neighbourhood_named_arguments: compiler does not support D named-argument syntax'
     fi
 
     compile_probe point_transform_impure reject
     compile_probe point_transform_throwing reject
     compile_probe point_transform_allocating reject
     compile_probe point_transform_system reject
+    compile_probe neighbourhood_impure reject
+    compile_probe neighbourhood_throwing reject
+    compile_probe neighbourhood_allocating reject
+    compile_probe neighbourhood_system reject
 
     compile_probe internal_umbrella_surface reject
+    compile_probe internal_asymmetric_relation_surface reject
     compile_probe internal_dependency_surface reject
     compile_probe internal_materialization_plan_surface reject
     compile_probe internal_materialization_surface reject

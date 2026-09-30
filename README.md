@@ -40,6 +40,7 @@ The retained raster foundation includes:
 - checked `tryCopyRasterPlane()`;
 - generic exact `tryFillRasterPlane()`;
 - generic compile-time `tryTransformRasterPlane!transform()`;
+- generic fixed 3 x 3 `tryApplyRasterNeighbourhood3x3!kernel()`;
 - exact `tryConvertUbyteToFloatPlane()`.
 
 Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
