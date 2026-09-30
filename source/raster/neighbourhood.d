@@ -10,8 +10,10 @@ module raster.neighbourhood;
 
 import raster.internal.affine_relation :
     AffineByteOverlapRelation,
-    affine2DMappingIsInjective,
-    classifySameTypeAffine2DRectanglesByteOverlap;
+    affine2DMappingIsInjective;
+
+import raster.internal.validated_affine_relation :
+    classifyValidatedSameTypeAffine2DRectanglesByteOverlap;
 
 import raster.internal.neighbourhood_dispatch :
     executeApprovedNeighbourhood3x3;
@@ -270,7 +272,7 @@ nothrow
     assert(sourceBase !is null);
     assert(destinationBase !is null);
 
-    final switch (classifySameTypeAffine2DRectanglesByteOverlap(
+    final switch (classifyValidatedSameTypeAffine2DRectanglesByteOverlap(
         requiredSource.width,
         requiredSource.height,
         cast(size_t) sourceBase,
@@ -1391,6 +1393,26 @@ unittest
         3,
         1
     ));
+}
+
+// Shared backing with overlapping envelopes and disjoint reachable bytes.
+unittest
+{
+    ubyte[18] storage;
+    foreach (y; 0 .. 3)
+    foreach (x; 0 .. 3) storage[6*y+2*x] = logicalNeighbourhoodValue(x,y);
+    const original = storage;
+    const PlaneDescriptor[1] src = [PlaneDescriptor(storage.ptr, 6, 2)];
+    const PlaneDescriptor[1] dst = [PlaneDescriptor(storage.ptr+1, 2, 2)];
+    const ResourceEntry[1] resources = [ResourceEntry(storage.ptr, storage.sizeof,
+        null, null, ResourceAccess.readWrite)];
+    scope auto source = makeRasterViewAssumeValidated!ubyte(src[], Region2D(0,0,3,3));
+    scope auto target = makeWritableNeighbourhoodTestView!ubyte(resources[], dst[], Region2D(0,0,1,1));
+    RasterNeighbourhood3x3Error error;
+    assert(tryApplyRasterNeighbourhood3x3!weightedNeighbourhood(
+        source, 0, Region2D(1,1,1,1), target, 0, error));
+    assert(storage[1] == neighbourhoodOracleAt(1,1));
+    foreach (i; 0 .. storage.length) if (i != 1) assert(storage[i] == original[i]);
 }
 
 } // version (unittest)

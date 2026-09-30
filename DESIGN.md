@@ -334,6 +334,16 @@ so the internal affine-relation layer supports exact differently shaped
 same-type rectangle overlap while retaining the old equal-shape relation for
 existing consumers.
 
+M3.2a adds a shared invocation-local checked byte-envelope prefilter for point
+transform and neighbourhood relations (ADR 0010). Disjoint half-open envelopes
+prove disjoint sample bytes. Overlapping or unrepresentable envelopes fall
+through to the unchanged exact algebraic classifier, including its
+`arithmeticFailure` result and each consumer's defensive enumeration fallback.
+The bounds calculation dereferences no pointers and establishes no ownership,
+exclusivity or persistent noalias fact. Neighbourhood uses the entire required
+halo rectangle. Copy and cross-type relation consumers retain their existing
+paths.
+
 R0.5 compiler/layout-specific neighbourhood source forms remain M3 internal
 optimization work.
 

@@ -721,6 +721,25 @@ their own evidence.
 
 ---
 
+## M3.2a — Checked affine bounds prefilter
+
+Implemented and qualified for same-type point transform and 3x3 neighbourhood
+in Issue #52, with the semantic decision recorded in ADR 0010.
+
+One package-internal wrapper proves disjointness from checked half-open physical
+bounds before invoking the existing exact relation classifier. Overlap and
+unrepresentable bounds preserve the exact classifier and defensive fallback.
+No public API or executor specialization is introduced.
+
+Research Gate 4 qualifies the consumer benefit on XPS i7-9750H with DMD 2.111
+and LDC 1.41; its pinned source and raw logs are recorded in BENCHMARK.md.
+Production adds an independent bounded oracle, integer-limit fixtures, sparse
+shared-backing regressions and external visibility probes to Fast/Release CI.
+Copy, cross-type relations and AArch64 performance remain separately qualified
+future work; research point-transform executor work (Issue #14) remains deferred.
+
+---
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
