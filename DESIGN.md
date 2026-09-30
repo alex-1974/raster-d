@@ -385,6 +385,56 @@ scheduling remain outside this contract.
 
 A public RasterCache or public key hierarchy is deliberately not introduced.
 
+### 6.2 Multi-block dependency resolution
+
+ADR 0009 adds the first production bridge from one logical dependency to
+multiple reusable retained/source blocks.
+
+The caller owns block selection and supplies:
+
+- semantic block keys;
+- logical block regions;
+- a retained store;
+- a retained-materialization source capability;
+- the caller-owned resident destination.
+
+The resolver validates that the block/request intersections exactly and
+pairwise-disjointly cover the requested logical dependency before any source
+call or destination write.
+
+Resolution then follows:
+
+```text
+caller-described block
+        |
+        +-- retained hit --------+
+        |                        |
+        `-- source miss ---------+
+                                 |
+                                 v
+                         intersection transfer
+                                 |
+                                 v
+                      rebased resident destination
+```
+
+A successfully materialized miss may satisfy the current request even when the
+retained store cannot keep that value because of entry or byte limits.
+
+Therefore:
+
+```text
+request resolution success
+!=
+store retention success
+```
+
+M1.6 defines no cache-block size, block-selection policy, provider mapping,
+eviction/replacement rule or scheduler.
+
+The current transfer loop is a correctness reference path. Later ROI/copy
+specialisation may replace it without changing the semantic contract.
+
 ## 7. CPU optimisation strategy
 
 The engine should support both:
