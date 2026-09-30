@@ -674,12 +674,12 @@ without changing public raster semantics.
 
 ### M3.1 — Canonical 3 x 3 neighbourhood fast path
 
-Status: implementation in progress.
+Status: complete.
 
 Completed research selects the current public M2.3 neighbourhood operation as
 the first Production hot-path optimization.
 
-The promoted execution strategy:
+The implemented execution strategy:
 
 - preserves the complete public
   `tryApplyRasterNeighbourhood3x3!kernel()` API and error contract;
