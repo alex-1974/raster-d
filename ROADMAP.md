@@ -757,7 +757,7 @@ scope and variance; AArch64 performance remains unqualified.
 
 ## M3.3 — Generic Canonical fill executor
 
-Implemented for review in Issue #56 after Research Issue #17's 2026-10-01 XPS
+Completed in Issue #56 / PR #57 after Research Issue #17's 2026-10-01 XPS
 qualification. ADR 0012 selects one generic safe row-slice assignment executor
 for sample stride one. Trust is limited to validated row/slice construction.
 Legal repeated and overlapping rows remain supported without an injectivity
@@ -768,6 +768,46 @@ float fill cases and external visibility/actual-source trust controls in
 Fast/Release CI. BENCHMARK.md records the consistent DMD ubyte benefit, measured
 LDC tradeoffs and substantial variance. No compiler specialization, manual SIMD,
 threading or AArch64 performance claim is introduced.
+
+---
+
+## M3.4 — Strict row-major reduction baseline
+
+Status: x86_64 VM/XPS baseline qualification complete; no executor change.
+Research integration is pending [Research PR #20](https://github.com/alex-1974/raster-d-research/pull/20).
+Evidence is pinned at `1a5f28d2183094e339c0e7d791a67672892888f1` against
+Production `1671fb2e51a7b1e7311f78f575d9457e9f279fd4`.
+
+The complete public consumer is compared with same-order Pointer/Slice and a
+separately compiled strict C++ execution reference. Every path preserves one
+double accumulator and logical row-major float-to-double additions. All six
+XPS processes pass 42 timed and 56 extra semantic cases plus invalid/empty,
+out-zero and cancellation controls; backing fingerprints agree. Both baseline
+compilers pass inherited tests and actual-source trust probes.
+
+KEEP the existing scalar Mir layout executor. LDC is near parity with all
+references. DMD Pointer shows a layout-specific benefit on large padded,
+negative and repeated rows; Slice regresses on contiguous data. Defer the DMD
+specialization to [Research Issue #21](https://github.com/alex-1974/raster-d-research/issues/21)
+for controlled confirmation. Fixed-lane/reassociated sums remain distinct
+numeric semantics, not strict substitutes. BENCHMARK.md records scope,
+variance and C++/backend limits; no portable parity or AArch64 claim is made.
+
+### Remaining M3 qualification
+
+M3 remains in progress. The next operation audit is same-type copy and exact
+`ubyte -> float` conversion against complete public consumers and explicitly
+scoped references. It must preserve signed/sample-strided layouts, injective
+destination validation, exact sample-byte overlap rejection before writes,
+shared but disjoint backing, source preservation and empty/error behavior.
+Copy and cross-type affine prefilters require their own evidence; M3.2a does
+not automatically qualify them.
+
+AArch64 and additional compiler-generation performance remain open. Targeted
+DMD reduction confirmation is tracked separately and is not a prerequisite
+for every subsequent audit. Caller-owned parallel execution requires a
+concrete consumer and separate evidence. No feature/API freeze, release
+version or release-completion decision is implied by these M3 results.
 
 ---
 

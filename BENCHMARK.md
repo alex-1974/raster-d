@@ -304,3 +304,57 @@ repeated writes to shared physical samples, not independent-memory bandwidth.
 Tiny cases can lie below timer resolution; zero-median ratios are omitted.
 These are end-to-end observations, not precise portable promises or timing
 thresholds. AArch64 performance remains unqualified.
+
+## M3.4 strict row-major reduction qualification
+
+Production baseline `1671fb2e51a7b1e7311f78f575d9457e9f279fd4` already selects
+scalar Mir kernels by layout. [Research PR #20](https://github.com/alex-1974/raster-d-research/pull/20)
+compares its complete public consumer with mechanically pinned Pointer/Slice
+candidates and a separately compiled C++ execution reference. Research
+integration remains pending; immutable evidence commit
+`1a5f28d2183094e339c0e7d791a67672892888f1` preserves the
+[XPS record](https://github.com/alex-1974/raster-d-research/tree/1a5f28d2183094e339c0e7d791a67672892888f1/experiments/m3_strict_reduction/evidence/2026-10-01-xps)
+and [full qualification](https://github.com/alex-1974/raster-d-research/blob/1a5f28d2183094e339c0e7d791a67672892888f1/docs/research/m3-strict-reduction.md).
+
+Every path uses one double accumulator across rows, adding widened float
+samples in logical row-major order. Fixed-lane sums, reassociation and row
+subtotals are excluded. The C++ reference accepts already-validated geometry:
+it omits D layout/Mir adaptation and adds a C ABI call. It is not an
+independently audited complete raster library. Flags disable fast-math,
+contraction and LTO; both D binaries link the same C++ object.
+
+XPS i7-9750H, affinity CPU 0, frequency/thermal controls unchanged;
+DMD 2.111.0, LDC 1.41.0 / LLVM 19.1.7, DUB 1.40.0, G++ 15.2.0.
+The diagnostic EPYC VM used LLVM 20.1.5 and G++ 13.3.0, so cross-host changes
+do not isolate CPU effects. Two warmups precede twelve cyclic-order samples
+per path, placing each path in each position three times. Six fixed-binary
+processes produce 12,096 timed calls with result/backing checks outside timers.
+All processes pass 42 timed cases, 56 extra semantic cases and
+invalid/empty/out-zero/cancellation controls. Finite values, infinities and
+signed zero compare bitwise; NaNs compare class without a portable payload
+promise. Source fingerprints include padding/guards. Inherited tests and
+actual-source trust challenges pass on both compilers. All 19 archive checksum
+entries pass and the original summary reproduces byte-for-byte.
+
+Large Canonical contiguous/padded/negative/repeated-row cases, both corpora:
+
+| Compiler | Public/Pointer | Public/Slice | Public/C++ reference |
+| --- | --- | --- | --- |
+| DMD | 0.992–1.151x | 0.879–1.050x | 1.010–1.170x |
+| LDC | 0.982–1.022x | 0.978–1.020x | 0.981–1.024x |
+
+Ratios above one favor the reference. LDC is near parity. Every paired large
+DMD padded/negative/repeated-row run and both corpora favor Pointer
+(1.097–1.151x, about 8.8–13.1% less time); contiguous Pointer is near parity.
+DMD contiguous Slice takes about 9.5–13.8% more time. Large process spread
+maxima for public/Pointer/Slice/C++ are 11.76%/12.64%/12.75%/10.61% on DMD
+and 7.94%/7.17%/7.30%/7.18% on LDC. Spreads are not confidence intervals.
+
+KEEP the existing Production executor as the qualified default. A generic
+replacement is unjustified, while the DMD layout-specific Pointer benefit is
+an explicit opportunity. [Research Issue #21](https://github.com/alex-1974/raster-d-research/issues/21)
+requires controlled targeted confirmation before a DMD-only trusted executor
+is introduced: the benefit is of similar scale to process variability and was
+not stable in the VM matrix. Accept the scoped DMD trade-off for the current
+audit; do not claim all optimization is exhausted or universal C++ parity.
+AArch64 remains unqualified and no CI timing threshold is introduced.

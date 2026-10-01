@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for M3.3 implementation review (Issue #56).
+Accepted and implemented (Issue #56 / PR #57, merged 2026-10-01).
 
 ## Context
 
