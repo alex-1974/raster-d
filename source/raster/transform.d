@@ -15,6 +15,9 @@ import raster.internal.affine_relation :
 import raster.internal.validated_affine_relation :
     classifyValidatedSameTypeAffine2DByteOverlap;
 
+import raster.internal.transform_dispatch :
+    executeApprovedCanonicalPointTransform;
+
 import raster.view :
     RasterView;
 
@@ -345,6 +348,19 @@ nothrow
 
             break;
     }
+
+
+    if (executeApprovedCanonicalPointTransform!transform(
+        sourceBase,
+        sourceRowStrideElements,
+        sourceSampleStrideElements,
+        source.width,
+        source.height,
+        destinationBase,
+        destinationRowStrideElements,
+        destinationSampleStrideElements
+    ))
+        return true;
 
 
     foreach (y; 0 .. source.height)
@@ -1231,6 +1247,108 @@ unittest
     {
         assert(storage[2*i] == i);
         assert(storage[2*i+1] == i+1);
+    }
+}
+
+
+// The accepted Canonical executor and Universal reference traversal produce
+// the same logical values and leave all unreachable storage samples untouched.
+private struct TransformTestPod
+{
+    uint first;
+    ushort second;
+    ubyte third;
+    ubyte fourth;
+}
+static assert(TransformTestPod.sizeof == 8);
+
+private float transformLayoutValue(float value) @safe pure nothrow @nogc
+{ return value * 1.25f + 0.375f; }
+private ubyte transformLayoutValue(ubyte value) @safe pure nothrow @nogc
+{ return cast(ubyte)((value * 37 + 11) % 251); }
+private TransformTestPod transformLayoutValue(TransformTestPod value) @safe pure nothrow @nogc
+{ return TransformTestPod(value.first ^ 0xa5a55a5a, cast(ushort)(value.second+17), value.fourth, value.third); }
+
+private T transformTestValue(T)(size_t x, size_t y) @safe pure nothrow @nogc
+{
+    static if (is(T == float)) return cast(float)(x*37+y*53)*0.00025f;
+    else static if (is(T == ubyte)) return cast(ubyte)((x*37+y*53)%251);
+    else return TransformTestPod(cast(uint)(x*37+y*53),cast(ushort)(x+y),cast(ubyte)x,cast(ubyte)y);
+}
+
+private void checkTransformLayoutMatrix(T)()
+{
+    enum size_t width = 4, height = 3, sourcePitch = 12, targetPitch = 14;
+    foreach (negativeSource; [false, true])
+    foreach (negativeTarget; [false, true])
+    foreach (step; [1, 2])
+    foreach (negativeSamples; [false, true])
+    {
+        T[sourcePitch*height] input;
+        T[targetPitch*height] output;
+        T[targetPitch*height] expected;
+        const sentinel = transformTestValue!T(99,99);
+        input[] = sentinel;
+        output[] = sentinel;
+        expected[] = sentinel;
+        size_t index(size_t x, size_t y, size_t pitch, bool negativeRows)
+        {
+            return (negativeRows ? height-1-y : y)*pitch
+                + (negativeSamples ? width-1-x : x)*step;
+        }
+        foreach (y; 0 .. height) foreach (x; 0 .. width)
+        {
+            input[index(x,y,sourcePitch,negativeSource)] = transformTestValue!T(x,y);
+            expected[index(x,y,targetPitch,negativeTarget)] = transformLayoutValue(transformTestValue!T(x,y));
+        }
+        const original = input;
+        const sr = negativeSource ? -cast(ptrdiff_t)sourcePitch : cast(ptrdiff_t)sourcePitch;
+        const dr = negativeTarget ? -cast(ptrdiff_t)targetPitch : cast(ptrdiff_t)targetPitch;
+        const sx = negativeSamples ? -cast(ptrdiff_t)step : cast(ptrdiff_t)step;
+        const PlaneDescriptor[1] sd = [PlaneDescriptor(input.ptr+index(0,0,sourcePitch,negativeSource),sr,sx)];
+        const PlaneDescriptor[1] dd = [PlaneDescriptor(output.ptr+index(0,0,targetPitch,negativeTarget),dr,sx)];
+        const ResourceEntry[1] resources = [ResourceEntry(output.ptr,output.sizeof,null,null,ResourceAccess.readWrite)];
+        scope auto source = makeRasterViewAssumeValidated!T(sd[],Region2D(0,0,width,height));
+        scope auto target = makeWritableTransformTestView!T(resources[],dd[],Region2D(0,0,width,height));
+        RasterTransformError error;
+        assert(tryTransformRasterPlane!transformLayoutValue(source,0,target,0,error));
+        assert(error == RasterTransformError.none);
+        assert(output == expected);
+        assert(input == original);
+    }
+}
+
+unittest
+{
+    checkTransformLayoutMatrix!float();
+    checkTransformLayoutMatrix!ubyte();
+    checkTransformLayoutMatrix!TransformTestPod();
+}
+
+private float transformFloatIdentity(float value) @safe pure nothrow @nogc
+{ return value; }
+
+unittest
+{
+    // Value-only identity preserves signed zero and the input NaN payload.
+    union FloatBits { float value; uint bits; }
+    FloatBits nanValue;
+    nanValue.bits = 0x7fc12345;
+    float[8] input = [0.0f,-0.0f,float.infinity,-float.infinity,nanValue.value,
+        float.min_normal,-float.min_normal,1.0f];
+    float[8] output;
+    const PlaneDescriptor[1] sd = [PlaneDescriptor(input.ptr,8,1)];
+    const PlaneDescriptor[1] dd = [PlaneDescriptor(output.ptr,8,1)];
+    const ResourceEntry[1] resources = [ResourceEntry(output.ptr,output.sizeof,null,null,ResourceAccess.readWrite)];
+    scope auto source = makeRasterViewAssumeValidated!float(sd[],Region2D(0,0,8,1));
+    scope auto target = makeWritableTransformTestView!float(resources[],dd[],Region2D(0,0,8,1));
+    RasterTransformError error;
+    assert(tryTransformRasterPlane!transformFloatIdentity(source,0,target,0,error));
+    foreach (i; 0 .. input.length)
+    {
+        FloatBits a,b;
+        a.value = input[i]; b.value = output[i];
+        assert(a.bits == b.bits);
     }
 }
 

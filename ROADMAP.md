@@ -736,7 +736,22 @@ and LDC 1.41; its pinned source and raw logs are recorded in BENCHMARK.md.
 Production adds an independent bounded oracle, integer-limit fixtures, sparse
 shared-backing regressions and external visibility probes to Fast/Release CI.
 Copy, cross-type relations and AArch64 performance remain separately qualified
-future work; research point-transform executor work (Issue #14) remains deferred.
+future work. The separate point-transform executor qualification follows in M3.2b.
+
+---
+
+## M3.2b — Generic Canonical point-transform executor
+
+Implemented for review in Issue #54, following research Issue #14 and its
+2026-10-01 XPS qualification. ADR 0011 selects one generic pointer executor
+for matching validated sample strides of one, including signed padded rows.
+The existing Universal traversal and all public validation/error semantics stay
+in force. No compiler-specific dispatch, SIMD or threading is introduced.
+
+Production coverage adds 48 public float/ubyte/POD layout cases, bitwise special
+float identity checks, a no-access dispatch-decline test and actual-source trust
+and external visibility probes in Fast/Release CI. BENCHMARK.md records measured
+scope and variance; AArch64 performance remains unqualified.
 
 ---
 

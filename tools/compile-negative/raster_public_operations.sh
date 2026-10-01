@@ -224,6 +224,7 @@ import raster :
     WritableRasterView,
     tryConvertUbyteToFloatPlane,
     tryCopyRasterPlane,
+    tryFillRasterPlane,
     trySumFloatToDouble;
 
 @safe
