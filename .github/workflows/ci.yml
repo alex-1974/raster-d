@@ -137,3 +137,9 @@ jobs:
         run: |
           tools/compile-negative/raster_transform_dispatch_internal.sh "$DC"
           tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"
+
+      - name: Fill executor visibility and trust probes
+        shell: bash
+        run: |
+          tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
+          tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
