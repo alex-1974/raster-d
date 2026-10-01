@@ -10,8 +10,10 @@ module raster.transform;
 
 import raster.internal.affine_relation :
     AffineByteOverlapRelation,
-    affine2DMappingIsInjective,
-    classifySameTypeAffine2DByteOverlap;
+    affine2DMappingIsInjective;
+
+import raster.internal.validated_affine_relation :
+    classifyValidatedSameTypeAffine2DByteOverlap;
 
 import raster.view :
     RasterView;
@@ -294,7 +296,7 @@ nothrow
 
 
     final switch (
-        classifySameTypeAffine2DByteOverlap(
+        classifyValidatedSameTypeAffine2DByteOverlap(
             source.width,
             source.height,
 
@@ -1210,6 +1212,26 @@ unittest
             1
         )
     );
+}
+
+// Shared backing with overlapping envelopes and disjoint reachable bytes.
+unittest
+{
+    ubyte[16] storage;
+    foreach (i; 0 .. 8) storage[2*i] = cast(ubyte)i;
+    const PlaneDescriptor[1] src = [PlaneDescriptor(storage.ptr, 8, 2)];
+    const PlaneDescriptor[1] dst = [PlaneDescriptor(storage.ptr+1, 8, 2)];
+    const ResourceEntry[1] resources = [ResourceEntry(storage.ptr, storage.sizeof,
+        null, null, ResourceAccess.readWrite)];
+    scope auto source = makeRasterViewAssumeValidated!ubyte(src[], Region2D(0,0,4,2));
+    scope auto target = makeWritableTransformTestView!ubyte(resources[], dst[], Region2D(0,0,4,2));
+    RasterTransformError error;
+    assert(tryTransformRasterPlane!incrementByte(source, 0, target, 0, error));
+    foreach (i; 0 .. 8)
+    {
+        assert(storage[2*i] == i);
+        assert(storage[2*i+1] == i+1);
+    }
 }
 
 } // version (unittest)

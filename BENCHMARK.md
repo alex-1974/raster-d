@@ -204,3 +204,29 @@ stable reference-machine timing
 Relative comparisons within the same hosted runner and process may be useful
 for detecting large algorithmic differences, but they must not initially
 produce hard regression thresholds.
+
+## M3.2a affine bounds qualification
+
+The production decision is limited to the shared checked relation prefilter
+used by same-type transform and neighbourhood; it does not select a new executor.
+
+Pinned research: [Issue #15](https://github.com/alex-1974/raster-d-research/issues/15),
+head `59dcdbb8098e070f3ae2d8c75c8de1a766889f0e`,
+[Gate 4 and raw XPS evidence](https://github.com/alex-1974/raster-d-research/tree/59dcdbb8098e070f3ae2d8c75c8de1a766889f0e/experiments/m3_affine_consumer/evidence/2026-09-30-xps).
+The harness uses pinned production consumers with only their relation predicate
+changed, alternating A/B order, two warmups and nine samples. Every call checks
+complete output and padding outside the timer. Three independent processes per
+compiler passed all 72 cases (1,296 timed calls) with matching hashes.
+
+On XPS i7-9750H, large 2048x512 outputs across all four source/target row-sign
+combinations had these baseline/candidate median ratios across the three runs:
+
+| Consumer | DMD 2.111 | LDC 1.41 / LLVM 19.1.7 |
+| --- | --- | --- |
+| Point transform | 9.765–10.141x | 11.350–11.796x |
+| Neighbourhood 3x3 | 1.322–1.391x | 1.955–2.027x |
+
+These are end-to-end consumer measurements, not kernel-only throughput claims.
+Small Universal cases are correctness coverage with noisy timings, not a tight
+performance gate. AArch64 and cross-type performance are unqualified. Production
+CI checks semantics and internal visibility rather than machine-dependent timing.
