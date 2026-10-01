@@ -298,6 +298,14 @@ qualified in-place operation remains deferred.
 Runtime delegates, image-domain adjustment semantics, compiler-specific source
 forms, SIMD and threading are not part of this semantic API.
 
+M3.2b executes validated Canonical point transforms through one package-internal
+generic row/pointer executor after all structural and physical-relation checks.
+Both sample strides must be one; signed row strides and padding are supported.
+Universal layouts retain the original checked traversal. The narrow trusted
+pointer loop invokes the caller's transform through an `@safe pure nothrow
+@nogc` value-only helper; expression semantics and ownership remain unchanged.
+ADR 0011 records the qualification and trust boundary.
+
 M2.3 adds one fixed radius-one neighbourhood semantic through
 `tryApplyRasterNeighbourhood3x3!kernel()`.
 

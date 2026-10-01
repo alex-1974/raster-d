@@ -131,3 +131,9 @@ jobs:
         shell: bash
         run: |
           tools/compile-negative/raster_validated_affine_relation_internal.sh "$DC"
+
+      - name: Point-transform executor visibility and trust probes
+        shell: bash
+        run: |
+          tools/compile-negative/raster_transform_dispatch_internal.sh "$DC"
+          tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"

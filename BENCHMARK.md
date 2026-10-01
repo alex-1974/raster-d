@@ -230,3 +230,39 @@ These are end-to-end consumer measurements, not kernel-only throughput claims.
 Small Universal cases are correctness coverage with noisy timings, not a tight
 performance gate. AArch64 and cross-type performance are unqualified. Production
 CI checks semantics and internal visibility rather than machine-dependent timing.
+
+## M3.2b Canonical point-transform executor qualification
+
+The independent executor comparison starts from production `b263477bdbbe0dc3e8c469ac3867eda345ba364c`,
+after the M3.2a bounds prefilter. Pinned research:
+[Issue #14](https://github.com/alex-1974/raster-d-research/issues/14),
+head `e88443926f87dfd7c1068369bf9f5035bb6156e6`,
+[raw XPS evidence and qualified summary](https://github.com/alex-1974/raster-d-research/tree/e88443926f87dfd7c1068369bf9f5035bb6156e6/experiments/m3_transform_executor/evidence/2026-10-01-xps).
+
+The XPS i7-9750H run uses CPU affinity 0, DMD 2.111 and LDC 1.41 / LLVM 19.1.7,
+without frequency/thermal controls. Three independent fixed-binary processes
+per compiler pass all 41 cases and special-float checks, with matching output
+hashes. Public baseline, generic pointer and safe row-slice candidates rotate
+order over nine samples after two warmups. Every call verifies full output,
+padding and source preservation outside the timer (6,642 timed calls).
+
+For large 2048x512 outputs, across four padded row-sign combinations and the
+contiguous case, public-baseline/pointer median ratios span:
+
+| Sample type | DMD 2.111 | LDC 1.41 / LLVM 19.1.7 |
+| --- | --- | --- |
+| float | 17.433–24.001x | 8.209–12.974x |
+| ubyte | 9.015–9.475x | 5.751–37.896x |
+
+Pointer beats slice in every paired large DMD case: slice/pointer ratios are
+1.764–2.398 for float and 1.212–1.273 for ubyte. LDC has no stable material
+slice advantage. M3.2b therefore selects one generic pointer executor, including
+POD samples, without compiler-specific source selection.
+
+These are end-to-end consumer measurements. Inter-process spread reaches 46.56%
+for large DMD float pointer cases; exact speedup promises and portable timing
+thresholds are unsupported. Small Universal cases qualify correctness, not
+performance. AArch64 performance remains unqualified. The original collector's
+hardcoded container label is preserved in raw SUMMARY.md and corrected only in
+QUALIFIED_SUMMARY.md; numeric results are unchanged. CI checks semantics,
+visibility and the actual-source trust boundary rather than timing.
