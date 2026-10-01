@@ -527,4 +527,82 @@ unittest
     }
 }
 
+private struct FillTestPod { uint a; ushort b; ubyte c; ubyte d; }
+static assert(FillTestPod.sizeof == 8);
+
+private T fillMatrixValue(T)(bool sentinel)
+{
+    static if (is(T == float)) return sentinel ? -0.875f : 1.375f;
+    else static if (is(T == ubyte)) return sentinel ? 13 : 179;
+    else return sentinel ? FillTestPod(7,11,13,17) : FillTestPod(0xa5a55a5a,1234,91,137);
+}
+
+private void checkFillLayouts(T)()
+{
+    // Independent storage oracle covers Canonical and Universal traversal,
+    // including the legal non-injective mappings that transform rejects.
+    foreach (layout; 0 .. 10)
+    {
+        ptrdiff_t sr = 8, sx = 1;
+        switch (layout)
+        {
+            case 0: sr = 4; break;
+            case 1: break;
+            case 2: sr = -8; break;
+            case 3: sr = 0; break;
+            case 4: sr = 2; break;
+            case 5: sr = -2; break;
+            case 6: sx = 2; sr = 12; break;
+            case 7: sx = -2; sr = -12; break;
+            case 8: sx = 0; sr = 3; break;
+            case 9: sx = 0; sr = 0; break;
+            default: assert(0);
+        }
+        T[64] storage, expected;
+        storage[] = fillMatrixValue!T(true);
+        expected[] = fillMatrixValue!T(true);
+        const value = fillMatrixValue!T(false);
+        const ptrdiff_t offset = 8 + (sr < 0 ? -2*sr : 0) + (sx < 0 ? -3*sx : 0);
+        foreach (y; 0 .. 3) foreach (x; 0 .. 4)
+            expected[cast(size_t)(offset + cast(ptrdiff_t)y*sr + cast(ptrdiff_t)x*sx)] = value;
+        const PlaneDescriptor[1] ds = [PlaneDescriptor(storage.ptr+offset,sr,sx)];
+        const ResourceEntry[1] rs = [ResourceEntry(storage.ptr,storage.sizeof,null,null,ResourceAccess.readWrite)];
+        scope auto view = makeWritableTestView!T(rs[],ds[],Region2D(0,0,4,3));
+        assert(tryFillRasterPlane(view,0,value));
+        assert(storage == expected);
+    }
+}
+
+unittest
+{
+    checkFillLayouts!float();
+    checkFillLayouts!ubyte();
+    checkFillLayouts!FillTestPod();
+}
+
+unittest
+{
+    union FloatBits { float value; uint bits; }
+    foreach (representation; [0u,0x80000000u,0x7fc12345u,0x7f800000u,0xff800000u])
+    foreach (stride; [ptrdiff_t(8),ptrdiff_t(0),ptrdiff_t(-2)])
+    {
+        FloatBits value; value.bits = representation;
+        float[32] storage; storage[] = -1.0f;
+        float[32] expected; expected[] = -1.0f;
+        const ptrdiff_t offset = stride < 0 ? 4 : 0;
+        foreach (y; 0 .. 3) foreach (x; 0 .. 4)
+            expected[cast(size_t)(offset+cast(ptrdiff_t)y*stride+cast(ptrdiff_t)x)] = value.value;
+        const PlaneDescriptor[1] ds = [PlaneDescriptor(storage.ptr+offset,stride,1)];
+        const ResourceEntry[1] rs = [ResourceEntry(storage.ptr,storage.sizeof,null,null,ResourceAccess.readWrite)];
+        scope auto view = makeWritableTestView!float(rs[],ds[],Region2D(0,0,4,3));
+        assert(tryFillRasterPlane(view,0,value.value));
+        foreach (i; 0 .. storage.length)
+        {
+            FloatBits actual, wanted;
+            actual.value = storage[i]; wanted.value = expected[i];
+            assert(actual.bits == wanted.bits);
+        }
+    }
+}
+
 } // version (unittest)

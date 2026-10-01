@@ -266,3 +266,41 @@ performance. AArch64 performance remains unqualified. The original collector's
 hardcoded container label is preserved in raw SUMMARY.md and corrected only in
 QUALIFIED_SUMMARY.md; numeric results are unchanged. CI checks semantics,
 visibility and the actual-source trust boundary rather than timing.
+
+## M3.3 Canonical fill executor qualification
+
+Production baseline `d4763ff0b95999743ea43d0b1dcca44fc68773d1` follows M3.2.
+[Research Issue #17](https://github.com/alex-1974/raster-d-research/issues/17)
+compares the complete public fill consumer with mechanically pinned Pointer
+and Slice candidates; all validation and Universal behavior is retained.
+The [qualification record](https://github.com/alex-1974/raster-d-research/tree/97ed8a11d86b42464a55aa90d69b8b8f7b778b52/experiments/m3_fill_executor/evidence/2026-10-01-xps)
+preserves raw files and their verified checksums. Uploaded source is research
+`ea6fc86e12dcf442c3d99ff1dc0a8ddc04cc9c8b`.
+
+XPS i7-9750H, affinity CPU 0; DMD 2.111.0, LDC 1.41.0 / LLVM 19.1.7, DUB 1.40.0;
+frequency/thermal controls unchanged. Six independent fixed-binary processes
+pass 70 float/ubyte/POD cases, bitwise special floats and invalid/empty checks;
+all hashes match. Two warmups and nine cyclic-order samples per path yield
+11,340 timed calls, with complete output/padding checks outside each timer.
+Both inherited test suites and actual-source trust challenges pass.
+
+Across all six large Canonical layouts (contiguous, padded, negative, repeated
+and overlapping rows), public/Slice median ratios span:
+
+| Sample type | DMD 2.111 | LDC 1.41 / LLVM 19.1.7 |
+| --- | --- | --- |
+| float | 9.232–13.845x | 2.247–16.350x |
+| ubyte | 61.527–282.100x | 11.892–151.867x |
+
+Slice improves every large paired DMD ubyte comparison with Pointer. DMD float
+is mostly near parity; LDC preferences vary. LDC padded float Slice is
+3.6–15.8% slower than Pointer in all three runs. ADR 0012 accepts that measured
+tradeoff for one generic source form with a narrower trusted boundary and the
+consistent DMD ubyte benefit; no compiler-specific selection is admitted.
+
+Large process spread reaches 150.99% for DMD ubyte Slice, 157.86% for LDC ubyte
+Slice and 355.03% for LDC ubyte Pointer. Repeated/overlapping rows concern logical
+repeated writes to shared physical samples, not independent-memory bandwidth.
+Tiny cases can lie below timer resolution; zero-median ratios are omitted.
+These are end-to-end observations, not precise portable promises or timing
+thresholds. AArch64 performance remains unqualified.

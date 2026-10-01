@@ -742,7 +742,7 @@ future work. The separate point-transform executor qualification follows in M3.2
 
 ## M3.2b — Generic Canonical point-transform executor
 
-Implemented for review in Issue #54, following research Issue #14 and its
+Completed in Issue #54 / PR #55, following research Issue #14 and its
 2026-10-01 XPS qualification. ADR 0011 selects one generic pointer executor
 for matching validated sample strides of one, including signed padded rows.
 The existing Universal traversal and all public validation/error semantics stay
@@ -752,6 +752,22 @@ Production coverage adds 48 public float/ubyte/POD layout cases, bitwise special
 float identity checks, a no-access dispatch-decline test and actual-source trust
 and external visibility probes in Fast/Release CI. BENCHMARK.md records measured
 scope and variance; AArch64 performance remains unqualified.
+
+---
+
+## M3.3 — Generic Canonical fill executor
+
+Implemented for review in Issue #56 after Research Issue #17's 2026-10-01 XPS
+qualification. ADR 0012 selects one generic safe row-slice assignment executor
+for sample stride one. Trust is limited to validated row/slice construction.
+Legal repeated and overlapping rows remain supported without an injectivity
+check; other Universal layouts retain their original logical traversal.
+
+Production adds 30 independent float/ubyte/POD layout cases, 15 bitwise special
+float fill cases and external visibility/actual-source trust controls in
+Fast/Release CI. BENCHMARK.md records the consistent DMD ubyte benefit, measured
+LDC tradeoffs and substantial variance. No compiler specialization, manual SIMD,
+threading or AArch64 performance claim is introduced.
 
 ---
 

@@ -259,6 +259,12 @@ Fill is generic over the existing raw raster sample contract and writes one
 exact `T` value into one selected writable plane. It introduces no numeric
 conversion or image interpretation.
 
+M3.3 fills validated sample-stride-one planes through a generic safe row-slice
+assignment loop. Only pointer arithmetic and bounded slice construction are
+trusted. Signed, repeated and overlapping rows remain legal: every logical
+write assigns the same exact value. Universal/sample-strided layouts retain
+the original checked traversal. ADR 0012 records selection and measured limits.
+
 Unlike copy and conversion, fill does not require destination injectivity.
 Raster strides are expressed in elements of `T`, so distinct sample starts do
 not partially overlap; when several logical coordinates resolve to the same

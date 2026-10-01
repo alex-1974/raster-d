@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for M3.2b implementation review (Issue #54).
+Accepted (M3.2b, Issue #54 / PR #55).
 
 ## Context
 

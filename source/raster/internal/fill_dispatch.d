@@ -7,7 +7,8 @@ import raster.writable_view :
 /++
     Fills one selected writable raster plane with one exact sample value.
 
-    This is the scalar semantic reference path for M2.1.
+    M3.3 selects safe Canonical row-slice assignment after validation.
+    Other layouts retain the scalar semantic reference traversal for M2.1.
 
     It deliberately:
 
@@ -49,6 +50,13 @@ nothrow
         return true;
     }
 
+    if (sampleStrideElements == 1)
+    {
+        fillCanonical(destination.executionRegionBase(planeIndex), rowStrideElements,
+            destination.width, destination.height, value);
+        return true;
+    }
+
     foreach (y; 0 .. destination.height)
     {
         foreach (x; 0 .. destination.width)
@@ -66,4 +74,28 @@ nothrow
     }
 
     return true;
+}
+
+/++
+    Safety: the caller selects a valid, non-empty writable plane with sample
+    stride one. Retained backing validation establishes coordinate products,
+    signed row offsets and all width samples as reachable writable addresses.
+    The returned slice remains scoped to the borrow. Repeated/overlapping rows
+    are permitted; no injectivity or persistent noalias property is asserted.
+    Only pointer arithmetic and bounded slice construction require trust.
++/
+private T[] writeFillRow(T)(return scope T* base, size_t y,
+    ptrdiff_t stride, size_t width) @trusted nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private void fillCanonical(T)(scope T* base, ptrdiff_t stride,
+    size_t width, size_t height, T value) @safe nothrow @nogc
+{
+    foreach (y; 0 .. height)
+    {
+        scope auto row = writeFillRow(base, y, stride, width);
+        row[] = value;
+    }
 }
