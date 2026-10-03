@@ -92,6 +92,10 @@ jobs:
           tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"
           tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
           tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
+          tools/compile-negative/raster_copy_conversion_internal.sh "$DC"
+          tools/compile-negative/raster_copy_conversion_trust.sh "$DC"
+          tools/compile-negative/raster_public_operations.sh "$DC"
+          dub run --root=tests/integration/raster_copy_conversion --compiler="$DC" --build=release --force
 
       - name: Raster retained-import external link probe
         shell: bash
@@ -202,6 +206,10 @@ jobs:
           tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"
           tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
           tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
+          tools/compile-negative/raster_copy_conversion_internal.sh "$DC"
+          tools/compile-negative/raster_copy_conversion_trust.sh "$DC"
+          tools/compile-negative/raster_public_operations.sh "$DC"
+          dub run --root=tests/integration/raster_copy_conversion --compiler="$DC" --build=release --force
 
       - name: Raster retained-import external link probe
         shell: bash

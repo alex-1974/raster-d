@@ -771,6 +771,25 @@ threading or AArch64 performance claim is introduced.
 
 ---
 
+## M3.5 — Copy / exact conversion bounds and row execution
+
+Implemented for review in Issue #60 following Research PR #23's 2026-10-03
+XPS qualification. ADR 0013 selects checked same-/cross-type bounds before the
+original exact relation/fallback, then safe scoped row Copy and exact conversion
+for approved unit sample strides. The existing flat-copy memcpy, Universal
+traversal and public validation/error/no-write/empty contracts remain.
+
+Production adds an independent 5,000-case cross-type byte oracle and integer
+limits alongside the inherited same-type oracle, 120 public full-backing cases
+including static-array samples, shared disjoint envelopes and signed/repeated
+source layouts, plus actual-source trust and external visibility controls in
+Fast/Release CI. BENCHMARK.md preserves scoped XPS ranges and high short-Copy
+variance. Conversion improves substantially, but remaining DMD and signed LDC
+execution gaps remain tracked in research Issue #22. M3 is still open; no
+compiler switch, manual SIMD, threading or AArch64 performance claim is made.
+
+---
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.

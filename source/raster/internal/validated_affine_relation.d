@@ -11,7 +11,8 @@ module raster.internal.validated_affine_relation;
 
 import raster.internal.affine_relation :
     AffineByteOverlapRelation,
-    classifySameTypeAffine2DRectanglesByteOverlap;
+    classifySameTypeAffine2DRectanglesByteOverlap,
+    classifyUbyteToFloatAffine2DByteOverlap;
 
 private
 struct Rect
@@ -528,3 +529,89 @@ static assert(classifyValidatedSameTypeAffine2DByteOverlap(2,2,64,4,-1,128,-4,1,
     == AffineByteOverlapRelation.disjoint);
 
 } // version (unittest)
+
+/++
+    Proves disjointness from checked one-byte source and four-byte target
+    envelopes. Overlapping or unrepresentable envelopes preserve the original
+    exact classifier, including arithmeticFailure and the caller's fallback.
+    This invocation-local relation performs no pointer access.
++/
+package(raster)
+AffineByteOverlapRelation classifyValidatedUbyteToFloatAffine2DByteOverlap(
+    size_t width,
+    size_t height,
+    size_t sourceBase,
+    ptrdiff_t sourceRowStride,
+    ptrdiff_t sourceSampleStride,
+    size_t targetBase,
+    ptrdiff_t targetRowStride,
+    ptrdiff_t targetSampleStride
+)
+@safe pure nothrow @nogc
+{
+    if (width == 0 || height == 0)
+        return AffineByteOverlapRelation.disjoint;
+
+    const source = checkedAffineBound(
+        Rect(width, height, sourceBase, sourceRowStride, sourceSampleStride),
+        ubyte.sizeof);
+    const target = checkedAffineBound(
+        Rect(width, height, targetBase, targetRowStride, targetSampleStride),
+        float.sizeof);
+    if (source.valid && target.valid && boundsDisjoint(source, target))
+        return AffineByteOverlapRelation.disjoint;
+
+    return classifyUbyteToFloatAffine2DByteOverlap(
+        width, height, sourceBase, sourceRowStride, sourceSampleStride,
+        targetBase, targetRowStride, targetSampleStride);
+}
+
+version(unittest)
+{
+// Independent bounded byte enumeration, never fabricated pointer access.
+unittest
+{
+    uint state=0x123a5b7d;size_t hits,misses,overlaps;
+    uint next(){state^=state<<13;state^=state>>17;state^=state<<5;return state;}
+    foreach(i;0..5000){
+        const w=size_t(next()%5),h=size_t(next()%5);
+        const a=size_t(2048+next()%512),b=size_t(2048+next()%512);
+        const sr=cast(ptrdiff_t)(next()%15)-7,sx=cast(ptrdiff_t)(next()%15)-7;
+        const dr=cast(ptrdiff_t)(next()%15)-7,dx=cast(ptrdiff_t)(next()%15)-7;
+        bool overlap;
+        foreach(y;0..h)foreach(x;0..w)foreach(v;0..h)foreach(u;0..w){
+            const source=cast(long)a+cast(long)y*sr+cast(long)x*sx;
+            const target=cast(long)b+(cast(long)v*dr+cast(long)u*dx)*4;
+            foreach(byteIndex;0..4)overlap|=source==target+cast(long)byteIndex;
+        }
+        const expected=overlap ? AffineByteOverlapRelation.overlap : AffineByteOverlapRelation.disjoint;
+        const result=classifyValidatedUbyteToFloatAffine2DByteOverlap(w,h,a,sr,sx,b,dr,dx);
+        assert(result==expected);
+        assert(result==classifyUbyteToFloatAffine2DByteOverlap(w,h,a,sr,sx,b,dr,dx));
+        const ab=checkedAffineBound(Rect(w,h,a,sr,sx),1),bb=checkedAffineBound(Rect(w,h,b,dr,dx),4);
+        const fast=ab.valid && bb.valid && boundsDisjoint(ab,bb);
+        assert(!fast || !overlap);if(fast)++hits;else ++misses;if(overlap)++overlaps;
+    }
+    assert(hits>0 && misses>0 && overlaps>0);
+}
+// Checked arithmetic limits are compared with the exact original result.
+unittest
+{
+    struct F{size_t w,h,a,b;ptrdiff_t sr,sx,dr,dx;}
+    const limit=cast(size_t)ptrdiff_t.max+1;
+    F[] fixtures=[
+        F(1,1,0,size_t.max-3,ptrdiff_t.min,ptrdiff_t.min,0,0),
+        F(1,1,size_t.max-1,0,0,0,ptrdiff_t.min,ptrdiff_t.max),
+        F(2,2,limit,0,ptrdiff_t.min,ptrdiff_t.min,1,1),
+        F(3,1,0,0,0,ptrdiff_t.max,0,1),
+        F(2,1,0,size_t.max-1,0,1,0,ptrdiff_t.max),
+        F(4,1,64,65,0,8,0,2), // overlapping envelopes, disjoint bytes
+        F(4,1,64,64,0,8,0,2)  // actual byte overlap
+    ];
+    foreach(f;fixtures)assert(classifyValidatedUbyteToFloatAffine2DByteOverlap(f.w,f.h,f.a,f.sr,f.sx,f.b,f.dr,f.dx)
+        ==classifyUbyteToFloatAffine2DByteOverlap(f.w,f.h,f.a,f.sr,f.sx,f.b,f.dr,f.dx));
+    assert(classifyValidatedUbyteToFloatAffine2DByteOverlap(4,1,64,0,8,65,0,2)==AffineByteOverlapRelation.disjoint);
+    assert(classifyValidatedUbyteToFloatAffine2DByteOverlap(4,1,64,0,8,64,0,2)==AffineByteOverlapRelation.overlap);
+}
+static assert(classifyValidatedUbyteToFloatAffine2DByteOverlap(2,2,64,4,-1,128,-4,1)==AffineByteOverlapRelation.disjoint);
+}
