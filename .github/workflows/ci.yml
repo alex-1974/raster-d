@@ -143,3 +143,11 @@ jobs:
         run: |
           tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
           tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
+
+      - name: Copy/conversion visibility, trust and public backing oracle
+        shell: bash
+        run: |
+          tools/compile-negative/raster_copy_conversion_internal.sh "$DC"
+          tools/compile-negative/raster_copy_conversion_trust.sh "$DC"
+          tools/compile-negative/raster_public_operations.sh "$DC"
+          dub run --root=tests/integration/raster_copy_conversion --compiler="$DC" --build=release --force

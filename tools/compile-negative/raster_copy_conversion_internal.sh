@@ -3,7 +3,7 @@ set -euo pipefail
 
 compiler="${1:-${DC:-dmd}}"
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/raster-d-validated-affine-XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/raster-d-copy-conversion-XXXXXX")"
 trap 'rm -rf "$tmp_dir"' EXIT
 command -v jq >/dev/null
 (cd "$repo_root" && dub describe --compiler="$compiler") > "$tmp_dir/describe.json"
@@ -31,13 +31,10 @@ if ! compile_probe public_control; then
 fi
 echo 'PASS public import control'
 
-for symbol in classifyValidatedUbyteToFloatAffine2DByteOverlap \
-    classifyValidatedSameTypeAffine2DByteOverlap \
-    classifyValidatedSameTypeAffine2DRectanglesByteOverlap \
-    checkedFastRejectDisjoint checkedAffineBound Bound Rect; do
-    for surface in raster raster.internal.validated_affine_relation; do
+for symbol in readApprovedRow writeApprovedRow executeApprovedRows; do
+    for surface in raster raster.internal.copy_dispatch raster.internal.conversion_dispatch; do
         cat > "$tmp_dir/rejection.d" <<D
-module external_affine_rejection;
+module external_copy_conversion_rejection;
 import $surface : $symbol;
 alias leaked = $symbol;
 D

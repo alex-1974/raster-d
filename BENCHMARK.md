@@ -304,3 +304,62 @@ repeated writes to shared physical samples, not independent-memory bandwidth.
 Tiny cases can lie below timer resolution; zero-median ratios are omitted.
 These are end-to-end observations, not precise portable promises or timing
 thresholds. AArch64 performance remains unqualified.
+
+## M3.5 Copy and exact conversion bounds / row qualification
+
+Production baseline is `1671fb2e51a7b1e7311f78f575d9457e9f279fd4`.
+[Research PR #23](https://github.com/alex-1974/raster-d-research/pull/23)
+at `9b3e709111364276d1f7383b6f14326327f6f21f` retains
+[the audit and original XPS raw evidence](https://github.com/alex-1974/raster-d-research/blob/9b3e709111364276d1f7383b6f14326327f6f21f/docs/research/m3-copy-conversion-audit.md#reference-xps-qualification--2026-10-03).
+The archive SHA256 is
+`7c1636331163f30e1479f9d99bbcb230a6520b2396184f21a2fdb73f26d73ae4`;
+all 19 checksums verify and the summary reproduces exactly. Collector/source
+head 85e1614 mechanically pins complete public/internal modules and preserves
+152 unittest blocks and actual-source trust controls.
+
+XPS i7-9750H, CPU affinity 0, unchanged frequency/thermal controls, DMD 2.111.0,
+LDC 1.41.0 / LLVM 19.1.7, DUB 1.40.0, G++ 15.2.0. Both D binaries link one
+strict C++ object. Six fixed-binary processes, 15 cyclic rounds over five paths
+(each order position three times), two warmups, 96 timed and 32 extra semantic
+cases, 43,200 timed calls. Reset and complete backing/guard checks are outside
+timing. All compiler/process fingerprints match each other and VM evidence.
+
+Large 2048x512 ranges below span three process medians; Copy aggregates three
+sample types. Public/Combined compares complete consumers. Combined/C++ is a
+scoped execution-reference ratio: C++ omits validation and adds a separate ABI
+call. It is not a complete library or language ratio.
+
+| Group | Compiler | Public/Combined | Combined/C++ |
+| --- | --- | --- | --- |
+| Padded Copy | DMD | 128.592–2892.533x | 0.878–1.161x |
+| Padded Copy | LDC | 46.604–934.892x | 0.998–1.643x |
+| Flat conversion | DMD | 4.374–4.776x | 2.055–6.721x |
+| Flat conversion | LDC | 20.210–23.135x | 0.938–0.998x |
+| Padded conversion | DMD | 975.357–980.202x | 3.953–4.065x |
+| Padded conversion | LDC | 891.907–1214.341x | 1.007–1.209x |
+| Negative-both conversion | DMD | 920.221–929.541x | 2.918–3.516x |
+| Negative-both conversion | LDC | 463.266–475.638x | 1.542–1.848x |
+
+ADR 0013 selects checked same-/cross-type bounds plus approved unit-sample-stride
+row Copy/conversion, including approved flat conversion. Original flat Copy
+and Universal semantic traversal remain. Bounds-only padded Copy is
+9.900–10.740x DMD / 14.488–21.845x LDC faster; execution alone retains exact
+scans and is only 1.044–1.117x across both compilers. Combining both changes
+confirms the large non-flat direction. Exact conversion remains an intermediate
+improvement; DMD and signed LDC execution gaps stay open in research Issue #22.
+
+Maximum large-case Public / Combined process spread is 99.55% / 244.36% DMD
+and 42.09% / 93.35% LDC, mainly short Copy. LDC padded conversion Combined
+also has 45.06% spread; DMD padded Public / Combined is 3.36% / 3.36%.
+Full ranges are retained; no confidence interval, timing threshold, precise
+near-parity difference or small Flat-Copy gain/regression is inferred. Tiny
+zero medians remain below clock resolution. Isolated actual-source DMD scalar
+and LDC packed conversion assembly is diagnostic, not full-public causality.
+VM LLVM/G++ differ from XPS; no hardware-only attribution is made.
+
+Production promotion validates 120 public backing cases, original tests,
+independent relation oracles, CTFE, external visibility and actual-source trust
+under both compiler families. These tests validate the clean transfer; the
+reported XPS times are for the pinned research consumers. No new production
+binary timing, compiler switch, explicit SIMD, threading or AArch64 performance
+qualification is claimed.

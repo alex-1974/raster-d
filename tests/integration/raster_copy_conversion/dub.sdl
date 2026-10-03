@@ -1,0 +1,4 @@
+name "raster-copy-conversion-contract"
+targetType "executable"
+dependency "raster-d" path="../../.."
+dflags "-preview=dip1000"

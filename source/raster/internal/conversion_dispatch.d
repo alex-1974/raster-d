@@ -16,6 +16,9 @@
 +/
 module raster.internal.conversion_dispatch;
 
+import raster.internal.validated_affine_relation :
+    classifyValidatedUbyteToFloatAffine2DByteOverlap;
+
 import raster.internal.affine_relation :
     AffineByteOverlapRelation,
     affine2DMappingIsInjective,
@@ -228,7 +231,7 @@ nothrow
     assert(sourceBase !is null);
     assert(targetBase !is null);
 
-    return classifyUbyteToFloatAffine2DByteOverlap(
+    return classifyValidatedUbyteToFloatAffine2DByteOverlap(
         width,
         height,
 
@@ -248,8 +251,8 @@ nothrow
 
     All relation failures have been resolved before entry.
 
-    RasterView and WritableRasterView remain the semantic sample-access
-    boundaries.
+    Unit sample strides use safe scoped row slices; other sample strides
+    retain checked RasterView/WritableRasterView semantic traversal.
 +/
 private
 void convertApprovedUbyteToFloatAffine2D(
@@ -263,6 +266,23 @@ void convertApprovedUbyteToFloatAffine2D(
 nothrow
 @nogc
 {
+    ptrdiff_t sourceRowStride, sourceSampleStride,
+        targetRowStride, targetSampleStride;
+    const sourceStridesOk = source.tryExecutionPlaneStrides(
+        sourcePlaneIndex, sourceRowStride, sourceSampleStride);
+    const targetStridesOk = target.tryExecutionPlaneStrides(
+        targetPlaneIndex, targetRowStride, targetSampleStride);
+    assert(sourceStridesOk && targetStridesOk);
+
+    if (sourceSampleStride == 1 && targetSampleStride == 1)
+    {
+        executeApprovedRows(
+            source.executionRegionBase(sourcePlaneIndex), sourceRowStride,
+            target.executionRegionBase(targetPlaneIndex), targetRowStride,
+            source.width, source.height);
+        return;
+    }
+
     foreach (y; 0 .. source.height)
     {
         foreach (x; 0 .. source.width)
@@ -867,18 +887,10 @@ nothrow
 
                 case PhysicalByteRangeRelation.nonOverlapping:
                 {
-                    const converted =
-                        scalarConvertUbyteToFloatContiguous1D(
-                            asMirContiguousFlat(
-                                source,
-                                sourcePlaneIndex
-                            ),
-                            asMirTargetContiguousFlat(
-                                contiguousDestination
-                            )
-                        );
-
-                    assert(converted);
+                    executeApprovedRows(
+                        sourceBase, sourceRowStrideElements,
+                        destinationBase, destinationRowStrideElements,
+                        source.width, source.height);
 
                     return
                         ExactUbyteToFloatRasterError.none;
@@ -2068,4 +2080,61 @@ unittest
     }
 }
 
+}
+
+/++
+    Safety: callers have validated retained backing, matching geometry, unit
+    sample strides, injective destination and exact global sample-byte
+    disjointness. Each signed row offset and width-sample slice is reachable
+    within that backing. Source rows may repeat. These scoped borrows do not
+    escape; only pointer arithmetic and slice formation require trust.
++/
+private const(T)[] readApprovedRow(T)(
+    return scope const(T)* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private T[] writeApprovedRow(T)(
+    return scope T* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private void executeApprovedRows(S, D)(
+    scope const(S)* source,
+    ptrdiff_t sourceRowStride,
+    scope D* target,
+    ptrdiff_t targetRowStride,
+    size_t width,
+    size_t height
+)
+@safe pure nothrow @nogc
+{
+    foreach (y; 0 .. height)
+    {
+        scope const row =
+            readApprovedRow(source, sourceRowStride, y, width);
+        scope auto destination =
+            writeApprovedRow(target, targetRowStride, y, width);
+
+        static if (is(S == D))
+            destination[] = row[];
+        else
+        {
+            static assert(is(S == ubyte) && is(D == float));
+            foreach (x, value; row)
+                destination[x] = cast(float)value;
+        }
+    }
 }
