@@ -25,6 +25,9 @@ def has_ddoc(lines,i):
         if PROTECTION_LINE_RE.match(lines[i]) and not stripped.endswith(":"):
             i-=1
             continue
+        if stripped.startswith("@"):
+            i-=1
+            continue
         break
     if i<0: return False
     if lines[i].lstrip().startswith("///"): return True
