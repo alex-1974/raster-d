@@ -7,6 +7,11 @@
     metadata into the stable retained representation used by RasterLease.
 
     Public source adapters must be built above this layer.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.construction;
 
