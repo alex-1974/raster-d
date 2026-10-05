@@ -5,6 +5,11 @@
 
     Execution layouts, Mir adapters, contiguous targets, physical-range
     classifiers and checked-wide relation machinery remain internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.conversion;
 
