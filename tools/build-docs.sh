@@ -24,16 +24,35 @@ rm -rf "$work_dir"
 mkdir -p "$site_dir"
 
 mapfile -t public_sources < <(
-    cd "$source_root"
-    find source/raster -type f -name '*.d' ! -path '*/internal/*' -print | sort
+    python3 - "$source_root/source/raster/package.d" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+package = Path(sys.argv[1])
+text = package.read_text()
+
+modules = {"raster"}
+for match in re.finditer(
+    r"(?m)^public\s+import\s+(raster(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\s*:",
+    text,
+):
+    modules.add(match.group(1))
+
+for module in sorted(modules):
+    if module == "raster":
+        print("source/raster/package.d")
+    else:
+        print("source/" + module.replace(".", "/") + ".d")
+PY
 )
 
 if (("${#public_sources[@]}" == 0)); then
-    echo "error: no public raster-d source modules found under $source_root" >&2
+    echo "error: no supported public raster-d modules found from source/raster/package.d" >&2
     exit 1
 fi
 
-echo "Generating DDox input for ${#public_sources[@]} non-internal raster modules..."
+echo "Generating DDox input for ${#public_sources[@]} root-exported raster modules..."
 
 # Resolve the package graph first. Unlike geodesy-d, raster-d has a real DUB
 # dependency (mir-algorithm), so a raw DMD documentation invocation must carry
