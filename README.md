@@ -20,9 +20,15 @@ or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-`v0.1.0` release candidate. The 0.1 public source contract is frozen at
-`freeze/api-0.1.0`; the library remains pre-1.0 and may evolve incompatibly in
-later minor releases.
+v0.1.0 release candidate.
+
+The v0.1.0 public source contract is frozen at `freeze/api-0.1.0`. Release
+qualification covers the controlled compiler-generation matrix, supported
+platform matrix, compiler floors, strict public-only DDox, external archive
+consumers and the reference-XPS M2/M3 Production benchmark.
+
+Because raster-d is pre-1.0, later minor releases may deliberately evolve the
+API. The published v0.1.0 contract itself is treated as fixed.
 
 The production DUB package is `raster-d` and the public D namespace is
 `raster` / `raster.*`.
@@ -59,9 +65,9 @@ assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
 decomposition, cache-block selection/replacement and scheduling remain outside
 the public raster contract.
 
-The 0.1 public API has completed release audit and API freeze. Performance-
-sensitive implementation is developed from measured evidence and qualified
-with DMD and LDC.
+Performance-sensitive implementation is developed from measured evidence and
+validated with both DMD and LDC. Compiler/ISA-specific execution remains an
+internal implementation choice rather than a public switch.
 
 ## Primary goals
 
@@ -138,7 +144,9 @@ its provenance and reproducibility are controlled.
 Performance-sensitive work will be tested with both DMD and LDC. LDC/LLVM is
 expected to become the primary performance compiler.
 
-See `ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md`.
+See `docs/API.md` for the v0.1 public contract, `CHANGELOG.md` for release
+history, `docs/V0_1_RELEASE_NOTES.md` for the first release, and
+`ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md` for engineering context.
 
 ## Compiler support
 
