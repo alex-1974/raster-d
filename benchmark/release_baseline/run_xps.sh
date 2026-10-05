@@ -2,8 +2,9 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-EXPECTED_BRANCH="bench-release-0.1-baseline"
-EXPECTED_BASE="d8cbcb270d24a344f59c4a7f1880848add38c975"
+EXPECTED_BRANCH="release/0.1"
+FEATURE_FREEZE="d8cbcb270d24a344f59c4a7f1880848add38c975"
+API_FREEZE="7afcaad4181566d21ca7ced78cf7b417eae8adbf"
 CPU="${2:-0}"
 OUT="${1:-/tmp/raster-release-0.1-baseline-$(date +%Y%m%d-%H%M%S)}"
 
@@ -11,8 +12,19 @@ test "$(git -C "$ROOT" branch --show-current)" = "$EXPECTED_BRANCH"
 test ! -e "$OUT"
 mkdir -p "$OUT"
 
-if ! git -C "$ROOT" merge-base --is-ancestor "$EXPECTED_BASE" HEAD; then
-    echo "STOP: benchmark branch no longer descends from feature-freeze baseline" >&2
+if ! git -C "$ROOT" merge-base --is-ancestor "$FEATURE_FREEZE" HEAD; then
+    echo "STOP: release branch no longer descends from feature-freeze baseline" >&2
+    exit 1
+fi
+
+if ! git -C "$ROOT" merge-base --is-ancestor "$API_FREEZE" HEAD; then
+    echo "STOP: release branch no longer descends from API-freeze baseline" >&2
+    exit 1
+fi
+
+if ! git -C "$ROOT" diff --quiet "$API_FREEZE"..HEAD -- source/raster; then
+    echo "STOP: source/raster changed after freeze/api-0.1.0" >&2
+    git -C "$ROOT" diff --stat "$API_FREEZE"..HEAD -- source/raster >&2
     exit 1
 fi
 
@@ -41,8 +53,10 @@ snapshot_freq()
 
 {
     echo "benchmark_head=$(git -C "$ROOT" rev-parse HEAD)"
-    echo "feature_freeze=$EXPECTED_BASE"
+    echo "feature_freeze=$FEATURE_FREEZE"
+    echo "api_freeze=$API_FREEZE"
     echo "branch=$(git -C "$ROOT" branch --show-current)"
+    echo "source_tree_matches_api_freeze=yes"
     echo "cpu=$CPU"
     echo "shell_affinity=$(taskset -pc $$ 2>&1 || true)"
     echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
