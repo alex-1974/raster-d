@@ -54,6 +54,15 @@ nothrow
         );
 }
 
+/// Example rejecting a fill when no destination plane exists.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte destination;
+    assert(!tryFillRasterPlane(destination, 0, cast(ubyte) 7));
+}
+
+
 
 version (unittest)
 {
