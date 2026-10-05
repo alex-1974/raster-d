@@ -2111,34 +2111,173 @@ private T[] writeApprovedRow(T)(
     return (base + cast(ptrdiff_t)y * stride)[0 .. width];
 }
 
-/++
-    DMD x86-64 row kernel for an already-approved ubyte-to-float conversion.
-
-    The caller supplies the same validated equal-length scoped row slices used
-    by the generic executor. Pointers remain local and every access is bounded
-    by row.length.
-
-    Research qualification found a material DMD x86-64 full-public gain from
-    width 64 onward. LDC and other compilers retain the generic row loop.
-+/
-private void convertApprovedUbyteToFloatDmdRow(
-    scope const(ubyte)[] row,
-    scope float[] destination
-)
-@trusted pure nothrow @nogc
+version (DigitalMars)
 {
-    assert(row.length == destination.length);
-
-    scope const(ubyte)* sourcePointer =
-        row.ptr;
-
-    scope float* destinationPointer =
-        destination.ptr;
-
-    foreach (i; 0 .. row.length)
+    version (X86_64)
     {
-        destinationPointer[i] =
-            cast(float) sourcePointer[i];
+        import core.simd :
+            XMM,
+            __simd,
+            float4,
+            loadUnaligned,
+            storeUnaligned,
+            ubyte16;
+
+        /++
+            Reads one unaligned sixteen-byte source block.
+
+            Safety: the sole caller passes a live scoped sixteen-byte subslice.
+            The intrinsic reads exactly those bytes, requires no alignment and
+            does not let a pointer escape.
+        +/
+        private ubyte16 readApprovedUbyteVectorBlock(
+            scope const(ubyte)[] block
+        )
+        @trusted pure nothrow @nogc
+        {
+            assert(block.length == 16);
+
+            return loadUnaligned(
+                cast(const(ubyte16)*) block.ptr
+            );
+        }
+
+        /++
+            Writes one unaligned four-float destination block.
+
+            Safety: the sole caller passes a live writable four-float
+            subslice. The intrinsic writes exactly sixteen bytes, requires no
+            alignment and does not let a pointer escape.
+        +/
+        private void writeApprovedFloatVectorBlock(
+            scope float[] block,
+            float4 result
+        )
+        @trusted pure nothrow @nogc
+        {
+            assert(block.length == 4);
+
+            storeUnaligned(
+                cast(float4*) block.ptr,
+                result
+            );
+        }
+
+        /++
+            Exact SSE2 ubyte-to-float row conversion for an already-approved
+            DMD x86-64 row.
+
+            ubyte values are widened losslessly before CVTDQ2PS; every value
+            0..255 is exactly representable as float. Sixteen-sample vector
+            blocks are followed by the scalar tail in logical order.
+
+            Reference-XPS qualification against the previous bounded pointer
+            Production kernel retained a material full-public benefit from
+            width 64 onward, while below-threshold and non-DMD controls stayed
+            neutral.
+        +/
+        private void convertApprovedUbyteToFloatDmdRow(
+            scope const(ubyte)[] row,
+            scope float[] destination
+        )
+        @safe pure nothrow @nogc
+        {
+            assert(row.length == destination.length);
+
+            size_t x;
+
+            while (row.length - x >= 16)
+            {
+                const packed =
+                    readApprovedUbyteVectorBlock(
+                        row[x .. x + 16]
+                    );
+
+                const ubyte16 zero = 0;
+
+                const lowWords =
+                    __simd(
+                        XMM.PUNPCKLBW,
+                        packed,
+                        zero
+                    );
+
+                const highWords =
+                    __simd(
+                        XMM.PUNPCKHBW,
+                        packed,
+                        zero
+                    );
+
+                const float4 a =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKLWD,
+                            lowWords,
+                            zero
+                        )
+                    );
+
+                const float4 b =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKHWD,
+                            lowWords,
+                            zero
+                        )
+                    );
+
+                const float4 c =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKLWD,
+                            highWords,
+                            zero
+                        )
+                    );
+
+                const float4 d =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKHWD,
+                            highWords,
+                            zero
+                        )
+                    );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x .. x + 4],
+                    a
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 4 .. x + 8],
+                    b
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 8 .. x + 12],
+                    c
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 12 .. x + 16],
+                    d
+                );
+
+                x += 16;
+            }
+
+            foreach (i; x .. row.length)
+            {
+                destination[i] =
+                    cast(float) row[i];
+            }
+        }
     }
 }
 
