@@ -3,7 +3,7 @@ set -euo pipefail
 
 compiler="${1:-${DC:-dmd}}"
 repo_root="$(
-    cd "$(dirname "$0")/../.." >/dev/null 2>&1
+    cd "$(dirname "$0")/.." >/dev/null 2>&1
     pwd
 )"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/raster-api-freeze-XXXXXX")"
