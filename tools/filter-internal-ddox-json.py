@@ -54,6 +54,37 @@ def internal_declarations(source_root: Path) -> set[tuple[str,int]]:
                     vis=visibility_by_depth.get(depth)
                 if vis=="private" or (vis is not None and vis.startswith("package")):
                     result.add((module,index+1))
+
+                    # DMD may anchor a documented declaration's JSON node at
+                    # the first Ddoc line rather than the declaration line.
+                    # Record that exact attached Ddoc span as internal too so
+                    # DDox cannot resurrect package/private declarations merely
+                    # because release documentation was added.
+                    j=index-1
+                    while j>=0:
+                        stripped=lines[j].strip()
+                        if not stripped:
+                            j-=1
+                            continue
+                        if PROTECTION_LINE_RE.match(lines[j]) and not stripped.endswith(":"):
+                            j-=1
+                            continue
+                        if stripped.startswith("@"):
+                            j-=1
+                            continue
+                        break
+
+                    if j>=0 and (lines[j].strip().endswith("+/") or lines[j].strip().endswith("*/")):
+                        end_doc=j
+                        while j>=0:
+                            if "/++" in lines[j] or "/**" in lines[j]:
+                                for line_index in range(j, index+1):
+                                    result.add((module,line_index+1))
+                                break
+                            if ("/*" in lines[j] or "/+" in lines[j]) and j!=end_doc:
+                                break
+                            j-=1
+
                 pending_visibility=None
             elif line.strip() and not protection and not line.lstrip().startswith(("@","/","*","+")):
                 pending_visibility=None
