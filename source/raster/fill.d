@@ -5,7 +5,12 @@
  *
  * Execution-layout classification, pointer formation and future fast-path
  * selection remain internal.
- */
+ 
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
+*/
 module raster.fill;
 
 import raster.internal.fill_dispatch :
