@@ -101,22 +101,22 @@ jobs:
       - name: Raster lifetime compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_lifetime.sh "$DC"
 
       - name: Raster construction lifetime compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_construction_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_construction_lifetime.sh "$DC"
 
       - name: Raster owned-resource compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_owned_resource.sh "$DC"
+          bash tools/compile-negative/raster_owned_resource.sh "$DC"
 
       - name: Raster public-import compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_import_public.sh "$DC"
+          bash tools/compile-negative/raster_import_public.sh "$DC"
 
       - name: Raster retained-import external link probe
         shell: bash
@@ -128,14 +128,14 @@ jobs:
       - name: Raster execution lifetime compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_execution_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_execution_lifetime.sh "$DC"
 
       - name: Raster target lifetime compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_target_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_target_lifetime.sh "$DC"
 
       - name: Raster writable-view lifetime compile probes
         shell: bash
         run: |
-          tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
