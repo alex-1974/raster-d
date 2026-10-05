@@ -2143,6 +2143,35 @@ private void convertApprovedUbyteToFloatDmdRow(
 }
 
 
+/++
+    LDC x86-64 row-local optimizer boundary for an already-approved
+    ubyte-to-float conversion whose source row direction is negative.
+
+    This helper changes only the inlining/vectorization boundary. It uses the
+    same scoped row slices as the generic executor and introduces no new trust.
+
+    Reference-XPS qualification showed a material full-public benefit from
+    width 64 onward specifically for negative source row strides. Positive
+    source rows, negative-target-only layouts and Universal traversal remain on
+    the existing executor.
++/
+pragma(inline, false)
+private void convertApprovedUbyteToFloatLdcNegativeSourceRow(
+    scope const(ubyte)[] row,
+    scope float[] destination
+)
+@safe pure nothrow @nogc
+{
+    assert(row.length == destination.length);
+
+    foreach (x, value; row)
+    {
+        destination[x] =
+            cast(float) value;
+    }
+}
+
+
 private void executeApprovedRows(S, D)(
     scope const(S)* source,
     ptrdiff_t sourceRowStride,
@@ -2175,6 +2204,24 @@ private void executeApprovedRows(S, D)(
                     if (width >= 64)
                     {
                         convertApprovedUbyteToFloatDmdRow(
+                            row,
+                            destination
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            version (LDC)
+            {
+                version (X86_64)
+                {
+                    if (
+                        sourceRowStride < 0
+                        && width >= 64
+                    )
+                    {
+                        convertApprovedUbyteToFloatLdcNegativeSourceRow(
                             row,
                             destination
                         );
