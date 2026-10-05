@@ -1,6 +1,6 @@
 # raster-d v0.1.0 documentation audit
 
-Status: **IN PROGRESS**
+Status: **COMPLETE FOR THE DOCUMENTATION GATE**
 
 This document records release-facing documentation decisions. It is not itself
 the public API contract.
@@ -73,4 +73,10 @@ The release line adopts:
 
 Release-facing structure: **defined**.
 
-Content remediation and generated-DDox review: **pending**.
+Content remediation and generated-DDox review: **complete**.
+
+The generated site was reviewed from the strict workflow artifact. Navigation
+contains only the root-exported release documentation surface, with no
+raster.internal or package-only infrastructure modules. Representative
+ownership/import, lifetime/view and operation pages were inspected for readable
+contracts and rendered Examples.
