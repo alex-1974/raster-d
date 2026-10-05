@@ -1,0 +1,52 @@
+name: Release Benchmark Smoke
+
+on:
+  push:
+    branches: [bench-release-0.1-baseline]
+    paths:
+      - 'benchmark/release_baseline/**'
+      - '.github/workflows/release-benchmark-smoke.yml'
+  pull_request:
+    branches: [release/0.1]
+    paths:
+      - 'benchmark/release_baseline/**'
+      - '.github/workflows/release-benchmark-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [dmd-2.111.0, ldc-1.41.0]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dub: 1.40.0
+          dc_format: shortname
+
+      - name: Build release benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          dub build \
+            --root=benchmark/release_baseline \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Run public API smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=benchmark/release_baseline/raster-release-baseline
+          "$BIN" 64 32 1 > /tmp/release-benchmark-smoke.txt
+          cat /tmp/release-benchmark-smoke.txt
+          test "$(grep -c '^release_benchmark ' /tmp/release-benchmark-smoke.txt)" -eq 7
