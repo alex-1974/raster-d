@@ -47,6 +47,14 @@ enum RasterCopyError : ubyte
     sourceDestinationOverlap
 }
 
+/// Example using the copy error category.
+@safe unittest
+{
+    import raster;
+    assert(RasterCopyError.init == RasterCopyError.none);
+}
+
+
 
 static assert(
     RasterCopyError.init
@@ -141,6 +149,18 @@ nothrow
             return false;
     }
 }
+
+/// Example reporting an invalid source plane before any write.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!ubyte destination;
+    RasterCopyError error;
+    assert(!tryCopyRasterPlane(source, 0, destination, 0, error));
+    assert(error == RasterCopyError.invalidSourcePlane);
+}
+
 
 
 version (unittest)
