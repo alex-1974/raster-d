@@ -51,6 +51,9 @@ enum RasterNeighbourhood3x3Error : ubyte
 
 
 
+/++
+    Invokes the caller-supplied 3 x 3 kernel under the public safe/pure/nothrow/nogc callable contract.
++/
 private
 T invokeNeighbourhood3x3Kernel(alias kernel, T)(
     ref const(T)[9] neighbourhood
