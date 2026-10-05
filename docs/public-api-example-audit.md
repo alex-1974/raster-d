@@ -1,6 +1,6 @@
 # Public API Example Audit
 
-**Status:** inventory pending  
+**Status:** inventory complete — example remediation required  
 **Baseline:** raster-d 0.1 release line
 
 ## Purpose
@@ -70,5 +70,61 @@ The audit is complete when:
 
 ## Per-symbol classification
 
-Generated inventory pending. The documentation workflow prints the exact public
-DDox page inventory before strict per-symbol enforcement is enabled.
+The first public-only DDox inventory contains **50 symbol pages**.
+
+| DDox page | Status | Owning family |
+| --- | --- | --- |
+| `raster.backing.RasterLease` | add | retained lifetime |
+| `raster.backing.RasterLease.tryWritableView` | add | retained lifetime |
+| `raster.backing.RasterLease.view` | add | retained lifetime |
+| `raster.byte_layout.PlaneByteLayout` | add | geometry/layout |
+| `raster.conversion.UbyteToFloatConversionError` | add | conversion |
+| `raster.conversion.tryConvertUbyteToFloatPlane` | add | conversion |
+| `raster.copy.RasterCopyError` | add | copy |
+| `raster.copy.tryCopyRasterPlane` | add | copy |
+| `raster.descriptor.PlaneDescriptor` | add | geometry/layout |
+| `raster.fill.tryFillRasterPlane` | add | fill |
+| `raster.import_owned.OwnedRasterImportError` | add | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult` | add | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.error` | add | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.ok` | add | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.planeIndex` | add | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.resourceDisposition` | add | ownership/import |
+| `raster.import_owned.OwnedRasterResourceDisposition` | add | ownership/import |
+| `raster.import_owned.tryImportOwnedRaster` | add | ownership/import |
+| `raster.neighbourhood.RasterNeighbourhood3x3Error` | add | neighbourhood |
+| `raster.neighbourhood.tryApplyRasterNeighbourhood3x3` | add | neighbourhood |
+| `raster.owned_resource.OwnedByteResource` | add | ownership/import |
+| `raster.owned_resource.OwnedByteResource.byteLength` | add | ownership/import |
+| `raster.owned_resource.OwnedByteResource.ownsResource` | add | ownership/import |
+| `raster.owned_resource.tryAdoptMallocResource` | add | ownership/import |
+| `raster.reduction.trySumFloatToDouble` | add | reduction |
+| `raster.region.Region2D` | add | geometry/layout |
+| `raster.region.Region2D.containsRelative` | add | geometry/layout |
+| `raster.region.Region2D.empty` | add | geometry/layout |
+| `raster.region.Region2D.hasRepresentableExtent` | add | geometry/layout |
+| `raster.region.Region2D.tryResolveRelative` | add | geometry/layout |
+| `raster.sample.isRasterSampleType` | add | sample policy |
+| `raster.transform.RasterTransformError` | add | transform |
+| `raster.transform.tryTransformRasterPlane` | add | transform |
+| `raster.view.RasterView` | add | retained lifetime |
+| `raster.view.RasterView.empty` | add | retained lifetime |
+| `raster.view.RasterView.height` | add | retained lifetime |
+| `raster.view.RasterView.planeCount` | add | retained lifetime |
+| `raster.view.RasterView.region` | add | retained lifetime |
+| `raster.view.RasterView.tryRoi` | add | retained lifetime |
+| `raster.view.RasterView.trySample` | add | retained lifetime |
+| `raster.view.RasterView.width` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.empty` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.height` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.planeCount` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.region` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.tryRoi` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.trySample` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.trySetSample` | add | retained lifetime |
+| `raster.writable_view.WritableRasterView.width` | add | retained lifetime |
+
+The `add` state is intentionally strict: the page remains incomplete until its
+own documented, compiler-checked `unittest` renders as an Example on that
+exact DDox page.
