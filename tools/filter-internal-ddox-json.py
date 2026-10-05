@@ -11,7 +11,7 @@ PROTECTION_LINE_RE = re.compile(
 DECL_RE = re.compile(
     r"^\s*(?:(?P<explicit>private|package(?:\([^)]*\))?|public|protected)\s+)?"
     r"(?:(?:static|final|const|pure|nothrow|@safe|@nogc)\s+)*"
-    r"(?P<return>[A-Za-z_][A-Za-z0-9_!.]*(?:\[[^\]]*\])?)\s+"
+    r"(?P<return>(?:const\([^)]*\)|immutable\([^)]*\)|shared\([^)]*\)|[A-Za-z_][A-Za-z0-9_!.]*)(?:\s*\*)?(?:\[[^\]]*\])?)\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
     r"(?:!\([^)]*\))?\s*\("
 )
