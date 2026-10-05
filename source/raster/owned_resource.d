@@ -6,6 +6,11 @@
     Public callers may obtain a token only through an explicit ownership
     adoption API. Source-specific adapters may use package-internal raw
     adoption after establishing their own release/context invariants.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.owned_resource;
 
@@ -112,6 +117,16 @@ public:
         return armed_;
     }
 
+/// Example inspecting the default ownership token.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(!resource.ownsResource);
+}
+
+
 
     /++
         Byte length of the currently owned resource.
@@ -130,6 +145,16 @@ public:
             : 0;
     }
 
+/// Example reading the byte length of an empty ownership token.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(resource.byteLength == 0);
+}
+
+
 
 package(raster):
 
@@ -141,6 +166,9 @@ package(raster):
         This remains package-internal. It exposes no raw resource metadata.
     +/
     @property
+    /++
+        Returns the retained resource access capability without exposing raw resource metadata.
+    +/
     ResourceAccess resourceAccess() const
     @safe
     pure
@@ -166,6 +194,9 @@ package(raster):
         address.
     +/
     @property
+    /++
+        Returns the owned physical resource base for package-internal transfer/import code while the token remains armed.
+    +/
     const(void)* resourceBase() const
     @system
     nothrow
@@ -206,6 +237,17 @@ package(raster):
         return result;
     }
 }
+
+/// Example using the move-only ownership token in its empty state.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(!resource.ownsResource);
+    assert(resource.byteLength == 0);
+}
+
 
 
 /++
@@ -353,6 +395,22 @@ nothrow
         owned
     );
 }
+
+/// Example adopting a malloc-compatible byte allocation.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(16);
+    assert(memory !is null);
+
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 16, resource));
+    assert(resource.ownsResource);
+    assert(resource.byteLength == 16);
+}
+
 
 
 version (unittest)

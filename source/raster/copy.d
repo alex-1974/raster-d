@@ -5,6 +5,11 @@
 
     Execution layouts, contiguous targets, physical-address classifiers,
     checked-wide relation arithmetic and kernel selection remain internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.copy;
 
@@ -41,6 +46,14 @@ enum RasterCopyError : ubyte
 
     sourceDestinationOverlap
 }
+
+/// Example using the copy error category.
+@safe unittest
+{
+    import raster;
+    assert(RasterCopyError.init == RasterCopyError.none);
+}
+
 
 
 static assert(
@@ -136,6 +149,18 @@ nothrow
             return false;
     }
 }
+
+/// Example reporting an invalid source plane before any write.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!ubyte destination;
+    RasterCopyError error;
+    assert(!tryCopyRasterPlane(source, 0, destination, 0, error));
+    assert(error == RasterCopyError.invalidSourcePlane);
+}
+
 
 
 version (unittest)

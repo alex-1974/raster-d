@@ -5,6 +5,11 @@
     byte addresses and byte lengths.
 
     It is intentionally package-internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.resource;
 

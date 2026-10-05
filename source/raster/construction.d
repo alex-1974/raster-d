@@ -7,6 +7,11 @@
     metadata into the stable retained representation used by RasterLease.
 
     Public source adapters must be built above this layer.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.construction;
 
@@ -169,6 +174,10 @@ alias MetadataFreeFn =
     @nogc;
 
 
+/++
+    Allocates raw metadata storage for `count` values of `T`.
+    Returns null when the requested size is zero or allocation fails.
++/
 private
 void* allocateMetadata(
     size_t byteLength
@@ -180,6 +189,9 @@ nothrow
 }
 
 
+/++
+    Releases metadata storage previously returned by `allocateMetadata`.
++/
 private
 void freeMetadata(
     void* allocation

@@ -91,6 +91,9 @@ struct NonOverlappingCopyResult
 }
 
 
+/++
+    Constructs the internal successful same-type copy result.
++/
 private
 NonOverlappingCopyResult copySuccess()
 @safe
@@ -107,6 +110,9 @@ nothrow
 }
 
 
+/++
+    Constructs an internal same-type copy failure result for one semantic error.
++/
 private
 NonOverlappingCopyResult copyFailure(
     NonOverlappingCopyError error

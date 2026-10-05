@@ -62,6 +62,10 @@ struct DependencyBlockResolveStats
 }
 
 
+/++
+    Computes the exact rectangular intersection of two regions.
+    Returns false when checked coordinate arithmetic cannot represent the result.
++/
 private
 bool tryIntersection(
     Region2D lhs,
@@ -144,6 +148,9 @@ nothrow
 }
 
 
+/++
+    Computes a region area with checked size_t multiplication.
++/
 private
 bool tryArea(
     Region2D region,
@@ -177,6 +184,9 @@ nothrow
 }
 
 
+/++
+    Verifies that supplied block intersections form exact, pairwise-disjoint coverage of the requested dependency region.
++/
 private
 bool hasExactDisjointCoverage(Key)(
     Region2D logicalDependency,
@@ -314,6 +324,9 @@ nothrow
 }
 
 
+/++
+    Copies one intersecting block region into request-resident storage while preserving logical coordinates and plane order.
++/
 private
 bool transferIntersection(T)(
     Region2D logicalDependency,
@@ -380,6 +393,9 @@ bool transferIntersection(T)(
 }
 
 
+/++
+    Resolves all blocks required by one dependency request through retained hits or source materialization, then assembles exact request residency.
++/
 package(raster)
 bool tryResolveDependencyBlocks(
     T,

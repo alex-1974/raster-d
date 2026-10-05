@@ -5,6 +5,11 @@
     already-materialized resident source. Logical dependency derivation,
     ContextDeficit interpretation, border policy, execution specialization and
     scheduling remain outside this public contract.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.neighbourhood;
 
@@ -37,7 +42,18 @@ enum RasterNeighbourhood3x3Error : ubyte
     sourceDestinationOverlap
 }
 
+/// Example using the fixed-neighbourhood error category.
+@safe unittest
+{
+    import raster;
+    assert(RasterNeighbourhood3x3Error.init == RasterNeighbourhood3x3Error.none);
+}
 
+
+
+/++
+    Invokes the caller-supplied 3 x 3 kernel under the public safe/pure/nothrow/nogc callable contract.
++/
 private
 T invokeNeighbourhood3x3Kernel(alias kernel, T)(
     ref const(T)[9] neighbourhood
@@ -386,6 +402,20 @@ nothrow
 
     return true;
 }
+
+/// Example reporting an invalid source plane for a 3 x 3 kernel.
+@safe unittest
+{
+    import raster;
+    alias center = (ref const(float)[9] values) @safe pure nothrow @nogc => values[4];
+    RasterView!float source;
+    WritableRasterView!float destination;
+    RasterNeighbourhood3x3Error error;
+    assert(!tryApplyRasterNeighbourhood3x3!center(
+        source, 0, Region2D(0, 0, 1, 1), destination, 0, error));
+    assert(error == RasterNeighbourhood3x3Error.invalidSourcePlane);
+}
+
 
 
 version (unittest)

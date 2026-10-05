@@ -5,6 +5,11 @@
 
     Physical affine-relation classification and the defensive exact overlap
     fallback remain implementation details of this module.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.transform;
 
@@ -42,6 +47,14 @@ enum RasterTransformError : ubyte
 
     sourceDestinationOverlap
 }
+
+/// Example using the point-transform error category.
+@safe unittest
+{
+    import raster;
+    assert(RasterTransformError.init == RasterTransformError.none);
+}
+
 
 
 /++
@@ -401,6 +414,19 @@ nothrow
 
     return true;
 }
+
+/// Example reporting an invalid source plane for a compile-time transform.
+@safe unittest
+{
+    import raster;
+    alias plusOne = (float value) @safe pure nothrow @nogc => value + 1.0f;
+    RasterView!float source;
+    WritableRasterView!float destination;
+    RasterTransformError error;
+    assert(!tryTransformRasterPlane!plusOne(source, 0, destination, 0, error));
+    assert(error == RasterTransformError.invalidSourcePlane);
+}
+
 
 
 version (unittest)

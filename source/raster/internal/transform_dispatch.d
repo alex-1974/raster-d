@@ -6,6 +6,9 @@
 +/
 module raster.internal.transform_dispatch;
 
+/++
+    Invokes the already compile-time-qualified point transform inside the internal execution kernel.
++/
 private
 T invokeApprovedPointTransform(alias transform, T)(T value)
 @safe pure nothrow @nogc

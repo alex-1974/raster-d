@@ -32,6 +32,9 @@ struct Bound
     bool valid;
 }
 
+/++
+    Returns true when two checked inclusive byte-address bounds are provably disjoint.
++/
 private
 bool boundsDisjoint(Bound a, Bound b)
 @safe pure nothrow @nogc
@@ -50,6 +53,9 @@ bool boundsDisjoint(Bound a, Bound b)
     return aEnd <= b.start || bEnd <= a.start;
 }
 
+/++
+    Multiplies one validated coordinate by a signed stride with representability checking.
++/
 private
 bool checkedCoordinateStride(
     size_t coordinate,
@@ -99,6 +105,9 @@ bool checkedCoordinateStride(
 }
 
 
+/++
+    Adds two ptrdiff_t values with explicit overflow detection.
++/
 private
 bool checkedAddPtrdiff(
     ptrdiff_t left,
@@ -126,6 +135,9 @@ bool checkedAddPtrdiff(
 }
 
 
+/++
+    Returns the unsigned magnitude of a signed ptrdiff_t without negating ptrdiff_t.min.
++/
 private
 size_t ptrdiffMagnitude(ptrdiff_t value)
 @safe pure nothrow @nogc
@@ -140,6 +152,9 @@ size_t ptrdiffMagnitude(ptrdiff_t value)
 }
 
 
+/++
+    Converts a checked element offset into a checked byte offset for one sample size.
++/
 private
 bool checkedOffsetBytes(
     ptrdiff_t elementOffset,
@@ -164,6 +179,9 @@ bool checkedOffsetBytes(
 }
 
 
+/++
+    Computes the minimum and maximum checked offsets contributed by one zero-origin raster axis.
++/
 private
 bool checkedAxisOffsetsZeroOrigin(
     size_t extent,
@@ -199,6 +217,9 @@ bool checkedAxisOffsetsZeroOrigin(
 }
 
 
+/++
+    Adds a checked signed element offset to a validated base address and returns the resulting byte address.
++/
 private
 bool checkedAddressFromElementOffset(
     size_t base,
@@ -238,6 +259,9 @@ bool checkedAddressFromElementOffset(
 }
 
 
+/++
+    Computes one checked inclusive physical byte bound for a validated affine raster rectangle.
++/
 private
 Bound checkedAffineBound(Rect rect, size_t sampleSize)
 @safe pure nothrow @nogc
@@ -330,6 +354,9 @@ Bound checkedAffineBound(Rect rect, size_t sampleSize)
 }
 
 
+/++
+    Attempts the conservative checked-bounds fast reject used before exact affine-overlap classification.
++/
 private
 bool checkedFastRejectDisjoint(
     Rect a,
@@ -362,6 +389,9 @@ bool checkedFastRejectDisjoint(
     Checked half-open bounds are solely a sufficient disjointness proof.
     Otherwise the existing exact algebraic classifier determines the result,
     including arithmeticFailure. The caller retains its defensive fallback.
++/
+/++
+    Classifies exact byte overlap between two validated same-type affine rectangles, using checked bounds only as a conservative early reject.
 +/
 package(raster)
 AffineByteOverlapRelation classifyValidatedSameTypeAffine2DRectanglesByteOverlap(
@@ -401,6 +431,9 @@ AffineByteOverlapRelation classifyValidatedSameTypeAffine2DRectanglesByteOverlap
 /++
     Equal-shape convenience wrapper for the same invocation-local validated
     same-type relation. Error and fallback semantics match the rectangle form.
++/
+/++
+    Classifies exact byte overlap between two equally shaped validated same-type affine mappings.
 +/
 package(raster)
 AffineByteOverlapRelation classifyValidatedSameTypeAffine2DByteOverlap(
@@ -535,6 +568,9 @@ static assert(classifyValidatedSameTypeAffine2DByteOverlap(2,2,64,4,-1,128,-4,1,
     envelopes. Overlapping or unrepresentable envelopes preserve the original
     exact classifier, including arithmeticFailure and the caller's fallback.
     This invocation-local relation performs no pointer access.
++/
+/++
+    Classifies exact physical overlap between validated ubyte source and float destination affine mappings.
 +/
 package(raster)
 AffineByteOverlapRelation classifyValidatedUbyteToFloatAffine2DByteOverlap(

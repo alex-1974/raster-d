@@ -52,6 +52,9 @@ nothrow
 
     if (sampleStrideElements == 1)
     {
+        /++
+            Fills an already-approved Canonical destination plane using its signed row stride and unit sample stride.
+        +/
         fillCanonical(destination.executionRegionBase(planeIndex), rowStrideElements,
             destination.width, destination.height, value);
         return true;
@@ -90,6 +93,9 @@ private T[] writeFillRow(T)(return scope T* base, size_t y,
     return (base + cast(ptrdiff_t)y * stride)[0 .. width];
 }
 
+/++
+    Fills an already-approved Canonical destination plane using its signed row stride and unit sample stride.
++/
 private void fillCanonical(T)(scope T* base, ptrdiff_t stride,
     size_t width, size_t height, T value) @safe nothrow @nogc
 {
