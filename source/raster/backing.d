@@ -435,6 +435,12 @@ public:
 
     /++
         Returns a non-owning read-only RasterView borrowing from this lease.
+
+        RasterLease.init is a valid inert lifetime capability. For an
+        uninitialized lease this method returns RasterView!T.init instead of
+        entering the retained-owner borrow path.
+
+        A non-empty returned view remains lifetime-bound to this lease.
     +/
     RasterView!T view()
     return
@@ -442,6 +448,11 @@ public:
     nothrow
     @nogc
     {
+        if (!owner_.refCountedStore.isInitialized)
+        {
+            return RasterView!T.init;
+        }
+
         return owner_.borrow!(
             makeViewFromBacking!T
         );
