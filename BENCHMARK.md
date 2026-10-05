@@ -363,3 +363,143 @@ under both compiler families. These tests validate the clean transfer; the
 reported XPS times are for the pinned research consumers. No new production
 binary timing, compiler switch, explicit SIMD, threading or AArch64 performance
 qualification is claimed.
+
+
+## M3.4 strict reduction controlled confirmation
+
+The initial strict `float -> double` reduction audit was followed by a
+controlled reference-XPS confirmation because the first DMD Pointer advantage
+was material but modest.
+
+Retained research:
+
+- raster-d-research Issue #21 / PR #43;
+- archive
+  `raster-m3-reduction-pointer-confirm-20261005-101445.tar.gz`;
+- SHA256
+  `46c778441788941e35483e6279a36c05f89b94730416bd1e6f7341b5a04f3b1`.
+
+The collector reuses the qualified strict semantic harness, builds fixed release
+binaries, runs six independent processes per compiler on CPU0 and records
+governor/frequency/thermal snapshots.
+
+Representative DMD public/pointer medians on XPS i7-9750H:
+
+| Shape/layout | Public / Pointer |
+| --- | ---: |
+| 256x128 contiguous | ~0.995x |
+| 256x128 padded | ~1.128x |
+| 256x128 negative-row | ~1.128x |
+| 256x128 repeated-row | ~1.128x |
+| 2048x512 contiguous | ~1.006x |
+| 2048x512 padded | ~1.131x |
+| 2048x512 negative-row | ~1.129x |
+| 2048x512 repeated-row | ~1.130x |
+
+LDC remains approximately neutral. The historical and then-current Production
+reduction modules were byte-identical before promotion.
+
+ADR 0015 and Production PR #63 therefore select the narrow DMD x86-64
+Canonical pointer executor while preserving one double accumulator and exact
+row-major order. Contiguous Mir, Universal, LDC, reassociation, SIMD reduction
+and threading remain unchanged.
+
+## M3.5 compiler-qualified exact conversion follow-up
+
+ADR 0013 was intentionally an intermediate Production step. Its remaining DMD
+and signed-LDC gaps were resolved through separate full-public qualification.
+
+### DMD full-public pointer qualification
+
+A same-entry row diagnostic first removed severe function-placement noise, then
+a generated full-public selector compared current row execution with a bounded
+pointer/count candidate while preserving complete public validation.
+
+The full-public reference-XPS result showed a stable DMD improvement, typically
+about 16-22% on large padded/negative/repeated Canonical layouts, while inactive
+and LDC controls remained near parity. That result was promoted in Production
+PR #62.
+
+The pointer implementation was subsequently used as the **baseline** for the
+final SSE2 refresh rather than treated as the final optimization.
+
+### LDC negative-source optimizer boundary
+
+Retained research:
+
+- raster-d-research Issue #44 / PR #45;
+- archive
+  `raster-m3-ldc-signed-row-xps-20261005-103724.tar.gz`;
+- SHA256
+  `8293304344d838529816599d3c0fd667a3ab72e5d5c18a260edc1a3665d271cc`.
+
+The experiment uses one full-public entry and changes only the row-local
+optimizer boundary. Negative-target-only is an explicit control, allowing
+source-row direction to be isolated.
+
+Representative LDC long-block current/boundary medians:
+
+| Width | Negative source | Negative both |
+| ---: | ---: | ---: |
+| 31 | 0.992x | 1.016x |
+| 64 | 1.269x | 1.293x |
+| 96 | 1.459x | 1.473x |
+| 256 | 2.061x | 2.037x |
+| 2048 | 2.445x | 2.422x |
+
+Contiguous, padded positive-source, negative-target-only, repeated-source,
+Universal and DMD controls remain near 1.00x. Production PR #64 therefore
+selects a safe `pragma(inline, false)` LDC x86-64 row helper only for negative
+source row stride and width >=64.
+
+### DMD exact SSE2 refresh against the pointer Production path
+
+Retained research:
+
+- raster-d-research Issue #46 / PR #47;
+- archive
+  `raster-m3-vector-refresh-xps-20261005-110140.tar.gz`;
+- SHA256
+  `35eaaeef6bbd1d3d3ac12168a84824eb51456cfbc7660b3bf39b97517ebd3f51`.
+
+The refresh pins Production
+`24d948255df014c683d79c5508f13248806062dc`, where the DMD bounded pointer
+optimization and LDC signed-source boundary already exist. One generated
+full-public entry compares:
+
+- form 0: exact current Production;
+- form 1: exact SSE2 only for DMD x86-64 unit-stride rows width >=64.
+
+Widths 31/63, Universal and every LDC case are inactive controls. Six
+fixed-binary CPU0-pinned processes are retained for short and long cohorts.
+The DMD linked binary contains the expected `movdqu`, `punpck*`,
+`cvtdq2ps` and `movups` instruction sequence.
+
+Pooled DMD Production/SSE2 medians:
+
+| Cohort | Active cases | Inactive cases |
+| --- | ---: | ---: |
+| Short | ~1.695x | ~1.000x |
+| Long | ~1.677x | ~0.999x |
+
+Representative long-block DMD medians:
+
+| Width | Contiguous | Padded | Negative source | Negative target | Negative both | Repeated source |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 64 | 1.861x | 1.711x | 1.707x | 1.704x | 1.703x | 1.735x |
+| 96 | 1.729x | 1.612x | 1.620x | 1.590x | 1.623x | 1.593x |
+| 256 | 1.701x | 1.724x | 1.694x | 1.706x | 1.716x | 1.659x |
+| 2048 | 1.565x | 1.565x | 1.633x | 1.611x | 1.614x | 1.606x |
+
+All LDC control cohorts remain near 1.00x.
+
+The SIMD algorithm is the previously qualified exact sixteen-ubyte
+unpack/widen/`CVTDQ2PS` kernel with scalar tail; the refresh changes the
+comparison baseline, not the algorithm. Earlier bitwise, four-rounding-mode and
+guard-page evidence therefore remains applicable to the same core operation.
+
+ADR 0014 and Production PR #65 promote this path for DMD x86-64 width >=64,
+superseding the bounded pointer implementation there.
+
+These ratios are reference-machine qualification evidence, not portable
+performance promises or CI timing thresholds. AArch64/NEON remains unqualified.
