@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   inventory:
-    name: DDox inventory
+    name: Strict DDox documentation
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -46,15 +46,15 @@ jobs:
           dc_format: shortname
       - name: Validate release documentation structure
         run: bash tools/validate-docs.sh
-      - name: Build public-only DDox and inventory symbol pages
+      - name: Build and verify public-only DDox
         env:
-          VERIFY_CONTRACTS: '0'
-          INVENTORY_ONLY: '1'
+          VERIFY_CONTRACTS: '1'
+          INVENTORY_ONLY: '0'
           DC: dmd
         run: bash tools/build-docs.sh
       - name: Upload DDox inventory site
         uses: actions/upload-artifact@v7
         with:
-          name: raster-ddox-inventory
+          name: raster-ddox-release-candidate
           path: build/ddox/site
           retention-days: 14
