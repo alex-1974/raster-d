@@ -1,7 +1,6 @@
 # raster-d
 
-`raster-d` is an experimental high-performance generic raster library written
-in D.
+`raster-d` is a high-performance generic raster library written in D.
 
 It provides the reusable raster foundation for large resident and streamed
 datasets without imposing image, colour, radiometric or geospatial-image
@@ -21,7 +20,17 @@ or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-Active generic raster-core implementation.
+v0.1.0 is tagged from the fully qualified release commit; final publication verification remains.
+
+The v0.1.0 public source contract is frozen at `freeze/api-0.1.0`. Release
+qualification covers the controlled compiler-generation matrix, supported
+platform matrix, compiler floors, strict public-only DDox, external archive
+consumers and the reference-XPS M2/M3 Production benchmark. The qualified
+release candidate has been promoted to `main`; the signed `v0.1.0` release tag has been created; final publication
+verification remains.
+
+Because raster-d is pre-1.0, later minor releases may deliberately evolve the
+API. The published v0.1.0 contract itself is treated as fixed.
 
 The production DUB package is `raster-d` and the public D namespace is
 `raster` / `raster.*`.
@@ -58,8 +67,9 @@ assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
 decomposition, cache-block selection/replacement and scheduling remain outside
 the public raster contract.
 
-The public API remains experimental. Performance-sensitive implementation is
-developed from measured evidence and validated with both DMD and LDC.
+Performance-sensitive implementation is developed from measured evidence and
+validated with both DMD and LDC. Compiler/ISA-specific execution remains an
+internal implementation choice rather than a public switch.
 
 ## Primary goals
 
@@ -136,7 +146,9 @@ its provenance and reproducibility are controlled.
 Performance-sensitive work will be tested with both DMD and LDC. LDC/LLVM is
 expected to become the primary performance compiler.
 
-See `ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md`.
+See `docs/API.md` for the v0.1 public contract, `CHANGELOG.md` for release
+history, `docs/V0_1_RELEASE_NOTES.md` for the first release, and
+`ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md` for engineering context.
 
 ## Compiler support
 

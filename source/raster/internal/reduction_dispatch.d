@@ -97,6 +97,9 @@ struct FloatToDoubleSumResult
 }
 
 
+/++
+    Constructs a successful internal strict-reduction result with the computed sum.
++/
 private
 FloatToDoubleSumResult successfulSum(
     double value
@@ -118,6 +121,9 @@ nothrow
 }
 
 
+/++
+    Constructs a failed internal strict-reduction result with the public reset value.
++/
 private
 FloatToDoubleSumResult failedSum(
     FloatToDoubleSumDispatchError error

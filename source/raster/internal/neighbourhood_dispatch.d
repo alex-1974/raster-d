@@ -120,6 +120,9 @@ nothrow
     stride when the centralized compiler capability is true.
 +/
 pragma(inline, false)
+/++
+    Executes one float neighbourhood output row behind an out-of-line optimizer boundary used by qualified LDC codegen.
++/
 private
 void executeFloatRowNoInline(alias kernel)(
     scope const(float)* row0,
@@ -158,6 +161,9 @@ nothrow
 }
 
 
+/++
+    Executes float neighbourhood rows when the qualified negative-row LDC path requires a separate optimizer boundary.
++/
 private
 void executeFloatNegativeRowsNoInline(alias kernel)(
     scope const(float)* sourceBase,

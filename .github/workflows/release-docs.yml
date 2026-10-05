@@ -1,0 +1,92 @@
+name: Release Documentation
+
+on:
+  push:
+    branches:
+      - release/0.1
+      - docs-release-0.1-documentation-gate
+    paths:
+      - 'source/raster/**'
+      - 'docs/**'
+      - 'tools/build-docs.sh'
+      - 'tools/build-versioned-docs.sh'
+      - '.github/workflows/pages.yml'
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'tools/validate-docs.sh'
+      - 'tools/filter-internal-ddox-json.py'
+      - 'tools/verify-public-module-ddoc.py'
+      - 'tools/verify-internal-ddoc.py'
+      - 'tools/verify-public-api-examples.py'
+      - '.github/workflows/release-docs.yml'
+  pull_request:
+    branches:
+      - release/0.1
+    paths:
+      - 'source/raster/**'
+      - 'docs/**'
+      - 'tools/build-docs.sh'
+      - 'tools/build-versioned-docs.sh'
+      - '.github/workflows/pages.yml'
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'tools/validate-docs.sh'
+      - 'tools/filter-internal-ddox-json.py'
+      - 'tools/verify-public-module-ddoc.py'
+      - 'tools/verify-internal-ddoc.py'
+      - 'tools/verify-public-api-examples.py'
+      - '.github/workflows/release-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    name: Strict DDox documentation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: dmd-2.111.0
+          dub: 1.40.0
+          dc_format: shortname
+      - name: Validate release documentation structure
+        run: bash tools/validate-docs.sh
+      - name: Build and verify public-only DDox
+        env:
+          VERIFY_CONTRACTS: '1'
+          INVENTORY_ONLY: '0'
+          DC: dmd
+        run: bash tools/build-docs.sh
+      - name: Build versioned Pages site
+        shell: bash
+        run: bash tools/build-versioned-docs.sh
+      - name: Upload DDox inventory site
+        uses: actions/upload-artifact@v7
+        with:
+          name: raster-ddox-release-candidate
+          path: build/ddox/site
+          retention-days: 14
+
+
+  examples:
+    name: Compiled examples (${{ matrix.compiler }})
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [dmd-2.111.0, ldc-1.41.0]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dub: 1.40.0
+          dc_format: shortname
+      - name: Run complete unittest suite with documented examples
+        shell: bash
+        run: |
+          set -euo pipefail
+          dub test --compiler="$DC" --force

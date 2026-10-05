@@ -101,6 +101,9 @@ struct UbyteToFloatConversionResult
 }
 
 
+/++
+    Constructs the internal successful exact-conversion result.
++/
 private
 UbyteToFloatConversionResult conversionSuccess()
 @safe
@@ -117,6 +120,9 @@ nothrow
 }
 
 
+/++
+    Constructs an internal exact-conversion failure result for one semantic error.
++/
 private
 UbyteToFloatConversionResult conversionFailure(
     UbyteToFloatConversionError error
@@ -467,6 +473,9 @@ nothrow
 }
 
 
+/++
+    Converts one already-approved contiguous ubyte row to float using the ordinary exact scalar/Mir-compatible path.
++/
 private
 bool convertApprovedUbyteToFloatContiguous1D(
     scope const(ubyte)* sourceBase,

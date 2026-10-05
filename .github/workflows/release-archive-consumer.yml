@@ -1,0 +1,40 @@
+name: Release Archive Consumer
+
+on:
+  push:
+    branches:
+      - 'release/**'
+      - 'hotfix/**'
+      - main
+  pull_request:
+    branches:
+      - 'release/**'
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consumer:
+    name: Archive consumer / ${{ matrix.compiler }}
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [dmd-2.111.0, ldc-1.41.0]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dub: 1.40.0
+          dc_format: shortname
+
+      - name: Build and run consumer from git archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/release-archive-consumer.sh "$DC"

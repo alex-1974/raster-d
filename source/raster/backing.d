@@ -5,6 +5,11 @@
 
     RasterLease retains the backing representation from which such views
     borrow their descriptor metadata and pixel resources.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.backing;
 
@@ -430,6 +435,12 @@ public:
 
     /++
         Returns a non-owning read-only RasterView borrowing from this lease.
+
+        RasterLease.init is a valid inert lifetime capability. For an
+        uninitialized lease this method returns RasterView!T.init instead of
+        entering the retained-owner borrow path.
+
+        A non-empty returned view remains lifetime-bound to this lease.
     +/
     RasterView!T view()
     return
@@ -437,10 +448,35 @@ public:
     nothrow
     @nogc
     {
+        if (!owner_.refCountedStore.isInitialized)
+        {
+            return RasterView!T.init;
+        }
+
         return owner_.borrow!(
             makeViewFromBacking!T
         );
     }
+
+/// Example borrowing a read-only view from a retained lease.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(4);
+    assert(memory !is null);
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+    const PlaneByteLayout[1] planes = [PlaneByteLayout(0, 2, 1)];
+    RasterLease!ubyte lease;
+    assert(tryImportOwnedRaster!ubyte(resource, planes[], Region2D(0, 0, 2, 2), lease).ok);
+
+    scope auto view = lease.view();
+    assert(view.planeCount == 1);
+    assert(view.width == 2 && view.height == 2);
+}
+
 
 
     /++
@@ -508,7 +544,35 @@ public:
 
         return view;
     }
+
+/// Example requesting writable access from an empty lease.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto view = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(view.planeCount == 0);
 }
+
+}
+
+/// Example inspecting the default retained-lifetime capability.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto writable = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(writable.empty);
+}
+
 
 
 version (unittest)

@@ -7,6 +7,11 @@
     Conversion into the element-oriented PlaneDescriptor representation happens
     only after the sample type is known and the byte representation has been
     validated.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.byte_layout;
 
@@ -36,6 +41,19 @@ struct PlaneByteLayout
 
     ptrdiff_t sampleStrideBytes;
 }
+
+/// Example describing external raster memory in bytes.
+@safe unittest
+{
+    import raster;
+
+    const layout = PlaneByteLayout(8, -16, 2);
+
+    assert(layout.byteOffset == 8);
+    assert(layout.rowStrideBytes == -16);
+    assert(layout.sampleStrideBytes == 2);
+}
+
 
 
 /++

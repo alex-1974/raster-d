@@ -503,3 +503,77 @@ superseding the bounded pointer implementation there.
 
 These ratios are reference-machine qualification evidence, not portable
 performance promises or CI timing thresholds. AArch64/NEON remains unqualified.
+
+
+## v0.1.0 final Production reference baseline
+
+The final release baseline was collected on the reference Dell XPS 15
+(Intel Core i7-9750H, x86-64) after both immutable release checkpoints:
+
+- feature freeze:
+  `d8cbcb270d24a344f59c4a7f1880848add38c975`;
+- API freeze:
+  `7afcaad4181566d21ca7ced78cf7b417eae8adbf`.
+
+Collector/release head:
+
+`a2f5ccb431d8e9ea71d7aef2b2161eebae3246a0`
+
+The collector records `source_tree_matches_api_freeze=yes`, so the measured
+`source/raster` implementation is byte-for-byte the API-freeze source tree;
+the later release-head changes are benchmark/release-tooling only.
+
+Reference archive:
+
+`raster-release-0.1-baseline-20261005-152725.tar.gz`
+
+SHA256:
+
+`b3711e7800c52cbd97f4313a214eec4326846100640af570b4fcacf4a0fd3ae1`
+
+The recursive archive manifest verifies all 47 retained files. Six independent
+CPU0-pinned processes were run for each compiler. Every process produced all
+seven workloads and stable per-workload checksums.
+
+Toolchain:
+
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+The retained median reference values are:
+
+| Workload | DMD 2.111 ns/pixel | LDC 1.41 ns/pixel | Checksum |
+| --- | ---: | ---: | --- |
+| Copy ubyte, padded | 0.039380 | 0.063849 | `a6fe21e16e3d0383` |
+| Exact ubyte→float, padded | 0.315673 | 0.132128 | `722e5202d1dd0383` |
+| Exact ubyte→float, negative source row | 0.313821 | 0.138983 | `3c6dae8fd2dd0383` |
+| Fill ubyte, padded | 0.022856 | 0.026616 | `5053d3e51d5d0383` |
+| Point transform float, padded | 1.040911 | 0.202841 | `37cee2ef2e81c0c3` |
+| Strict float→double reduction, negative source row | 1.008964 | 3.399446 | `c0d6a3a000000000` |
+| 3x3 neighbourhood float, negative source row | 78.758824 | 15.264356 | `8f547c1db49ce052` |
+
+The first full collector run from the preceding release head was structurally
+valid but is superseded for release evidence because its benchmark-only
+reduction checksum accumulator started from D `double.init` (NaN). PR #72
+changed only that local benchmark checksum sink to `0.0`; the raster source
+tree, workload, timing loop and reduction implementation were unchanged.
+
+The final reduction checksum is finite and identical across all twelve retained
+DMD/LDC processes. All other workload checksums are likewise stable across
+processes and compilers where semantic output is shared.
+
+These values are reference-machine regression evidence, not portable
+performance guarantees, compiler rankings or CI timing thresholds. CPU
+frequency and thermal snapshots are retained in the archive for every process.
+AArch64/NEON and later compiler-generation performance remain outside the
+v0.1.0 qualification boundary.
+
+After this baseline was recorded, release qualification changed only
+`source/raster/internal/retained_store.d` to replace three local `ref`
+aliases with direct indexed entry access for D 2.101/LDC 1.31 frontend
+compatibility. That internal M1 retained-store path is not exercised by the
+seven M2/M3 benchmark workloads above; no benchmarked operation source,
+public API, numerical path or x86-64 hot-path selector changed. The retained
+v0.1.0 M2/M3 reference baseline therefore remains the accepted release
+performance evidence.

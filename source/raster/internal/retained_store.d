@@ -63,6 +63,9 @@ private:
     size_t entryCount_;
 
 
+    /++
+        Returns the first byte address of one retained-store slot.
+    +/
     size_t slotStart(
         ref const Key key
     )
@@ -91,6 +94,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns the configured retained-store byte budget.
+    +/
     size_t retainedByteLimit() const
     @safe
     pure
@@ -103,6 +109,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns bytes currently retained by populated store entries.
+    +/
     size_t retainedBytes() const
     @safe
     pure
@@ -115,6 +124,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns the number of populated retained-store entries.
+    +/
     size_t entryCount() const
     @safe
     pure
@@ -127,6 +139,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns the fixed retained-store entry capacity.
+    +/
     size_t entryCapacity() const
     @safe
     pure
@@ -163,23 +178,20 @@ public:
                 (start + probe)
                 % EntryCapacity;
 
-            ref entry =
-                entries_[index];
-
-            if (!entry.occupied)
+            if (!entries_[index].occupied)
             {
                 return false;
             }
 
             if (
                 sameKey(
-                    entry.key,
+                    entries_[index].key,
                     key
                 )
             )
             {
                 lease =
-                    entry.lease;
+                    entries_[index].lease;
 
                 return true;
             }
@@ -239,10 +251,7 @@ public:
                 (start + probe)
                 % EntryCapacity;
 
-            ref entry =
-                entries_[index];
-
-            if (!entry.occupied)
+            if (!entries_[index].occupied)
             {
                 freeIndex =
                     index;
@@ -252,7 +261,7 @@ public:
 
             if (
                 sameKey(
-                    entry.key,
+                    entries_[index].key,
                     key
                 )
             )
@@ -270,19 +279,16 @@ public:
                     .entryCapacityExceeded;
         }
 
-        ref destination =
-            entries_[freeIndex];
-
-        destination.key =
+        entries_[freeIndex].key =
             move(key);
 
-        destination.physicalBytes =
+        entries_[freeIndex].physicalBytes =
             physicalBytes;
 
-        destination.lease =
+        entries_[freeIndex].lease =
             move(lease);
 
-        destination.occupied =
+        entries_[freeIndex].occupied =
             true;
 
         retainedBytes_ +=

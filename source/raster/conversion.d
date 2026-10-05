@@ -5,6 +5,11 @@
 
     Execution layouts, Mir adapters, contiguous targets, physical-range
     classifiers and checked-wide relation machinery remain internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.conversion;
 
@@ -41,6 +46,14 @@ enum UbyteToFloatConversionError : ubyte
 
     sourceDestinationOverlap
 }
+
+/// Example using the exact-conversion error category.
+@safe unittest
+{
+    import raster;
+    assert(UbyteToFloatConversionError.init == UbyteToFloatConversionError.none);
+}
+
 
 
 static assert(
@@ -139,6 +152,18 @@ nothrow
             return false;
     }
 }
+
+/// Example reporting an invalid source plane before conversion.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!float destination;
+    UbyteToFloatConversionError error;
+    assert(!tryConvertUbyteToFloatPlane(source, 0, destination, 0, error));
+    assert(error == UbyteToFloatConversionError.invalidSourcePlane);
+}
+
 
 
 version (unittest)

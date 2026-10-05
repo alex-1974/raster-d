@@ -51,6 +51,9 @@ struct ExpandedDependency
 }
 
 
+/++
+    Checks whether one absolute region is fully contained in another without unchecked translated-end arithmetic.
++/
 private bool tryContainsAbsolute(
     Region2D outer,
     Region2D inner,
@@ -91,6 +94,9 @@ nothrow
 }
 
 
+/++
+    Returns the smaller of two size_t values for dependency-geometry calculations.
++/
 private size_t lesser(
     size_t a,
     size_t b

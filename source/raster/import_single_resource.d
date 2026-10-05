@@ -1,20 +1,25 @@
 /++
-    Transactional join of:
+    Transactional retained import for one owned physical raster resource.
 
-    - one OwnedByteResource;
-    - external PlaneByteLayout metadata;
-    - one resident Region2D;
+    The import combines one OwnedByteResource, external PlaneByteLayout
+    metadata, and one resident Region2D into one retained RasterLease.
 
-    into one retained RasterLease.
+    This module is package-internal. Public callers use raster.import_owned,
+    which maps these construction details onto the stable public result model.
 
-    This module is package-internal while the public error/result surface is
-    still being designed.
+    The key ownership rule is that layout conversion happens before ownership
+    transfer. After ownership transfer, retained construction owns the release
+    obligation transactionally.
 
-    The key ownership rule is:
 
     - layout conversion happens before ownership transfer;
     - after ownership transfer, raw retained construction owns the release
       obligation transactionally.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.import_single_resource;
 
@@ -71,6 +76,9 @@ private alias DescriptorFreeFn =
     @nogc;
 
 
+/++
+    Allocates temporary descriptor metadata for one import transaction.
++/
 private
 void* allocateDescriptorMetadata(
     size_t byteLength
@@ -82,6 +90,9 @@ nothrow
 }
 
 
+/++
+    Releases temporary descriptor metadata allocated during import.
++/
 private
 void freeDescriptorMetadata(
     void* allocation
