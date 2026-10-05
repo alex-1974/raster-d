@@ -667,7 +667,7 @@ Research provenance:
 
 ## M3 — CPU Performance
 
-Status: in progress.
+Status: complete for the qualified x86-64 baseline.
 
 Optimise proven hot paths using measured, replaceable internal execution forms
 without changing public raster semantics.
@@ -771,22 +771,123 @@ threading or AArch64 performance claim is introduced.
 
 ---
 
+## M3.4 — Strict row-major float-to-double reduction execution
+
+Status: complete.
+
+The public strict reduction keeps one double accumulator and exact logical
+row-major addition order.
+
+Controlled M3.4 research and reference-XPS confirmation selected one narrow
+compiler-specific execution form:
+
+- DMD x86-64 Canonical layouts use a private pointer-based row executor;
+- the existing contiguous Mir path is unchanged;
+- Universal/non-Canonical traversal is unchanged;
+- LDC and other compilers are unchanged;
+- no reassociation, fixed-lane SIMD, fast-math, contraction or threading is
+  introduced.
+
+Six fixed-binary CPU0-pinned DMD processes on the i7-9750H reference XPS
+confirmed representative public/pointer medians of roughly 1.128x to 1.131x on
+large padded, negative-row and repeated-row Canonical cases, while contiguous
+and LDC controls remained near 1.00x.
+
+The decision is recorded by ADR 0015 and Production PR #63.
+
+Research provenance:
+
+    raster-d-research Issue #21 / PR #43
+    archive raster-m3-reduction-pointer-confirm-20261005-101445.tar.gz
+    SHA256 46c778441788941e35483e6279a36c05f89b94730416bd1e6f7341b5a04f3b1
+
+---
+
 ## M3.5 — Copy / exact conversion bounds and row execution
 
-Implemented for review in Issue #60 following Research PR #23's 2026-10-03
-XPS qualification. ADR 0013 selects checked same-/cross-type bounds before the
-original exact relation/fallback, then safe scoped row Copy and exact conversion
-for approved unit sample strides. The existing flat-copy memcpy, Universal
-traversal and public validation/error/no-write/empty contracts remain.
+Status: complete.
 
-Production adds an independent 5,000-case cross-type byte oracle and integer
-limits alongside the inherited same-type oracle, 120 public full-backing cases
-including static-array samples, shared disjoint envelopes and signed/repeated
-source layouts, plus actual-source trust and external visibility controls in
-Fast/Release CI. BENCHMARK.md preserves scoped XPS ranges and high short-Copy
-variance. Conversion improves substantially, but remaining DMD and signed LDC
-execution gaps remain tracked in research Issue #22. M3 is still open; no
-compiler switch, manual SIMD, threading or AArch64 performance claim is made.
+ADR 0013 first selected checked same-/cross-type physical bounds before the
+original exact relation/fallback plus approved unit-sample-stride row execution.
+That production slice preserved the existing flat-copy memcpy, Universal
+traversal and every public validation/error/no-write/empty contract.
+
+The follow-up compiler qualification is now also complete.
+
+### Copy
+
+Same-type Copy retains the qualified ADR 0013 implementation:
+
+- checked physical-bounds prefilter;
+- original exact fallback when bounds overlap or are unrepresentable;
+- slice assignment for approved unit-sample-stride rows;
+- existing flat-copy memcpy;
+- Universal traversal unchanged.
+
+### Exact ubyte-to-float conversion
+
+After the ADR 0013 validation/relation boundary:
+
+- **DMD x86-64, width >=64, unit sample stride** uses the qualified exact SSE2
+  unpack/widen/`CVTDQ2PS` row kernel with scalar tail;
+- **DMD x86-64, width <64** retains the ordinary scalar row conversion;
+- **LDC x86-64, negative source row stride, width >=64** uses the qualified
+  safe `pragma(inline, false)` row-local optimizer boundary;
+- other LDC Canonical rows retain the ordinary row form;
+- Universal/non-unit-sample-stride traversal remains unchanged.
+
+The DMD SSE2 path was refreshed against the already optimized DMD pointer
+Production implementation rather than against an obsolete scalar baseline.
+Six fixed-binary CPU0-pinned reference-XPS processes showed pooled
+Production/SSE2 medians of about 1.695x short and 1.677x long for active DMD
+cases, while inactive DMD and all LDC controls remained near 1.00x.
+
+The LDC signed-source qualification isolates source-row direction as the
+optimizer boundary: negative-source and negative-both cases gain materially
+from width 64 upward, while positive-source, negative-target-only,
+repeated-source, Universal and DMD controls stay near parity.
+
+ADR 0014 records the final compiler-qualified conversion strategy.
+
+Production sequence:
+
+- PR #61 — checked bounds + approved Copy/conversion row execution;
+- PR #62 — DMD bounded pointer conversion, later superseded for width >=64;
+- PR #64 — LDC negative-source no-inline row boundary;
+- PR #65 — exact DMD SSE2 conversion, superseding the pointer kernel for the
+  active DMD width>=64 path.
+
+Research provenance includes Issues #22, #39, #41, #44 and #46 and their
+stacked qualification PRs.
+
+No public compiler/layout switch, fast-math, reassociation, hidden threading or
+scheduler policy is introduced.
+
+---
+
+### M3 completion boundary
+
+The x86-64 M3 production baseline is complete for the currently exposed
+fundamental operations:
+
+- 3x3 neighbourhood;
+- checked affine relation prefilter;
+- generic point transform;
+- fill;
+- strict reduction;
+- same-type Copy;
+- exact ubyte-to-float conversion.
+
+Remaining work is explicitly **not** an unfinished M3 requirement:
+
+- AArch64/NEON performance qualification;
+- later compiler/frontend generations where codegen differs;
+- caller-owned parallel execution and scheduling research;
+- GPU execution;
+- higher-level image-domain kernels.
+
+Those require their own measured research and must not be inferred from the
+qualified x86-64 results.
 
 ---
 
