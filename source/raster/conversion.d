@@ -47,6 +47,14 @@ enum UbyteToFloatConversionError : ubyte
     sourceDestinationOverlap
 }
 
+/// Example using the exact-conversion error category.
+@safe unittest
+{
+    import raster;
+    assert(UbyteToFloatConversionError.init == UbyteToFloatConversionError.none);
+}
+
+
 
 static assert(
     UbyteToFloatConversionError.init
@@ -144,6 +152,18 @@ nothrow
             return false;
     }
 }
+
+/// Example reporting an invalid source plane before conversion.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!float destination;
+    UbyteToFloatConversionError error;
+    assert(!tryConvertUbyteToFloatPlane(source, 0, destination, 0, error));
+    assert(error == UbyteToFloatConversionError.invalidSourcePlane);
+}
+
 
 
 version (unittest)
