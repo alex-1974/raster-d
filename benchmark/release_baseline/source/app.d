@@ -13,6 +13,13 @@ private enum size_t warmups = 3;
 private enum size_t samples = 11;
 
 
+private void require(bool condition, string message)
+{
+    if (!condition)
+        throw new Exception(message);
+}
+
+
 private struct Measurement
 {
     long medianNs;
@@ -140,7 +147,10 @@ private ulong checksumUbyte(
         foreach (x; 0 .. view.width)
         {
             ubyte value;
-            assert(view.trySample(0, x, y, value));
+            require(
+                view.trySample(0, x, y, value),
+                "ubyte checksum sample read failed"
+            );
             hash ^= value;
             hash *= 1099511628211UL;
         }
@@ -162,7 +172,10 @@ private ulong checksumFloat(
         foreach (x; 0 .. view.width)
         {
             float value;
-            assert(view.trySample(0, x, y, value));
+            require(
+                view.trySample(0, x, y, value),
+                "float checksum sample read failed"
+            );
 
             union Bits
             {
@@ -218,19 +231,28 @@ private Measurement benchCopy(
     RasterLease!ubyte sourceLease;
     RasterLease!ubyte targetLease;
 
-    assert(makeLease!ubyte(width, height, 32, false, sourceLease));
-    assert(makeLease!ubyte(width, height, 32, false, targetLease));
+    require(
+        makeLease!ubyte(width, height, 32, false, sourceLease),
+        "source ubyte lease construction failed"
+    );
+    require(
+        makeLease!ubyte(width, height, 32, false, targetLease),
+        "target ubyte lease construction failed"
+    );
 
     scope auto source = sourceLease.view();
 
     bool writableOk;
     scope auto target = targetLease.tryWritableView(writableOk);
-    assert(writableOk);
+    require(writableOk, "writable view construction failed");
 
     RasterCopyError error;
 
     foreach (_; 0 .. warmups)
-        assert(tryCopyRasterPlane(source, 0, target, 0, error));
+        require(
+            tryCopyRasterPlane(source, 0, target, 0, error),
+            "copy operation failed"
+        );
 
     long[samples] times;
 
@@ -239,7 +261,10 @@ private Measurement benchCopy(
         const start = MonoTime.currTime;
 
         foreach (_; 0 .. iterations)
-            assert(tryCopyRasterPlane(source, 0, target, 0, error));
+            require(
+            tryCopyRasterPlane(source, 0, target, 0, error),
+            "copy operation failed"
+        );
 
         times[sample] =
             (MonoTime.currTime - start).total!"nsecs";
@@ -263,19 +288,28 @@ private Measurement benchConversion(
     RasterLease!ubyte sourceLease;
     RasterLease!float targetLease;
 
-    assert(makeLease!ubyte(width, height, 32, negativeSource, sourceLease));
-    assert(makeLease!float(width, height, 32, false, targetLease));
+    require(
+        makeLease!ubyte(width, height, 32, negativeSource, sourceLease),
+        "conversion source lease construction failed"
+    );
+    require(
+        makeLease!float(width, height, 32, false, targetLease),
+        "target float lease construction failed"
+    );
 
     scope auto source = sourceLease.view();
 
     bool writableOk;
     scope auto target = targetLease.tryWritableView(writableOk);
-    assert(writableOk);
+    require(writableOk, "writable view construction failed");
 
     UbyteToFloatConversionError error;
 
     foreach (_; 0 .. warmups)
-        assert(tryConvertUbyteToFloatPlane(source, 0, target, 0, error));
+        require(
+            tryConvertUbyteToFloatPlane(source, 0, target, 0, error),
+            "conversion operation failed"
+        );
 
     long[samples] times;
 
@@ -284,7 +318,10 @@ private Measurement benchConversion(
         const start = MonoTime.currTime;
 
         foreach (_; 0 .. iterations)
-            assert(tryConvertUbyteToFloatPlane(source, 0, target, 0, error));
+            require(
+            tryConvertUbyteToFloatPlane(source, 0, target, 0, error),
+            "conversion operation failed"
+        );
 
         times[sample] =
             (MonoTime.currTime - start).total!"nsecs";
@@ -305,14 +342,20 @@ private Measurement benchFill(
 @system
 {
     RasterLease!ubyte lease;
-    assert(makeLease!ubyte(width, height, 32, false, lease));
+    require(
+        makeLease!ubyte(width, height, 32, false, lease),
+        "fill lease construction failed"
+    );
 
     bool writableOk;
     scope auto target = lease.tryWritableView(writableOk);
-    assert(writableOk);
+    require(writableOk, "writable view construction failed");
 
     foreach (_; 0 .. warmups)
-        assert(tryFillRasterPlane(target, 0, cast(ubyte)173));
+        require(
+            tryFillRasterPlane(target, 0, cast(ubyte)173),
+            "fill operation failed"
+        );
 
     long[samples] times;
 
@@ -321,12 +364,13 @@ private Measurement benchFill(
         const start = MonoTime.currTime;
 
         foreach (i; 0 .. iterations)
-            assert(
+            require(
                 tryFillRasterPlane(
                     target,
                     0,
                     cast(ubyte)(173 + (i & 1))
-                )
+                ),
+                "fill operation failed"
             );
 
         times[sample] =
@@ -350,22 +394,29 @@ private Measurement benchTransform(
     RasterLease!float sourceLease;
     RasterLease!float targetLease;
 
-    assert(makeLease!float(width, height, 32, false, sourceLease));
-    assert(makeLease!float(width, height, 32, false, targetLease));
+    require(
+        makeLease!float(width, height, 32, false, sourceLease),
+        "source float lease construction failed"
+    );
+    require(
+        makeLease!float(width, height, 32, false, targetLease),
+        "target float lease construction failed"
+    );
 
     scope auto source = sourceLease.view();
 
     bool writableOk;
     scope auto target = targetLease.tryWritableView(writableOk);
-    assert(writableOk);
+    require(writableOk, "writable view construction failed");
 
     RasterTransformError error;
 
     foreach (_; 0 .. warmups)
-        assert(
+        require(
             tryTransformRasterPlane!pointTransform(
                 source, 0, target, 0, error
-            )
+            ),
+            "transform operation failed"
         );
 
     long[samples] times;
@@ -375,10 +426,11 @@ private Measurement benchTransform(
         const start = MonoTime.currTime;
 
         foreach (_; 0 .. iterations)
-            assert(
+            require(
                 tryTransformRasterPlane!pointTransform(
                     source, 0, target, 0, error
-                )
+                ),
+                "transform operation failed"
             );
 
         times[sample] =
@@ -400,13 +452,19 @@ private Measurement benchReduction(
 @system
 {
     RasterLease!float sourceLease;
-    assert(makeLease!float(width, height, 32, true, sourceLease));
+    require(
+        makeLease!float(width, height, 32, true, sourceLease),
+        "reduction source lease construction failed"
+    );
 
     scope auto source = sourceLease.view();
 
     double sum;
     foreach (_; 0 .. warmups)
-        assert(trySumFloatToDouble(source, 0, sum));
+        require(
+            trySumFloatToDouble(source, 0, sum),
+            "reduction operation failed"
+        );
 
     long[samples] times;
     double sink;
@@ -417,7 +475,10 @@ private Measurement benchReduction(
 
         foreach (_; 0 .. iterations)
         {
-            assert(trySumFloatToDouble(source, 0, sum));
+            require(
+            trySumFloatToDouble(source, 0, sum),
+            "reduction operation failed"
+        );
             sink += sum;
         }
 
@@ -451,23 +512,27 @@ private Measurement benchNeighbourhood(
     RasterLease!float sourceLease;
     RasterLease!float targetLease;
 
-    assert(
+    require(
         makeLease!float(
             width + 2,
             height + 2,
             32,
             true,
             sourceLease
-        )
+        ),
+        "neighbourhood source lease construction failed"
     );
 
-    assert(makeLease!float(width, height, 32, false, targetLease));
+    require(
+        makeLease!float(width, height, 32, false, targetLease),
+        "target float lease construction failed"
+    );
 
     scope auto source = sourceLease.view();
 
     bool writableOk;
     scope auto target = targetLease.tryWritableView(writableOk);
-    assert(writableOk);
+    require(writableOk, "writable view construction failed");
 
     RasterNeighbourhood3x3Error error;
 
@@ -475,7 +540,7 @@ private Measurement benchNeighbourhood(
         Region2D(1, 1, width, height);
 
     foreach (_; 0 .. warmups)
-        assert(
+        require(
             tryApplyRasterNeighbourhood3x3!neighbourhoodKernel(
                 source,
                 0,
@@ -483,7 +548,8 @@ private Measurement benchNeighbourhood(
                 target,
                 0,
                 error
-            )
+            ),
+            "neighbourhood operation failed"
         );
 
     long[samples] times;
@@ -493,7 +559,7 @@ private Measurement benchNeighbourhood(
         const start = MonoTime.currTime;
 
         foreach (_; 0 .. iterations)
-            assert(
+            require(
                 tryApplyRasterNeighbourhood3x3!neighbourhoodKernel(
                     source,
                     0,
@@ -501,7 +567,8 @@ private Measurement benchNeighbourhood(
                     target,
                     0,
                     error
-                )
+                ),
+                "neighbourhood operation failed"
             );
 
         times[sample] =
@@ -563,6 +630,8 @@ void main(string[] args)
         ? iterations / 4
         : 1;
 
+    writeln("release_benchmark_begin workload=copy_ubyte_padded");
+
     emit(
         "copy_ubyte_padded",
         width,
@@ -570,6 +639,8 @@ void main(string[] args)
         iterations,
         benchCopy(width, height, iterations)
     );
+
+    writeln("release_benchmark_begin workload=convert_ubyte_float_padded");
 
     emit(
         "convert_ubyte_float_padded",
@@ -579,6 +650,8 @@ void main(string[] args)
         benchConversion(width, height, iterations, false)
     );
 
+    writeln("release_benchmark_begin workload=convert_ubyte_float_negative_source");
+
     emit(
         "convert_ubyte_float_negative_source",
         width,
@@ -586,6 +659,8 @@ void main(string[] args)
         iterations,
         benchConversion(width, height, iterations, true)
     );
+
+    writeln("release_benchmark_begin workload=fill_ubyte_padded");
 
     emit(
         "fill_ubyte_padded",
@@ -595,6 +670,8 @@ void main(string[] args)
         benchFill(width, height, iterations)
     );
 
+    writeln("release_benchmark_begin workload=transform_float_padded");
+
     emit(
         "transform_float_padded",
         width,
@@ -603,6 +680,8 @@ void main(string[] args)
         benchTransform(width, height, iterations)
     );
 
+    writeln("release_benchmark_begin workload=reduce_float_negative_source");
+
     emit(
         "reduce_float_negative_source",
         width,
@@ -610,6 +689,8 @@ void main(string[] args)
         iterations,
         benchReduction(width, height, iterations)
     );
+
+    writeln("release_benchmark_begin workload=neighbourhood_float_negative_source");
 
     emit(
         "neighbourhood_float_negative_source",
