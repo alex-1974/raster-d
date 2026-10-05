@@ -117,6 +117,16 @@ public:
         return armed_;
     }
 
+/// Example inspecting the default ownership token.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(!resource.ownsResource);
+}
+
+
 
     /++
         Byte length of the currently owned resource.
@@ -134,6 +144,16 @@ public:
             ? resource_.byteLength
             : 0;
     }
+
+/// Example reading the byte length of an empty ownership token.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(resource.byteLength == 0);
+}
+
 
 
 package(raster):
@@ -211,6 +231,17 @@ package(raster):
         return result;
     }
 }
+
+/// Example using the move-only ownership token in its empty state.
+@safe unittest
+{
+    import raster;
+
+    OwnedByteResource resource;
+    assert(!resource.ownsResource);
+    assert(resource.byteLength == 0);
+}
+
 
 
 /++
@@ -358,6 +389,22 @@ nothrow
         owned
     );
 }
+
+/// Example adopting a malloc-compatible byte allocation.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(16);
+    assert(memory !is null);
+
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 16, resource));
+    assert(resource.ownsResource);
+    assert(resource.byteLength == 16);
+}
+
 
 
 version (unittest)
