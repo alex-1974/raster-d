@@ -56,10 +56,23 @@ def main():
     if not a.site.is_dir(): fail(f"DDox site missing: {a.site}")
     pages=rendered(a.site,a.source_root)
     print("PUBLIC_DDOX_INVENTORY_BEGIN")
-    for name in sorted(pages): print(name)
+    for name in sorted(pages):
+        has_example = ">Example<" in pages[name].read_text(errors="replace")
+        print(f"{name}|example={'yes' if has_example else 'no'}")
     print("PUBLIC_DDOX_INVENTORY_END")
     if a.inventory_only:
-        print(f"PASS: inventoried {len(pages)} public DDox symbol pages"); return
+        compiled = documented_count(a.source_root)
+        rendered_examples = sum(
+            1
+            for page in pages.values()
+            if ">Example<" in page.read_text(errors="replace")
+        )
+        print(
+            f"PASS: inventoried {len(pages)} public DDox symbol pages; "
+            f"rendered_examples={rendered_examples}; "
+            f"documented_unittests={compiled}"
+        )
+        return
     rows=parse_audit(a.audit)
     missing=sorted(set(pages)-set(rows)); stale=sorted(set(rows)-set(pages))
     if missing: fail("public DDox pages missing from audit:\n  "+"\n  ".join(missing))
