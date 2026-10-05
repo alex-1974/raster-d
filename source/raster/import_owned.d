@@ -15,6 +15,11 @@
 
     The raw pointer and release machinery remain behind package-internal
     trusted/system boundaries.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.import_owned;
 
