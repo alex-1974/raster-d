@@ -5,6 +5,11 @@
     already-materialized resident source. Logical dependency derivation,
     ContextDeficit interpretation, border policy, execution specialization and
     scheduling remain outside this public contract.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.neighbourhood;
 
