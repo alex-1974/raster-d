@@ -20,12 +20,14 @@ or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-v0.1.0 release candidate.
+v0.1.0 is fully qualified on `main` and ready for the final release tag and publication.
 
 The v0.1.0 public source contract is frozen at `freeze/api-0.1.0`. Release
 qualification covers the controlled compiler-generation matrix, supported
 platform matrix, compiler floors, strict public-only DDox, external archive
-consumers and the reference-XPS M2/M3 Production benchmark.
+consumers and the reference-XPS M2/M3 Production benchmark. The qualified
+release candidate has been promoted to `main`; the final `v0.1.0` tag and
+publication verification remain.
 
 Because raster-d is pre-1.0, later minor releases may deliberately evolve the
 API. The published v0.1.0 contract itself is treated as fixed.
