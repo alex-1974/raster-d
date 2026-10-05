@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for M3.5 implementation review (Issue #60).
+Accepted.
 
 ## Context
 
@@ -80,3 +80,25 @@ No compiler/version specialization, manual SIMD, fast-math, contraction,
 threading, API expansion or AArch64 performance claim is introduced. The
 standalone checkout has no .workspace hardlinks; supplied canonical policy and
 tracked repository documents provide the engineering context.
+
+
+## Follow-up qualification
+
+ADR 0013 remains the semantic and generic-execution foundation for M3.5.
+Subsequent compiler-specific research did not replace its validation,
+bounds/relation or fallback decisions.
+
+The remaining exact-conversion execution gaps were later resolved by ADR 0014:
+
+- DMD x86-64 width >=64 uses the qualified exact SSE2 row kernel;
+- LDC x86-64 negative-source rows width >=64 use the qualified safe out-of-line
+  row helper;
+- all other paths retain the ADR 0013 execution/fallback structure.
+
+Production PRs #62 and #64 qualified intermediate compiler-specific execution;
+PR #65 supersedes the DMD pointer implementation with exact SSE2 for the active
+width>=64 path.
+
+The earlier statement that no compiler specialization or manual SIMD had yet
+been selected describes the state at the time ADR 0013 was accepted and is
+superseded by ADR 0014 for exact conversion execution.
