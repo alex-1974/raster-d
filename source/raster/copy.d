@@ -5,6 +5,11 @@
 
     Execution layouts, contiguous targets, physical-address classifiers,
     checked-wide relation arithmetic and kernel selection remain internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.copy;
 
