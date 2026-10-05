@@ -5,6 +5,9 @@ from pathlib import Path
 
 MODULE_RE = re.compile(r"^\s*module\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;")
 SECTION_RE = re.compile(r"^\s*(private|public|protected|package(?:\([^)]*\))?)\s*:\s*$")
+PROTECTION_LINE_RE = re.compile(
+    r"^\s*(private|public|protected|package(?:\([^)]*\))?)\s*$"
+)
 DECL_RE = re.compile(
     r"^\s*(?:(?P<explicit>private|package(?:\([^)]*\))?|public|protected)\s+)?"
     r"(?:(?:static|final|const|pure|nothrow|@safe|@nogc)\s+)*"
@@ -28,16 +31,32 @@ def internal_declarations(source_root: Path) -> set[tuple[str,int]]:
             if m:
                 module=m.group(1); break
         if module is None: continue
-        depth=0; visibility_by_depth={}
+        depth=0; visibility_by_depth={}; pending_visibility=None
         for index,line in enumerate(lines):
             section=SECTION_RE.match(line)
-            if section: visibility_by_depth[depth]=section.group(1)
+            if section:
+                visibility_by_depth[depth]=section.group(1)
+                pending_visibility=None
+            protection=PROTECTION_LINE_RE.match(line)
+            if protection and not line.strip().endswith(":"):
+                pending_visibility=(depth, protection.group(1))
             decl=DECL_RE.match(line)
             if decl:
                 explicit=decl.group("explicit")
-                vis=explicit if explicit is not None else visibility_by_depth.get(depth)
+                pending=(
+                    pending_visibility[1]
+                    if pending_visibility is not None
+                    and pending_visibility[0] == depth
+                    else None
+                )
+                vis=explicit if explicit is not None else pending
+                if vis is None:
+                    vis=visibility_by_depth.get(depth)
                 if vis=="private" or (vis is not None and vis.startswith("package")):
                     result.add((module,index+1))
+                pending_visibility=None
+            elif line.strip() and not protection and not line.lstrip().startswith(("@","/","*","+")):
+                pending_visibility=None
             depth += brace_delta(line)
             for d in list(visibility_by_depth):
                 if d>depth: del visibility_by_depth[d]
