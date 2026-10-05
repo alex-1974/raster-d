@@ -98,7 +98,7 @@ Frozen operation parameter names are:
 
 ```text
 trySumFloatToDouble:
-    source, planeIndex, result
+    source, planeIndex, sum
 
 tryFillRasterPlane:
     destination, planeIndex, value
