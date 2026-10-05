@@ -178,23 +178,20 @@ public:
                 (start + probe)
                 % EntryCapacity;
 
-            ref entry =
-                entries_[index];
-
-            if (!entry.occupied)
+            if (!entries_[index].occupied)
             {
                 return false;
             }
 
             if (
                 sameKey(
-                    entry.key,
+                    entries_[index].key,
                     key
                 )
             )
             {
                 lease =
-                    entry.lease;
+                    entries_[index].lease;
 
                 return true;
             }
@@ -254,10 +251,7 @@ public:
                 (start + probe)
                 % EntryCapacity;
 
-            ref entry =
-                entries_[index];
-
-            if (!entry.occupied)
+            if (!entries_[index].occupied)
             {
                 freeIndex =
                     index;
@@ -267,7 +261,7 @@ public:
 
             if (
                 sameKey(
-                    entry.key,
+                    entries_[index].key,
                     key
                 )
             )
@@ -285,19 +279,16 @@ public:
                     .entryCapacityExceeded;
         }
 
-        ref destination =
-            entries_[freeIndex];
-
-        destination.key =
+        entries_[freeIndex].key =
             move(key);
 
-        destination.physicalBytes =
+        entries_[freeIndex].physicalBytes =
             physicalBytes;
 
-        destination.lease =
+        entries_[freeIndex].lease =
             move(lease);
 
-        destination.occupied =
+        entries_[freeIndex].occupied =
             true;
 
         retainedBytes_ +=
