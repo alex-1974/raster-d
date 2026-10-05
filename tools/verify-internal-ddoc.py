@@ -11,6 +11,9 @@ DECL_RE=re.compile(
     r"(?:!\([^)]*\))?\s*\("
 )
 SECTION_RE=re.compile(r"^\s*(?P<visibility>private|public|protected|package(?:\([^)]*\))?)\s*:\s*$")
+PROTECTION_LINE_RE=re.compile(
+    r"^\s*(?P<visibility>private|public|protected|package(?:\([^)]*\))?)\s*$"
+)
 
 def has_ddoc(lines,i):
     i-=1
@@ -29,21 +32,32 @@ def delta(line):
     return code.count("{")-code.count("}")
 
 def audit(path):
-    lines=path.read_text().splitlines(); failures=[]; depth=0; module_package=False; sections={}
+    lines=path.read_text().splitlines(); failures=[]; depth=0; module_package=False; sections={}; pending=None
     for i,line in enumerate(lines):
         s=SECTION_RE.match(line)
         if s:
             v=s.group("visibility")
             if depth==0 and v.startswith("package"): module_package=True
             else: sections[depth]=v
+            pending=None
+        p=PROTECTION_LINE_RE.match(line)
+        if p and not line.strip().endswith(":"):
+            pending=(depth,p.group("visibility"))
         m=DECL_RE.match(line)
         if m and m.group("return") in {"struct","class","union","enum","template","alias"}: m=None
         if m:
-            v=m.group("explicit") or sections.get(depth)
+            v=m.group("explicit")
+            if v is None and pending is not None and pending[0]==depth:
+                v=pending[1]
+            if v is None:
+                v=sections.get(depth)
             if v is None and module_package and depth==0: v="package"
             internal=v is not None and (v=="private" or v.startswith("package"))
             if internal and not has_ddoc(lines,i):
                 failures.append(f"{path}:{i+1}: internal function {m.group('name')} lacks Ddoc")
+            pending=None
+        elif line.strip() and not p and not line.lstrip().startswith(("@","/","*","+")):
+            pending=None
         depth += delta(line)
         if depth<0: depth=0
         for d in list(sections):
