@@ -7,6 +7,11 @@
     Conversion into the element-oriented PlaneDescriptor representation happens
     only after the sample type is known and the byte representation has been
     validated.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.byte_layout;
 
