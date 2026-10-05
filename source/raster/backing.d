@@ -447,6 +447,26 @@ public:
         );
     }
 
+/// Example borrowing a read-only view from a retained lease.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(4);
+    assert(memory !is null);
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+    const PlaneByteLayout[1] planes = [PlaneByteLayout(0, 2, 1)];
+    RasterLease!ubyte lease;
+    assert(tryImportOwnedRaster!ubyte(resource, planes[], Region2D(0, 0, 2, 2), lease).ok);
+
+    scope auto view = lease.view();
+    assert(view.planeCount == 1);
+    assert(view.width == 2 && view.height == 2);
+}
+
+
 
     /++
         Attempts to return a non-owning writable semantic view borrowing from
@@ -513,7 +533,35 @@ public:
 
         return view;
     }
+
+/// Example requesting writable access from an empty lease.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto view = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(view.planeCount == 0);
 }
+
+}
+
+/// Example inspecting the default retained-lifetime capability.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto writable = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(writable.empty);
+}
+
 
 
 version (unittest)
