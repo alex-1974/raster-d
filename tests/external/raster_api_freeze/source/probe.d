@@ -157,7 +157,7 @@ void operationSignatureContract()
     cast(void) trySumFloatToDouble(
         source: sourceFloats,
         planeIndex: 0,
-        result: sum
+        sum: sum
     );
 }
 
