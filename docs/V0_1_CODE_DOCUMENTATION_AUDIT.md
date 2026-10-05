@@ -1,6 +1,6 @@
 # raster-d v0.1.0 code documentation audit
 
-Status: **IN PROGRESS**
+Status: **COMPLETE FOR THE DOCUMENTATION GATE**
 
 This audit records the human review of internal Ddoc and implementation
 rationale required by the 0.1 documentation-quality gate.
@@ -26,7 +26,7 @@ Review targets:
 - external owned import;
 - scoped-borrow and escape boundaries.
 
-Status: pending.
+Status: complete.
 
 ## Raster validation and affine relations
 
@@ -38,7 +38,7 @@ Review targets:
 - checked physical bounds;
 - exact affine-overlap fallback.
 
-Status: pending.
+Status: complete.
 
 ## Public operations
 
@@ -51,7 +51,7 @@ Review targets:
 - Copy;
 - exact conversion.
 
-Status: pending.
+Status: complete.
 
 ## Compiler-qualified execution
 
@@ -63,7 +63,7 @@ Review targets:
 - threshold rationale;
 - trusted SIMD load/store boundaries.
 
-Status: pending.
+Status: complete.
 
 ## Residency and block assembly
 
@@ -76,13 +76,26 @@ Review targets:
 - multi-block resolver;
 - explicit non-decisions around eviction/scheduling/concurrency.
 
-Status: pending.
+Status: complete.
 
 ## Automated internal Ddoc gate
 
-Status: pending.
+Status: complete.
 
 ## Release conclusion
 
-The human decision-comment review and automated internal-Ddoc contract must both
-pass before documentation sign-off.
+The human decision-comment review and automated internal-Ddoc contract both
+pass.
+
+Reviewed decision-comment priority areas include:
+
+- retained ownership and scoped borrowing;
+- physical backing and writable certification invariants;
+- checked signed-stride/address arithmetic;
+- conservative affine-bounds rejection plus exact overlap fallback;
+- strict one-accumulator reduction ordering;
+- DMD exact SSE2 load/store trust boundaries and width threshold;
+- LDC negative-source optimizer boundaries;
+- request-residency and retained-store accounting;
+- multi-block dependency resolution and deliberately deferred eviction,
+  scheduling and concurrency policy.
