@@ -468,7 +468,7 @@ private Measurement benchReduction(
         );
 
     long[samples] times;
-    double sink;
+    double sink = 0.0;
 
     foreach (sample; 0 .. samples)
     {
