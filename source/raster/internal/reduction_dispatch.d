@@ -136,6 +136,45 @@ nothrow
 }
 
 
+
+/++
+    DMD x86-64 strict Canonical float-to-double reduction.
+
+    The caller has already established a validated non-empty Canonical plane.
+    Sample stride is one. The signed row stride and region base therefore
+    describe every logical sample in row-major order.
+
+    Safety: pointers remain local; every row and sample index stays within the
+    validated retained backing. One double accumulator is carried across all
+    rows, preserving the exact strict semantic graph.
++/
+private double strictCanonicalDmdPointer(
+    scope const(float)* base,
+    ptrdiff_t rowStride,
+    size_t width,
+    size_t height
+)
+@trusted
+pure
+nothrow
+@nogc
+{
+    assert(base !is null);
+
+    double total = 0.0;
+
+    foreach (y; 0 .. height)
+    {
+        const row = base + cast(ptrdiff_t) y * rowStride;
+
+        foreach (x; 0 .. width)
+            total += cast(double) row[x];
+    }
+
+    return total;
+}
+
+
 /++
     Executes the strict row-major float-to-double sum after plane execution
     traits have already been established.
@@ -164,9 +203,45 @@ nothrow
             );
 
         case PlaneExecutionLayout2D.canonical:
-            return scalarSumCanonical2D!double(
-                asMirCanonical(view, planeIndex)
-            );
+            version (DigitalMars)
+            {
+                version (X86_64)
+                {
+                    ptrdiff_t rowStride;
+                    ptrdiff_t sampleStride;
+
+                    const stridesOk =
+                        view.tryExecutionPlaneStrides(
+                            planeIndex,
+                            rowStride,
+                            sampleStride
+                        );
+
+                    assert(stridesOk);
+                    assert(sampleStride == 1);
+
+                    return strictCanonicalDmdPointer(
+                        view.executionRegionBase(
+                            planeIndex
+                        ),
+                        rowStride,
+                        view.width,
+                        view.height
+                    );
+                }
+                else
+                {
+                    return scalarSumCanonical2D!double(
+                        asMirCanonical(view, planeIndex)
+                    );
+                }
+            }
+            else
+            {
+                return scalarSumCanonical2D!double(
+                    asMirCanonical(view, planeIndex)
+                );
+            }
 
         case PlaneExecutionLayout2D.contiguous:
             if (traits.linearContiguous1D)
