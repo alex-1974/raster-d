@@ -29,6 +29,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns the configured request-residency byte limit.
+    +/
     size_t limitBytes() const
     @safe
     pure
@@ -41,6 +44,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns bytes currently admitted to request residency.
+    +/
     size_t admittedBytes() const
     @safe
     pure
@@ -53,6 +59,9 @@ public:
 
     package(raster)
     @property
+    /++
+        Returns remaining request-residency capacity without underflow.
+    +/
     size_t availableBytes() const
     @safe
     pure
