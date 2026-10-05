@@ -97,7 +97,7 @@ targets and Mir adapters remain implementation details.
 bool trySumFloatToDouble(
     scope const RasterView!float source,
     size_t sourcePlane,
-    out double result);
+    out double sum);
 ~~~
 
 The accepted numerical contract is strict logical row-major accumulation into
