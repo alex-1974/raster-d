@@ -58,3 +58,24 @@ jobs:
           name: raster-ddox-release-candidate
           path: build/ddox/site
           retention-days: 14
+
+
+  examples:
+    name: Compiled examples (${{ matrix.compiler }})
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [dmd-2.111.0, ldc-1.41.0]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dub: 1.40.0
+          dc_format: shortname
+      - name: Run complete unittest suite with documented examples
+        shell: bash
+        run: |
+          set -euo pipefail
+          dub test --compiler="$DC" --force
