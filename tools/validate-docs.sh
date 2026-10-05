@@ -4,6 +4,7 @@ set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 required=(
+  LICENSE
   README.md
   ROADMAP.md
   BENCHMARK.md
@@ -33,6 +34,16 @@ grep -q '^name "raster-d"' "$repo/dub.sdl" || {
 
 grep -q '^license "MIT"' "$repo/dub.sdl" || {
     echo "FAIL: DUB package license is not MIT" >&2
+    exit 1
+}
+
+grep -Fxq 'MIT License' "$repo/LICENSE" || {
+    echo "FAIL: LICENSE text does not match MIT package metadata" >&2
+    exit 1
+}
+
+grep -Fxq 'Copyright (c) 2026 Alexander Bernardi' "$repo/LICENSE" || {
+    echo "FAIL: LICENSE copyright does not match package ownership metadata" >&2
     exit 1
 }
 
