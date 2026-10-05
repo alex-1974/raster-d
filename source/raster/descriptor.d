@@ -41,6 +41,20 @@ struct PlaneDescriptor
     ptrdiff_t sampleStrideElements;
 }
 
+/// Example describing a plane with signed element strides.
+@safe unittest
+{
+    import raster;
+
+    ubyte[16] storage;
+    const descriptor = PlaneDescriptor(storage.ptr, -4, 1);
+
+    assert(descriptor.base == storage.ptr);
+    assert(descriptor.rowStrideElements == -4);
+    assert(descriptor.sampleStrideElements == 1);
+}
+
+
 
 unittest
 {
