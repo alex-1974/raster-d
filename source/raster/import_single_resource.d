@@ -15,6 +15,11 @@
     - layout conversion happens before ownership transfer;
     - after ownership transfer, raw retained construction owns the release
       obligation transactionally.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.import_single_resource;
 
