@@ -88,6 +88,9 @@ struct BackingValidationResult
 }
 
 
+/++
+    Constructs one backing-validation failure result while preserving the failing plane index.
++/
 private
 BackingValidationResult failure(
     BackingValidationError error,
