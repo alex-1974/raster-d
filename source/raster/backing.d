@@ -5,6 +5,11 @@
 
     RasterLease retains the backing representation from which such views
     borrow their descriptor metadata and pixel resources.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.backing;
 
