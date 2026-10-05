@@ -1,15 +1,13 @@
 /++
     Trusted construction validation for retained raster layouts.
 
-    This module validates the relationship between:
+    It validates byte-oriented retained resources, element-oriented
+    PlaneDescriptor metadata, resident descriptor-space Region2D geometry, and
+    the typed sample T as one physical-layout contract.
 
-    - byte-oriented retained resources;
-    - element-oriented PlaneDescriptor metadata;
-    - resident descriptor-space Region2D geometry;
-    - the typed sample T.
-
-    Validation is performed once at a backing-construction boundary so normal
-    RasterView access does not repeatedly pay these checks.
+    Validation is performed once at a backing-construction boundary. Normal
+    RasterView access can then rely on those established reachability,
+    alignment, stride-arithmetic, and sample-interpretation invariants.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
