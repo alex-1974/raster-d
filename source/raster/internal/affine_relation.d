@@ -734,6 +734,9 @@ struct SignedWide
 pure
 nothrow
 @nogc
+/++
+    Constructs the internal unsigned 128-bit carrier from one machine-sized word.
++/
 Cent u128(
     ulong value
 )
@@ -1057,6 +1060,9 @@ SignedWide fromLong(
 pure
 nothrow
 @nogc
+/++
+    Returns the unsigned magnitude of ptrdiff_t without negating ptrdiff_t.min.
++/
 size_t ptrdiffMagnitude(
     ptrdiff_t value
 )
@@ -1112,6 +1118,9 @@ SignedWide addressDifference(
 pure
 nothrow
 @nogc
+/++
+    Multiplies a signed ptrdiff_t by an unsigned size_t into the checked signed wide carrier.
++/
 SignedWide multiplyPtrdiffBySize(
     ptrdiff_t value,
     size_t factor
@@ -1355,6 +1364,9 @@ SignedWide fromSize(
 pure
 nothrow
 @nogc
+/++
+    Computes the greatest common divisor of two machine words for affine-step normalization.
++/
 ulong gcdWord(
     ulong left,
     ulong right
@@ -2290,6 +2302,9 @@ DiophantineStatus boundedLinearEquation(
 }
 
 
+/++
+    Converts a ptrdiff_t stride into the compact signed-word representation without minimum-value overflow.
++/
 SignedWord signedWordFromPtrdiff(
     ptrdiff_t value
 )
@@ -2324,6 +2339,9 @@ nothrow
  *
  *     (targetBase - sourceBase + displacement) / S
  */
+/++
+    Computes exact element-distance candidates between two same-size sample bases, rejecting byte differences not divisible by sample size.
++/
 bool sameTypeBaseElementDifferences(
     size_t sourceBase,
     size_t targetBase,
@@ -2446,6 +2464,9 @@ nothrow
 }
 
 
+/++
+    Classifies whether two finite same-type affine sample lines overlap in reachable sample starts.
++/
 AffineByteOverlapRelation classifySameTypeLinePair(
     SignedWord sourceStep,
     size_t sourceCount,
@@ -2546,6 +2567,9 @@ nothrow
  *
  * With zero/one logical sample the step is not observable and zero is used.
  */
+/++
+    Converts one active signed element stride into an exact signed byte step for the supplied sample size.
++/
 bool tryActiveByteStep(
     ptrdiff_t strideElements,
     size_t sampleSize,
@@ -2595,6 +2619,9 @@ nothrow
  *
  * in the existing sign+magnitude wide carrier.
  */
+/++
+    Computes one checked signed byte offset from a coordinate, element stride, and sample size.
++/
 bool tryByteOffset(
     ptrdiff_t strideElements,
     size_t sampleSize,
@@ -2633,6 +2660,9 @@ nothrow
  *
  *     targetBase - sourceBase + displacement
  */
+/++
+    Computes the finite candidate byte differences needed to compare one-byte source samples against four-byte float destinations.
++/
 bool ubyteToFloatBaseByteDifferences(
     size_t sourceBase,
     size_t targetBase,
@@ -2674,6 +2704,9 @@ nothrow
 }
 
 
+/++
+    Classifies exact reachable-byte overlap between one finite ubyte affine line and one finite float affine line.
++/
 AffineByteOverlapRelation classifyUbyteToFloatLinePair(
     SignedWord sourceStep,
     size_t sourceCount,
