@@ -42,6 +42,19 @@ struct PlaneByteLayout
     ptrdiff_t sampleStrideBytes;
 }
 
+/// Example describing external raster memory in bytes.
+@safe unittest
+{
+    import raster;
+
+    const layout = PlaneByteLayout(8, -16, 2);
+
+    assert(layout.byteOffset == 8);
+    assert(layout.rowStrideBytes == -16);
+    assert(layout.sampleStrideBytes == 2);
+}
+
+
 
 /++
     Failure category while converting byte-oriented external metadata into one
