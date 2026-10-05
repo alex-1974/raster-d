@@ -381,6 +381,10 @@ public:
     +/
     package(raster)
     @property
+    /++
+        Returns whether the lease currently retains initialized backing.
+        This package-level query avoids borrowing the backing payload.
+    +/
     bool hasBacking() const
     @safe
     nothrow
