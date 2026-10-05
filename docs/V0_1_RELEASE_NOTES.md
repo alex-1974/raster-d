@@ -1,148 +1,142 @@
 # raster-d v0.1.0 release notes
 
-Status: **RELEASE CANDIDATE — QUALIFIED FOR PROMOTION**
+`raster-d v0.1.0` establishes the first released generic raster-core
+baseline.
 
-`raster-d v0.1.0` establishes the first released generic raster-core baseline.
-
-The feature set and public source contract are frozen. Publication begins only
-after the qualified `release/0.1` state is promoted to `main` and the full
-release gate passes there.
+The release provides retained raster ownership and views, checked generic
+operations, streamed-residency building blocks, and qualified x86-64 CPU
+execution without importing image, colour, radiometric or scheduler semantics
+into the raster API.
 
 ## Public scope
 
-The release includes:
+v0.1.0 includes:
 
-- retained physical-resource ownership and validated raster import;
-- lease-bound read-only `RasterView`;
-- lease-bound `WritableRasterView`;
-- descriptor-space `Region2D` geometry;
-- multi-plane layouts with signed row/sample strides;
-- strict row-major `float -> double` reduction;
+- retained physical-resource ownership and validated owned-raster import;
+- lease-bound read-only `RasterView` and `WritableRasterView`;
+- signed row/sample-stride representation;
+- `Region2D`, plane descriptors and byte-layout descriptors;
+- strict logical row-major `float -> double` reduction;
 - same-type plane Copy;
-- exact generic Fill;
+- generic Fill;
 - compile-time point transform;
 - fixed 3 x 3 neighbourhood execution;
 - exact `ubyte -> float` conversion.
 
-The supported aggregate consumer entry point is:
+The aggregate supported consumer entry point is:
 
 ~~~d
 import raster;
 ~~~
 
-The caller-visible 0.1 contract is recorded by
-`freeze/api-0.1.0` at
-`7afcaad4181566d21ca7ced78cf7b417eae8adbf`.
+For the complete frozen contract, see `docs/API.md`.
 
-## Ownership and lifetime
+## Streaming and residency foundation
 
-`OwnedByteResource` is the move-only resource-transfer token.
-`tryImportOwnedRaster` transfers successfully validated ownership into a
-copyable `RasterLease!T`.
+The production implementation also contains the internal contracts required
+for bounded streamed execution:
 
-Views are non-owning lease-bound capabilities and are qualified through DIP1000
-lifetime probes. `RasterLease!T.init` is an inert valid default state:
-`view()` returns an empty read-only view and `tryWritableView()` fails
-cleanly with an empty writable view.
+- requested-region dependency planning;
+- synchronous caller-owned materialization;
+- bounded request residency;
+- bounded retained reuse;
+- exact multi-block dependency assembly.
 
-## Numerical and mutation contracts
-
-The release preserves:
-
-- exact same-type Copy;
-- exact `ubyte -> float` conversion for all source values;
-- strict logical row-major reduction with one double accumulator;
-- caller-defined point-transform semantics;
-- row-major 3 x 3 neighbourhood kernel input with center at index 4;
-- pre-write structural/overlap validation for operations whose failure contract
-  requires destination preservation.
-
-Compiler- and ISA-specific execution remains private and does not alter these
-observable contracts.
+Block geometry selection, replacement policy, scheduling and parallel execution
+remain outside the public raster API.
 
 ## Performance qualification
 
-The qualified x86-64 implementation contains measured compiler-specific
-internal execution paths for DMD 2.111 and LDC 1.41 without exposing
-compiler/ISA switches through public API.
+The qualified x86-64 implementation contains evidence-driven DMD/LDC internal
+execution strategies while preserving one public semantic contract.
 
-The final reference-XPS Production archive is:
+Notable qualified paths include:
 
-~~~text
-raster-release-0.1-baseline-20261005-152725.tar.gz
-SHA256 b3711e7800c52cbd97f4313a214eec4326846100640af570b4fcacf4a0fd3ae1
-~~~
+- DMD exact SSE2 `ubyte -> float` row conversion on the qualified width/layout
+  family;
+- LDC negative-source row optimizer boundary for exact conversion;
+- DMD strict-reduction Canonical pointer execution;
+- generic Canonical fast paths for Copy, Fill, point transform and 3 x 3
+  neighbourhood operations.
 
-Its recursive manifest is 47/47 PASS, with six CPU0-pinned processes per
-compiler and stable checksums for all seven retained workloads.
+The final reference-XPS Production baseline and evidence hashes are recorded in
+`BENCHMARK.md`.
 
-Detailed measurements and interpretation are in `BENCHMARK.md`.
+Compiler/ISA selectors, raw execution pointers, Mir adapters and execution
+layout classification remain non-public.
 
-## Compiler and platform qualification
+## Release-qualification fixes
 
-The release passes the controlled compiler-generation matrix:
+The release audit found and corrected several issues before publication:
 
-- DMD 2.111.0;
-- DMD 2.112.1;
-- DMD 2.113.0;
-- LDC 1.41.0;
-- LDC 1.42.0;
-- LDC 1.43.0.
+- `RasterLease!T.init.view()` now returns inert `RasterView!T.init` rather
+  than entering an uninitialized retained-owner borrow;
+- documentation and named-argument qualification now consistently freeze the
+  strict-reduction output parameter name as `sum`;
+- retained-store code was made compatible with the supported D 2.101 frontend
+  by removing local `ref` aliases while preserving store semantics;
+- compile-negative release workflows now invoke shell probes explicitly through
+  `bash`;
+- the benchmark-only strict-reduction checksum sink now starts from `0.0`.
 
-The minimum supported package/compiler floor also passes on the platforms where
-those packages are supported:
+None of the post-API-freeze fixes changes the frozen public 0.1 source contract.
 
-- Linux x86-64: DMD 2.101.2 / LDC 1.31.0;
-- Linux ARM64: LDC 1.31.0;
-- Windows x86-64: DMD 2.101.2 / LDC 1.31.0;
-- macOS x86-64: DMD 2.112.1 / LDC 1.41.0;
-- macOS ARM64: LDC 1.41.0.
+## Documentation
 
-The supported current-platform matrix passes on Linux x86-64, Linux ARM64,
-Windows x86-64, macOS x86-64 and macOS ARM64. The experimental Windows ARM64
-LDC job also passes for this release candidate.
+v0.1.0 establishes the documentation quality baseline used for future releases:
 
-## Package and documentation qualification
-
-The release candidate passes:
-
-- strict public-only DDox generation;
-- one rendered compiler-checked Example for every inventoried public symbol
-  page;
-- documented internal production helpers required by the documentation policy;
-- external API positive/negative compile contracts;
-- retained-import link closure;
-- a clean external consumer built from a `git archive` outside the repository
-  checkout with baseline DMD and LDC.
-
-The package metadata declares the MIT license and the repository contains the
-corresponding license text.
-
-## Scope boundary
-
-The release deliberately excludes:
-
-- image, colour and radiometric semantics owned by `imagery-d`;
-- caller-visible scheduling or worker policy;
-- GPU execution;
-- AArch64/NEON performance qualification;
-- performance promises for later compiler/frontend generations.
-
-AArch64 functional correctness is release-qualified where covered by the
-platform matrix; architecture-specific NEON performance work is deferred.
+- 50 public DDox symbol pages;
+- 50 own compiler-checked rendered Examples;
+- public-only DDox navigation;
+- module Ddoc and production internal-function Ddoc verification;
+- decision-comment review for important ownership, numerical and performance
+  choices;
+- versioned GitHub Pages build support.
 
 ## Compatibility
 
-`v0.1.0` is a pre-1.0 release. The 0.1 caller-visible source contract is
-frozen for this release, but later pre-1.0 minor releases may intentionally
-evolve the API under the workspace release policy.
+The immutable public API checkpoint is:
 
-## Remaining publication steps
+~~~text
+freeze/api-0.1.0
+7afcaad4181566d21ca7ced78cf7b417eae8adbf
+~~~
 
-Before publication:
+The release candidate preserves this contract.
 
-1. promote the qualified `release/0.1` state to `main`;
-2. require the full release gate on `main`;
-3. create the annotated/signed `v0.1.0` tag from that qualified commit;
-4. verify GitHub Release and stable/versioned documentation publication;
-5. verify the published DUB package from a fresh external consumer.
+The qualified source/frontend floor is DMD/Phobos 2.101 with corresponding
+LDC 1.31 where platform packages permit it. The controlled release-generation
+matrix additionally covers DMD 2.111.0/2.112.1/2.113.0 and
+LDC 1.41.0/1.42.0/1.43.0.
+
+## Validation
+
+The final release candidate passes:
+
+- controlled six-compiler release-generation matrix;
+- supported Linux x86-64/ARM64, Windows x86-64 and macOS x86-64/ARM64 matrix;
+- experimental Windows ARM64/LDC gate;
+- supported compiler-floor matrix;
+- external git-archive consumers with DMD 2.111.0 and LDC 1.41.0;
+- API positive/negative compile contracts and DIP1000 lifetime gates;
+- strict DDox and documented Example gates;
+- reference-XPS Production benchmark qualification.
+
+## Scope boundary
+
+v0.1.0 deliberately does not claim:
+
+- AArch64/NEON performance qualification;
+- caller-owned parallel scheduling policy;
+- GPU execution;
+- image, colour or radiometric semantics;
+- performance qualification for later compiler/frontend generations.
+
+Those are future work, not incomplete v0.1.0 release requirements.
+
+## Upgrade notes
+
+This is the first public release, so no source migration is required.
+
+Consumers should prefer `import raster;` and avoid depending on
+`package(raster)` or `raster.internal` implementation details.
