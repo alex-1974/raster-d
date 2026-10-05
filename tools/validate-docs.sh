@@ -4,6 +4,7 @@ set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 required=(
+  LICENSE
   README.md
   ROADMAP.md
   BENCHMARK.md
@@ -32,6 +33,34 @@ grep -q '^name "raster-d"' "$repo/dub.sdl" || {
 
 grep -q '^license "MIT"' "$repo/dub.sdl" || {
     echo "FAIL: DUB package license is not MIT" >&2
+    exit 1
+}
+
+grep -q '^MIT License
+for symbol in     Region2D PlaneDescriptor PlaneByteLayout     OwnedByteResource tryAdoptMallocResource     OwnedRasterImportError OwnedRasterImportResult tryImportOwnedRaster     RasterLease RasterView WritableRasterView     trySumFloatToDouble tryFillRasterPlane     RasterTransformError tryTransformRasterPlane     RasterNeighbourhood3x3Error tryApplyRasterNeighbourhood3x3     RasterCopyError tryCopyRasterPlane     UbyteToFloatConversionError tryConvertUbyteToFloatPlane; do
+    grep -q "$symbol" "$repo/docs/API.md" || {
+        echo "FAIL: docs/API.md does not mention root-export family: $symbol" >&2
+        exit 1
+    }
+done
+
+echo "PASS: release documentation structure and API-family inventory"
+ "$repo/LICENSE" || {
+    echo "FAIL: LICENSE text does not match MIT package metadata" >&2
+    exit 1
+}
+
+grep -q '^Copyright (c) 2026 Alexander Bernardi
+for symbol in     Region2D PlaneDescriptor PlaneByteLayout     OwnedByteResource tryAdoptMallocResource     OwnedRasterImportError OwnedRasterImportResult tryImportOwnedRaster     RasterLease RasterView WritableRasterView     trySumFloatToDouble tryFillRasterPlane     RasterTransformError tryTransformRasterPlane     RasterNeighbourhood3x3Error tryApplyRasterNeighbourhood3x3     RasterCopyError tryCopyRasterPlane     UbyteToFloatConversionError tryConvertUbyteToFloatPlane; do
+    grep -q "$symbol" "$repo/docs/API.md" || {
+        echo "FAIL: docs/API.md does not mention root-export family: $symbol" >&2
+        exit 1
+    }
+done
+
+echo "PASS: release documentation structure and API-family inventory"
+ "$repo/LICENSE" || {
+    echo "FAIL: LICENSE copyright does not match release ownership metadata" >&2
     exit 1
 }
 
