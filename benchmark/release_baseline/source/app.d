@@ -77,7 +77,7 @@ private bool makeLease(T)(
     else static if (is(T == float))
     {
         foreach (i; 0 .. typed.length)
-            typed[i] = cast(float)((i % 251) - 125) * 0.03125f;
+            typed[i] = cast(float)(cast(int)(i % 251) - 125) * 0.03125f;
     }
     else
         static assert(0, "release benchmark only uses ubyte and float");
