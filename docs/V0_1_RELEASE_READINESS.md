@@ -1,6 +1,6 @@
 # raster-d v0.1.0 release readiness
 
-Status: **FEATURE FROZEN — RELEASE QUALIFICATION IN PROGRESS**
+Status: **RELEASE QUALIFIED — PUBLICATION PENDING**
 
 Feature-freeze checkpoint:
 
@@ -51,48 +51,48 @@ Excluded:
 ## R3 — release benchmark
 
 - [x] public root-import benchmark harness added and compiler-smoked;
-- [ ] reference-XPS baseline run complete;
-- [ ] benchmark archive SHA256 and recursive manifest retained;
-- [ ] benchmark/provenance summary recorded in BENCHMARK.md or release record.
+- [x] reference-XPS baseline run complete;
+- [x] benchmark archive SHA256 and recursive manifest retained;
+- [x] benchmark/provenance summary recorded in BENCHMARK.md or release record.
 
 ## R4 — public API audit
 
-- [ ] every `import raster;` export inventoried;
-- [ ] signatures, argument order and public parameter names audited;
-- [ ] template constraints audited;
-- [ ] `.init` semantics audited;
-- [ ] ownership/lifetime and mutation semantics audited;
-- [ ] failure/error/no-write semantics audited;
-- [ ] numerical guarantees audited;
-- [ ] public attributes and CTFE claims audited;
-- [ ] unintended public/internal leakage rejected;
-- [ ] `docs/API.md` reconciled with the accepted surface.
+- [x] every `import raster;` export inventoried;
+- [x] signatures, argument order and public parameter names audited;
+- [x] template constraints audited;
+- [x] `.init` semantics audited;
+- [x] ownership/lifetime and mutation semantics audited;
+- [x] failure/error/no-write semantics audited;
+- [x] numerical guarantees audited;
+- [x] public attributes and CTFE claims audited;
+- [x] unintended public/internal leakage rejected;
+- [x] `docs/API.md` reconciled with the accepted surface.
 
 ## R5 — documentation quality
 
-- [ ] `docs/ddoc-style.md` applied to the release surface;
+- [x] `docs/ddoc-style.md` applied to the release surface;
 - [x] every supported public module has compliant module Ddoc;
 - [x] every public DDox symbol page inventoried;
 - [x] every required page has its own compiled/rendered Example;
 - [x] every non-trivial private/package function has adjacent Ddoc;
 - [x] important decision comments reviewed;
 - [x] public-only DDox generation passes;
-- [ ] generated DDox visually reviewed.
+- [x] generated DDox visually reviewed.
 
 ## R6 — API freeze
 
-- [ ] all R4/R5 blockers resolved;
-- [ ] annotated immutable `freeze/api-0.1.0` created;
-- [ ] no public source-contract change after API freeze without reopening the
+- [x] all R4/R5 blockers resolved;
+- [x] annotated immutable `freeze/api-0.1.0` created;
+- [x] no public source-contract change after API freeze without reopening the
   release decision.
 
 ## R7 — release qualification
 
-- [ ] full controlled compiler-generation release matrix passes;
-- [ ] supported platform matrix passes;
-- [ ] external archive/package consumer passes baseline DMD and LDC;
-- [ ] README/package metadata/release docs agree with frozen API;
-- [ ] CHANGELOG and v0.1.0 release notes complete;
+- [x] full controlled compiler-generation release matrix passes;
+- [x] supported platform matrix passes;
+- [x] external archive/package consumer passes baseline DMD and LDC;
+- [x] README/package metadata/release docs agree with frozen API;
+- [x] CHANGELOG and v0.1.0 release notes complete;
 - [ ] release candidate promoted to `main`;
 - [ ] final annotated/signed `v0.1.0` tag created;
 - [ ] GitHub Release published;
@@ -101,8 +101,11 @@ Excluded:
 
 ## Release decision
 
-Current decision: **DO NOT TAG YET**.
+Current decision: **READY TO PROMOTE TO `main`; DO NOT CREATE `v0.1.0` UNTIL THE `main` RELEASE GATE PASSES.**
 
-Feature freeze and the release documentation-quality gate are complete.
-Reference benchmark qualification, public API audit/API freeze, release matrix,
-external consumer and publication verification remain open.
+Feature freeze, API freeze, reference-XPS benchmark qualification, compiler
+floor, controlled compiler-generation matrix, supported platform matrix,
+documentation quality, and external archive-consumer qualification are
+complete. Remaining work is release promotion and publication verification:
+`main`, the signed final tag, GitHub Release/stable documentation, and a fresh
+consumer against the published DUB package.
