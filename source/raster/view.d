@@ -14,6 +14,11 @@
     raster package. The caller of that trusted boundary must already
     have validated storage reachability, alignment, stride arithmetic, sample
     type interpretation, and lifetime.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.view;
 
@@ -72,6 +77,15 @@ public:
         return planes_.length;
     }
 
+/// Example reading the plane count of the default view.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.planeCount == 0);
+}
+
+
 
     /++
         Resident descriptor-space region represented by this view.
@@ -85,6 +99,15 @@ public:
     {
         return region_;
     }
+
+/// Example reading the represented region.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.region == Region2D.init);
+}
+
 
 
     /++
@@ -100,6 +123,15 @@ public:
         return region_.width;
     }
 
+/// Example reading the default resident width.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.width == 0);
+}
+
+
 
     /++
         Resident height of this view.
@@ -114,6 +146,15 @@ public:
         return region_.height;
     }
 
+/// Example reading the default resident height.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.height == 0);
+}
+
+
 
     /++
         Whether this view has zero resident area.
@@ -127,6 +168,15 @@ public:
     {
         return region_.empty();
     }
+
+/// Example recognizing an empty default view.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.empty);
+}
+
 
 
     /++
@@ -322,6 +372,18 @@ public:
         );
     }
 
+/// Example rejecting a child ROI outside an empty parent view.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    bool success;
+    scope auto child = view.tryRoi(Region2D(1, 0, 0, 0), success);
+    assert(!success);
+    assert(child.empty);
+}
+
+
 
     /++
         Attempts to read one logical sample.
@@ -410,7 +472,29 @@ public:
 
         return true;
     }
+
+/// Example reading from an empty view without exposing a pointer.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    ubyte value = 99;
+    assert(!view.trySample(0, 0, 0, value));
+    assert(value == ubyte.init);
 }
+
+}
+
+/// Example using RasterView as a non-owning read-only capability.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte view;
+    assert(view.planeCount == 0);
+    assert(view.region == Region2D.init);
+    assert(view.empty);
+}
+
 
 
 /++
