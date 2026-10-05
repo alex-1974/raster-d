@@ -2111,6 +2111,38 @@ private T[] writeApprovedRow(T)(
     return (base + cast(ptrdiff_t)y * stride)[0 .. width];
 }
 
+/++
+    DMD x86-64 row kernel for an already-approved ubyte-to-float conversion.
+
+    The caller supplies the same validated equal-length scoped row slices used
+    by the generic executor. Pointers remain local and every access is bounded
+    by row.length.
+
+    Research qualification found a material DMD x86-64 full-public gain from
+    width 64 onward. LDC and other compilers retain the generic row loop.
++/
+private void convertApprovedUbyteToFloatDmdRow(
+    scope const(ubyte)[] row,
+    scope float[] destination
+)
+@trusted pure nothrow @nogc
+{
+    assert(row.length == destination.length);
+
+    scope const(ubyte)* sourcePointer =
+        row.ptr;
+
+    scope float* destinationPointer =
+        destination.ptr;
+
+    foreach (i; 0 .. row.length)
+    {
+        destinationPointer[i] =
+            cast(float) sourcePointer[i];
+    }
+}
+
+
 private void executeApprovedRows(S, D)(
     scope const(S)* source,
     ptrdiff_t sourceRowStride,
@@ -2129,12 +2161,33 @@ private void executeApprovedRows(S, D)(
             writeApprovedRow(target, targetRowStride, y, width);
 
         static if (is(S == D))
+        {
             destination[] = row[];
+        }
         else
         {
             static assert(is(S == ubyte) && is(D == float));
+
+            version (DigitalMars)
+            {
+                version (X86_64)
+                {
+                    if (width >= 64)
+                    {
+                        convertApprovedUbyteToFloatDmdRow(
+                            row,
+                            destination
+                        );
+                        continue;
+                    }
+                }
+            }
+
             foreach (x, value; row)
-                destination[x] = cast(float)value;
+            {
+                destination[x] =
+                    cast(float) value;
+            }
         }
     }
 }
