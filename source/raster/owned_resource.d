@@ -6,6 +6,11 @@
     Public callers may obtain a token only through an explicit ownership
     adoption API. Source-specific adapters may use package-internal raw
     adoption after establishing their own release/context invariants.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.owned_resource;
 
