@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-compiler="\${1:-\${DC:-dmd}}"
+compiler="${1:-${DC:-dmd}}"
 repo_root="$(
     cd "$(dirname "$0")/../.." >/dev/null 2>&1
     pwd
 )"
-tmp_dir="$(mktemp -d "\${TMPDIR:-/tmp}/raster-api-freeze-XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/raster-api-freeze-XXXXXX")"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -43,7 +43,7 @@ compile_probe()
 
     if (
         cd "$repo_root"
-        "$compiler" -c -preview=dip1000 "\${import_args[@]}" \
+        "$compiler" -c -preview=dip1000 "${import_args[@]}" \
             -of="$object" "$source"
     ) >"$log" 2>&1; then
         actual=pass
