@@ -35,6 +35,29 @@ fi
 
 echo "Generating DDox input for ${#public_sources[@]} non-internal raster modules..."
 
+# Resolve the package graph first. Unlike geodesy-d, raster-d has a real DUB
+# dependency (mir-algorithm), so a raw DMD documentation invocation must carry
+# the complete package import path set.
+(
+    cd "$source_root"
+    dub build --compiler="$compiler" --build=release --force >/dev/null
+    dub describe --compiler="$compiler" > "$work_dir/dub-describe.json"
+)
+
+mapfile -t import_args < <(
+    python3 - "$work_dir/dub-describe.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+data=json.loads(Path(sys.argv[1]).read_text())
+for package in data.get("packages", []):
+    base=Path(package["path"])
+    for relative in package.get("importPaths", []):
+        print("-I=" + str((base / relative).resolve()))
+PY
+)
+
 if [[ "$verify_contracts" == "1" ]]; then
     python3 "$tool_root/tools/verify-public-module-ddoc.py" "$source_root"
     (
@@ -45,7 +68,9 @@ fi
 
 (
     cd "$source_root"
-    "$compiler" -preview=dip1000 -o- -wi         -Xf"$json_file" -Df"$dummy_file" -Isource "${public_sources[@]}"
+    "$compiler" -preview=dip1000 -o- -wi \
+        -Xf"$json_file" -Df"$dummy_file" \
+        "${import_args[@]}" "${public_sources[@]}"
 )
 rm -f "$dummy_file"
 
