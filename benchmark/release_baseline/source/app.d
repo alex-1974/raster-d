@@ -14,6 +14,7 @@ private enum size_t samples = 11;
 
 
 private void require(bool condition, string message)
+@safe
 {
     if (!condition)
         throw new Exception(message);
