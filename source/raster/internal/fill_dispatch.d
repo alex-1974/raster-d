@@ -52,6 +52,9 @@ nothrow
 
     if (sampleStrideElements == 1)
     {
+        /++
+            Fills an already-approved Canonical destination plane using its signed row stride and unit sample stride.
+        +/
         fillCanonical(destination.executionRegionBase(planeIndex), rowStrideElements,
             destination.width, destination.height, value);
         return true;
