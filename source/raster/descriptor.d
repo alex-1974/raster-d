@@ -7,6 +7,11 @@
 
     Ownership and lifetime are handled separately by retained backing/lease
     types.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.descriptor;
 
