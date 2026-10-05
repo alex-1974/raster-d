@@ -76,6 +76,9 @@ private alias DescriptorFreeFn =
     @nogc;
 
 
+/++
+    Allocates temporary descriptor metadata for one import transaction.
++/
 private
 void* allocateDescriptorMetadata(
     size_t byteLength
@@ -87,6 +90,9 @@ nothrow
 }
 
 
+/++
+    Releases temporary descriptor metadata allocated during import.
++/
 private
 void freeDescriptorMetadata(
     void* allocation
