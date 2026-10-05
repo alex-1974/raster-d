@@ -1,19 +1,14 @@
 /++
     Non-owning read-only semantic raster view.
 
-    RasterView separates:
+    RasterView keeps resident region geometry, physical plane description,
+    storage ownership, and execution representation as separate concerns. It
+    owns neither pixel storage nor PlaneDescriptor storage.
 
-    - resident region geometry;
-    - physical plane description;
-    - storage ownership;
-    - execution representation.
-
-    A RasterView owns neither pixel storage nor PlaneDescriptor storage.
-
-    Construction from physical metadata is deliberately restricted to the
-    raster package. The caller of that trusted boundary must already
-    have validated storage reachability, alignment, stride arithmetic, sample
-    type interpretation, and lifetime.
+    Construction from physical metadata is restricted to the raster package.
+    The caller of that trusted boundary must already have validated storage
+    reachability, alignment, stride arithmetic, sample interpretation, and
+    lifetime.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
