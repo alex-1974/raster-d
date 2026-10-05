@@ -166,6 +166,9 @@ package(raster):
         This remains package-internal. It exposes no raw resource metadata.
     +/
     @property
+    /++
+        Returns the retained resource access capability without exposing raw resource metadata.
+    +/
     ResourceAccess resourceAccess() const
     @safe
     pure
@@ -191,6 +194,9 @@ package(raster):
         address.
     +/
     @property
+    /++
+        Returns the owned physical resource base for package-internal transfer/import code while the token remains armed.
+    +/
     const(void)* resourceBase() const
     @system
     nothrow
