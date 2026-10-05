@@ -71,12 +71,12 @@ Excluded:
 ## R5 — documentation quality
 
 - [ ] `docs/ddoc-style.md` applied to the release surface;
-- [ ] every supported public module has compliant module Ddoc;
-- [ ] every public DDox symbol page inventoried;
-- [ ] every required page has its own compiled/rendered Example;
-- [ ] every non-trivial private/package function has adjacent Ddoc;
-- [ ] important decision comments reviewed;
-- [ ] public-only DDox generation passes;
+- [x] every supported public module has compliant module Ddoc;
+- [x] every public DDox symbol page inventoried;
+- [x] every required page has its own compiled/rendered Example;
+- [x] every non-trivial private/package function has adjacent Ddoc;
+- [x] important decision comments reviewed;
+- [x] public-only DDox generation passes;
 - [ ] generated DDox visually reviewed.
 
 ## R6 — API freeze
@@ -103,5 +103,6 @@ Excluded:
 
 Current decision: **DO NOT TAG YET**.
 
-Feature freeze is complete. Benchmark qualification, API/documentation freeze,
-release matrix, external consumer and publication verification remain open.
+Feature freeze and the release documentation-quality gate are complete.
+Reference benchmark qualification, public API audit/API freeze, release matrix,
+external consumer and publication verification remain open.
