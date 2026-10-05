@@ -101,6 +101,9 @@ nothrow
 
 
     const rowMagnitude =
+        /++
+            Returns the unsigned magnitude of ptrdiff_t without negating ptrdiff_t.min.
+        +/
         ptrdiffMagnitude(
             rowStrideElements
         );
@@ -121,6 +124,9 @@ nothrow
 
 
     const common =
+        /++
+            Computes the greatest common divisor of two machine words for affine-step normalization.
+        +/
         gcdWord(
             cast(ulong) rowMagnitude,
             cast(ulong) sampleMagnitude
@@ -224,6 +230,9 @@ nothrow
 
 
     if (
+        /++
+            Computes exact element-distance candidates between two same-size sample bases, rejecting byte differences not divisible by sample size.
+        +/
         !sameTypeBaseElementDifferences(
             sourceBase,
             targetBase,
@@ -255,6 +264,9 @@ nothrow
      */
     const rowPairCount =
         mul(
+            /++
+                Constructs the internal unsigned 128-bit carrier from one machine-sized word.
+            +/
             u128(cast(ulong) sourceHeight),
             u128(cast(ulong) targetHeight)
         );
@@ -269,6 +281,9 @@ nothrow
     if (!ugt(rowPairCount, columnPairCount))
     {
         const sourceStep =
+            /++
+                Converts a ptrdiff_t stride into the compact signed-word representation without minimum-value overflow.
+            +/
             signedWordFromPtrdiff(
                 sourceSampleStrideElements
             );
@@ -282,6 +297,9 @@ nothrow
         foreach (sourceY; 0 .. sourceHeight)
         {
             const sourceOuter =
+                /++
+                    Multiplies a signed ptrdiff_t by an unsigned size_t into the checked signed wide carrier.
+                +/
                 multiplyPtrdiffBySize(
                     sourceRowStrideElements,
                     sourceY
@@ -298,6 +316,9 @@ nothrow
 
 
                 const relation =
+                    /++
+                        Classifies whether two finite same-type affine sample lines overlap in reachable sample starts.
+                    +/
                     classifySameTypeLinePair(
                         sourceStep,
                         sourceWidth,
@@ -497,6 +518,9 @@ nothrow
     SignedWide[4] baseByteDifferences;
 
     if (
+        /++
+            Computes the finite candidate byte differences needed to compare one-byte source samples against four-byte float destinations.
+        +/
         !ubyteToFloatBaseByteDifferences(
             sourceBase,
             targetBase,
@@ -515,6 +539,9 @@ nothrow
         SignedWord targetStep;
 
         if (
+            /++
+                Converts one active signed element stride into an exact signed byte step for the supplied sample size.
+            +/
             !tryActiveByteStep(
                 sourceSampleStrideElements,
                 ubyte.sizeof,
@@ -540,6 +567,9 @@ nothrow
             SignedWide sourceOuter;
 
             if (
+                /++
+                    Computes one checked signed byte offset from a coordinate, element stride, and sample size.
+                +/
                 !tryByteOffset(
                     sourceRowStrideElements,
                     ubyte.sizeof,
@@ -572,6 +602,9 @@ nothrow
 
 
                 const relation =
+                    /++
+                        Classifies exact reachable-byte overlap between one finite ubyte affine line and one finite float affine line.
+                    +/
                     classifyUbyteToFloatLinePair(
                         sourceStep,
                         width,
@@ -717,6 +750,9 @@ Cent u128(
 pure
 nothrow
 @nogc
+/++
+    Constructs a normalized signed wide integer from an explicit sign and magnitude.
++/
 SignedWide makeSignedWide(
     bool negative,
     Cent magnitude
@@ -735,6 +771,9 @@ SignedWide makeSignedWide(
 pure
 nothrow
 @nogc
+/++
+    Returns the canonical zero value of the signed wide carrier.
++/
 SignedWide zeroWide()
 {
     return SignedWide(
@@ -747,6 +786,9 @@ SignedWide zeroWide()
 pure
 nothrow
 @nogc
+/++
+    Compares two unsigned wide magnitudes without converting them to signed form.
++/
 int compareMagnitude(
     Cent left,
     Cent right
@@ -765,6 +807,9 @@ int compareMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Compares two normalized signed wide integers by sign and magnitude.
++/
 int compareSigned(
     SignedWide left,
     SignedWide right
@@ -796,6 +841,9 @@ int compareSigned(
 pure
 nothrow
 @nogc
+/++
+    Adds two unsigned wide magnitudes and reports carry overflow.
++/
 bool tryAddMagnitude(
     Cent left,
     Cent right,
@@ -824,6 +872,9 @@ bool tryAddMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Subtracts a smaller-or-equal unsigned wide magnitude from a larger one.
++/
 Cent subtractMagnitude(
     Cent left,
     Cent right
@@ -841,6 +892,9 @@ Cent subtractMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Returns the additive inverse of a normalized signed wide integer.
++/
 SignedWide negateWide(
     SignedWide value
 )
@@ -858,6 +912,9 @@ SignedWide negateWide(
 pure
 nothrow
 @nogc
+/++
+    Adds two signed wide integers while preserving normalized sign/magnitude representation and reporting overflow.
++/
 bool tryAddSigned(
     SignedWide left,
     SignedWide right,
@@ -937,6 +994,9 @@ bool tryAddSigned(
 pure
 nothrow
 @nogc
+/++
+    Subtracts one signed wide integer from another through the checked signed-addition primitive.
++/
 bool trySubtractSigned(
     SignedWide left,
     SignedWide right,
@@ -954,6 +1014,9 @@ bool trySubtractSigned(
 pure
 nothrow
 @nogc
+/++
+    Converts one signed machine integer into normalized sign plus unsigned magnitude without overflowing on the minimum value.
++/
 ulong signedMachineMagnitude(
     long value
 )
@@ -975,6 +1038,9 @@ ulong signedMachineMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Converts a long value into the internal signed wide representation.
++/
 SignedWide fromLong(
     long value
 )
@@ -1012,6 +1078,9 @@ size_t ptrdiffMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Computes the exact signed wide difference between two uintptr-style byte addresses.
++/
 SignedWide addressDifference(
     size_t left,
     size_t right
@@ -1069,6 +1138,9 @@ SignedWide multiplyPtrdiffBySize(
 pure
 nothrow
 @nogc
+/++
+    Increments one unsigned wide magnitude and reports overflow.
++/
 bool tryIncrementMagnitude(
     Cent value,
     out Cent result
@@ -1085,6 +1157,9 @@ bool tryIncrementMagnitude(
 pure
 nothrow
 @nogc
+/++
+    Computes mathematical floor(numerator / denominator) for signed wide numerator and positive machine-word denominator.
++/
 bool tryFloorDivide(
     SignedWide numerator,
     SignedWide denominator,
@@ -1151,6 +1226,9 @@ bool tryFloorDivide(
 pure
 nothrow
 @nogc
+/++
+    Computes mathematical ceil(numerator / denominator) for signed wide numerator and positive machine-word denominator.
++/
 bool tryCeilDivide(
     SignedWide numerator,
     SignedWide denominator,
@@ -1223,6 +1301,9 @@ struct SignedWord
 pure
 nothrow
 @nogc
+/++
+    Constructs the compact signed-word carrier from sign and machine-word magnitude.
++/
 SignedWord makeSignedWord(
     bool negative,
     ulong magnitude
@@ -1241,6 +1322,9 @@ SignedWord makeSignedWord(
 pure
 nothrow
 @nogc
+/++
+    Converts one unsigned machine word into the compact signed-word carrier.
++/
 SignedWide fromUnsignedWord(
     ulong value
 )
@@ -1255,6 +1339,9 @@ SignedWide fromUnsignedWord(
 pure
 nothrow
 @nogc
+/++
+    Converts size_t into the compact signed-word carrier when representable by the carrier magnitude.
++/
 SignedWide fromSize(
     size_t value
 )
@@ -1289,6 +1376,9 @@ ulong gcdWord(
 pure
 nothrow
 @nogc
+/++
+    Divides an unsigned wide magnitude by one non-zero machine word.
++/
 Cent divideMagnitudeByWord(
     Cent numerator,
     ulong denominator,
@@ -1318,6 +1408,9 @@ Cent divideMagnitudeByWord(
 pure
 nothrow
 @nogc
+/++
+    Returns an unsigned wide magnitude modulo one non-zero machine word.
++/
 ulong remainderMagnitudeByWord(
     Cent numerator,
     ulong denominator
@@ -1339,6 +1432,9 @@ ulong remainderMagnitudeByWord(
 pure
 nothrow
 @nogc
+/++
+    Multiplies an unsigned wide magnitude by one machine word with overflow detection.
++/
 bool tryMultiplyMagnitudeByWord(
     Cent value,
     ulong factor,
@@ -1393,6 +1489,9 @@ bool tryMultiplyMagnitudeByWord(
 pure
 nothrow
 @nogc
+/++
+    Multiplies a signed wide value by an unsigned machine word with overflow detection.
++/
 bool tryMultiplySignedByWord(
     SignedWide value,
     ulong factor,
@@ -1429,6 +1528,9 @@ bool tryMultiplySignedByWord(
 pure
 nothrow
 @nogc
+/++
+    Returns a non-negative machine-word remainder for a signed wide dividend and positive modulus.
++/
 ulong moduloSignedWide(
     SignedWide value,
     ulong modulus
@@ -1463,6 +1565,9 @@ ulong moduloSignedWide(
 pure
 nothrow
 @nogc
+/++
+    Returns a non-negative machine-word remainder for a compact signed-word dividend and positive modulus.
++/
 ulong moduloSignedWord(
     SignedWord value,
     ulong modulus
@@ -1494,6 +1599,9 @@ ulong moduloSignedWord(
 pure
 nothrow
 @nogc
+/++
+    Multiplies two machine words modulo a positive modulus without overflowing intermediate machine arithmetic.
++/
 ulong multiplyWordsModulo(
     ulong left,
     ulong right,
@@ -1523,6 +1631,9 @@ ulong multiplyWordsModulo(
 pure
 nothrow
 @nogc
+/++
+    Computes the modular inverse of one word modulo a coprime positive modulus.
++/
 bool tryModularInverseWord(
     ulong value,
     ulong modulus,
@@ -1621,6 +1732,9 @@ bool tryModularInverseWord(
 pure
 nothrow
 @nogc
+/++
+    Divides a signed wide integer by a signed machine-word divisor only when the quotient is exact and representable.
++/
 bool tryDivideExactBySignedWord(
     SignedWide numerator,
     SignedWord denominator,
@@ -1662,6 +1776,9 @@ bool tryDivideExactBySignedWord(
 pure
 nothrow
 @nogc
+/++
+    Checks whether a signed coordinate lies in the half-open range [0, count).
++/
 bool coordinateWithinCount(
     SignedWide coordinate,
     size_t count
@@ -1699,6 +1816,9 @@ enum ParameterIntervalStatus : ubyte
 pure
 nothrow
 @nogc
+/++
+    Computes the integer parameter interval for which origin + step*t remains inside a finite coordinate range.
++/
 ParameterIntervalStatus parameterInterval(
     SignedWide origin,
     SignedWide step,
@@ -1811,6 +1931,9 @@ enum DiophantineStatus : ubyte
 pure
 nothrow
 @nogc
+/++
+    Solves a bounded two-variable linear Diophantine equation and reports whether any solution lies inside both coordinate domains.
++/
 DiophantineStatus boundedLinearEquation(
     SignedWord a,
     SignedWord b,
