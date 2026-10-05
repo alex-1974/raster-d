@@ -1,6 +1,6 @@
 # Public API Example Audit
 
-**Status:** inventory complete — example remediation required  
+**Status:** complete  
 **Baseline:** raster-d 0.1 release line
 
 ## Purpose
@@ -74,57 +74,55 @@ The first public-only DDox inventory contains **50 symbol pages**.
 
 | DDox page | Status | Owning family |
 | --- | --- | --- |
-| `raster.backing.RasterLease` | add | retained lifetime |
-| `raster.backing.RasterLease.tryWritableView` | add | retained lifetime |
-| `raster.backing.RasterLease.view` | add | retained lifetime |
-| `raster.byte_layout.PlaneByteLayout` | add | geometry/layout |
-| `raster.conversion.UbyteToFloatConversionError` | add | conversion |
-| `raster.conversion.tryConvertUbyteToFloatPlane` | add | conversion |
-| `raster.copy.RasterCopyError` | add | copy |
-| `raster.copy.tryCopyRasterPlane` | add | copy |
-| `raster.descriptor.PlaneDescriptor` | add | geometry/layout |
-| `raster.fill.tryFillRasterPlane` | add | fill |
-| `raster.import_owned.OwnedRasterImportError` | add | ownership/import |
-| `raster.import_owned.OwnedRasterImportResult` | add | ownership/import |
-| `raster.import_owned.OwnedRasterImportResult.error` | add | ownership/import |
-| `raster.import_owned.OwnedRasterImportResult.ok` | add | ownership/import |
-| `raster.import_owned.OwnedRasterImportResult.planeIndex` | add | ownership/import |
-| `raster.import_owned.OwnedRasterImportResult.resourceDisposition` | add | ownership/import |
-| `raster.import_owned.OwnedRasterResourceDisposition` | add | ownership/import |
-| `raster.import_owned.tryImportOwnedRaster` | add | ownership/import |
-| `raster.neighbourhood.RasterNeighbourhood3x3Error` | add | neighbourhood |
-| `raster.neighbourhood.tryApplyRasterNeighbourhood3x3` | add | neighbourhood |
-| `raster.owned_resource.OwnedByteResource` | add | ownership/import |
-| `raster.owned_resource.OwnedByteResource.byteLength` | add | ownership/import |
-| `raster.owned_resource.OwnedByteResource.ownsResource` | add | ownership/import |
-| `raster.owned_resource.tryAdoptMallocResource` | add | ownership/import |
-| `raster.reduction.trySumFloatToDouble` | add | reduction |
-| `raster.region.Region2D` | add | geometry/layout |
-| `raster.region.Region2D.containsRelative` | add | geometry/layout |
-| `raster.region.Region2D.empty` | add | geometry/layout |
-| `raster.region.Region2D.hasRepresentableExtent` | add | geometry/layout |
-| `raster.region.Region2D.tryResolveRelative` | add | geometry/layout |
-| `raster.sample.isRasterSampleType` | add | sample policy |
-| `raster.transform.RasterTransformError` | add | transform |
-| `raster.transform.tryTransformRasterPlane` | add | transform |
-| `raster.view.RasterView` | add | retained lifetime |
-| `raster.view.RasterView.empty` | add | retained lifetime |
-| `raster.view.RasterView.height` | add | retained lifetime |
-| `raster.view.RasterView.planeCount` | add | retained lifetime |
-| `raster.view.RasterView.region` | add | retained lifetime |
-| `raster.view.RasterView.tryRoi` | add | retained lifetime |
-| `raster.view.RasterView.trySample` | add | retained lifetime |
-| `raster.view.RasterView.width` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.empty` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.height` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.planeCount` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.region` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.tryRoi` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.trySample` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.trySetSample` | add | retained lifetime |
-| `raster.writable_view.WritableRasterView.width` | add | retained lifetime |
+| `raster.backing.RasterLease` | existing | retained lifetime |
+| `raster.backing.RasterLease.tryWritableView` | existing | retained lifetime |
+| `raster.backing.RasterLease.view` | existing | retained lifetime |
+| `raster.byte_layout.PlaneByteLayout` | existing | geometry/layout |
+| `raster.conversion.UbyteToFloatConversionError` | existing | conversion |
+| `raster.conversion.tryConvertUbyteToFloatPlane` | existing | conversion |
+| `raster.copy.RasterCopyError` | existing | copy |
+| `raster.copy.tryCopyRasterPlane` | existing | copy |
+| `raster.descriptor.PlaneDescriptor` | existing | geometry/layout |
+| `raster.fill.tryFillRasterPlane` | existing | fill |
+| `raster.import_owned.OwnedRasterImportError` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.error` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.ok` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.planeIndex` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterImportResult.resourceDisposition` | existing | ownership/import |
+| `raster.import_owned.OwnedRasterResourceDisposition` | existing | ownership/import |
+| `raster.import_owned.tryImportOwnedRaster` | existing | ownership/import |
+| `raster.neighbourhood.RasterNeighbourhood3x3Error` | existing | neighbourhood |
+| `raster.neighbourhood.tryApplyRasterNeighbourhood3x3` | existing | neighbourhood |
+| `raster.owned_resource.OwnedByteResource` | existing | ownership/import |
+| `raster.owned_resource.OwnedByteResource.byteLength` | existing | ownership/import |
+| `raster.owned_resource.OwnedByteResource.ownsResource` | existing | ownership/import |
+| `raster.owned_resource.tryAdoptMallocResource` | existing | ownership/import |
+| `raster.reduction.trySumFloatToDouble` | existing | reduction |
+| `raster.region.Region2D` | existing | geometry/layout |
+| `raster.region.Region2D.containsRelative` | existing | geometry/layout |
+| `raster.region.Region2D.empty` | existing | geometry/layout |
+| `raster.region.Region2D.hasRepresentableExtent` | existing | geometry/layout |
+| `raster.region.Region2D.tryResolveRelative` | existing | geometry/layout |
+| `raster.sample.isRasterSampleType` | existing | sample policy |
+| `raster.transform.RasterTransformError` | existing | transform |
+| `raster.transform.tryTransformRasterPlane` | existing | transform |
+| `raster.view.RasterView` | existing | retained lifetime |
+| `raster.view.RasterView.empty` | existing | retained lifetime |
+| `raster.view.RasterView.height` | existing | retained lifetime |
+| `raster.view.RasterView.planeCount` | existing | retained lifetime |
+| `raster.view.RasterView.region` | existing | retained lifetime |
+| `raster.view.RasterView.tryRoi` | existing | retained lifetime |
+| `raster.view.RasterView.trySample` | existing | retained lifetime |
+| `raster.view.RasterView.width` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.empty` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.height` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.planeCount` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.region` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.tryRoi` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.trySample` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.trySetSample` | existing | retained lifetime |
+| `raster.writable_view.WritableRasterView.width` | existing | retained lifetime |
 
-The `add` state is intentionally strict: the page remains incomplete until its
-own documented, compiler-checked `unittest` renders as an Example on that
-exact DDox page.
+All 50 inventoried pages now render their own documented, compiler-checked `unittest` as an Example. The strict verifier requires the rendered-page count, audit `existing` count, and documented-unittest count to remain identical.
