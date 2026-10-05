@@ -74,6 +74,16 @@ enum OwnedRasterImportError : ubyte
     internalConstructionFailure
 }
 
+/// Example recognizing a public import failure category.
+@safe unittest
+{
+    import raster;
+
+    assert(OwnedRasterImportError.init == OwnedRasterImportError.none);
+    assert(OwnedRasterImportError.invalidPlaneLayout != OwnedRasterImportError.none);
+}
+
+
 
 /++
     What happened to the physical release obligation during an import attempt.
@@ -90,6 +100,16 @@ enum OwnedRasterResourceDisposition : ubyte
 
     releasedAfterCommit
 }
+
+/// Example distinguishing whether ownership moved during an import.
+@safe unittest
+{
+    import raster;
+
+    assert(OwnedRasterResourceDisposition.init == OwnedRasterResourceDisposition.unchanged);
+    assert(OwnedRasterResourceDisposition.transferredToLease != OwnedRasterResourceDisposition.unchanged);
+}
+
 
 
 /++
@@ -148,6 +168,16 @@ public:
         return error_;
     }
 
+/// Example reading the default import error state.
+@safe unittest
+{
+    import raster;
+
+    OwnedRasterImportResult result;
+    assert(result.error == OwnedRasterImportError.internalConstructionFailure);
+}
+
+
 
     /++
         Zero-based failing logical plane for invalidPlaneLayout.
@@ -165,6 +195,16 @@ public:
         return planeIndex_;
     }
 
+/// Example reading the failing-plane sentinel from the default result.
+@safe unittest
+{
+    import raster;
+
+    OwnedRasterImportResult result;
+    assert(result.planeIndex == size_t.max);
+}
+
+
 
     /++
         Whether the import completed successfully.
@@ -180,6 +220,16 @@ public:
             == OwnedRasterImportError.none;
     }
 
+/// Example checking that the default import result is not success.
+@safe unittest
+{
+    import raster;
+
+    OwnedRasterImportResult result;
+    assert(!result.ok);
+}
+
+
 
     /++
         Disposition of the physical release obligation.
@@ -193,7 +243,29 @@ public:
     {
         return resourceDisposition_;
     }
+
+/// Example inspecting ownership disposition after no import attempt.
+@safe unittest
+{
+    import raster;
+
+    OwnedRasterImportResult result;
+    assert(result.resourceDisposition == OwnedRasterResourceDisposition.unchanged);
 }
+
+}
+
+/// Example inspecting the deliberately failing default import result.
+@safe unittest
+{
+    import raster;
+
+    OwnedRasterImportResult result;
+    assert(!result.ok);
+    assert(result.planeIndex == size_t.max);
+    assert(result.resourceDisposition == OwnedRasterResourceDisposition.unchanged);
+}
+
 
 
 /++
@@ -381,6 +453,41 @@ OwnedRasterImportResult tryImportOwnedRaster(T)(
         internal
     );
 }
+
+/// Example importing one owned 2 x 2 ubyte raster.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(4);
+    assert(memory !is null);
+    auto samples = (cast(ubyte*) memory)[0 .. 4];
+    samples[] = [1, 2, 3, 4];
+
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+
+    const PlaneByteLayout[1] planes = [PlaneByteLayout(0, 2, 1)];
+    RasterLease!ubyte lease;
+
+    const result = tryImportOwnedRaster!ubyte(
+        resource,
+        planes[],
+        Region2D(0, 0, 2, 2),
+        lease
+    );
+
+    assert(result.ok);
+    assert(result.resourceDisposition == OwnedRasterResourceDisposition.transferredToLease);
+    assert(!resource.ownsResource);
+
+    scope auto view = lease.view();
+    ubyte value;
+    assert(view.trySample(0, 1, 1, value));
+    assert(value == 4);
+}
+
 
 
 version (unittest)
