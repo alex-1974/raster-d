@@ -85,6 +85,10 @@ A `RasterLease!T` retains the physical resources required by its validated
 raster. Views borrow from the retained lifetime and must not outlive the lease
 or other required owner.
 
+`RasterLease!T.init` is a valid inert lifetime capability. `view()` returns
+`RasterView!T.init`, and `tryWritableView()` reports failure and returns
+`WritableRasterView!T.init`.
+
 The API audit must freeze the exact construction/access patterns and lifetime
 attributes exposed to consumers.
 
@@ -97,7 +101,7 @@ targets and Mir adapters remain implementation details.
 bool trySumFloatToDouble(
     scope const RasterView!float source,
     size_t sourcePlane,
-    out double result);
+    out double sum);
 ~~~
 
 The accepted numerical contract is strict logical row-major accumulation into

@@ -1,0 +1,8 @@
+name "raster-d-api-freeze-probe"
+description "External 0.1 public API freeze contract"
+authors "raster-d contributors"
+license "MIT"
+targetType "library"
+targetPath ".dub"
+dflags "-preview=dip1000"
+dependency "raster-d" path="../../.."
