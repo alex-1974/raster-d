@@ -16,6 +16,9 @@
 +/
 module raster.internal.conversion_dispatch;
 
+import raster.internal.validated_affine_relation :
+    classifyValidatedUbyteToFloatAffine2DByteOverlap;
+
 import raster.internal.affine_relation :
     AffineByteOverlapRelation,
     affine2DMappingIsInjective,
@@ -35,7 +38,8 @@ import raster.internal.physical_range :
     classifyByteAddressRanges;
 
 import raster.internal.scalar_conversion :
-    scalarConvertUbyteToFloatContiguous1D;
+    scalarConvertUbyteToFloatContiguous1D,
+    scalarConvertUbyteToFloatSlice;
 
 import raster.internal.target :
     RasterTargetPlane,
@@ -97,6 +101,9 @@ struct UbyteToFloatConversionResult
 }
 
 
+/++
+    Constructs the internal successful exact-conversion result.
++/
 private
 UbyteToFloatConversionResult conversionSuccess()
 @safe
@@ -113,6 +120,9 @@ nothrow
 }
 
 
+/++
+    Constructs an internal exact-conversion failure result for one semantic error.
++/
 private
 UbyteToFloatConversionResult conversionFailure(
     UbyteToFloatConversionError error
@@ -227,7 +237,7 @@ nothrow
     assert(sourceBase !is null);
     assert(targetBase !is null);
 
-    return classifyUbyteToFloatAffine2DByteOverlap(
+    return classifyValidatedUbyteToFloatAffine2DByteOverlap(
         width,
         height,
 
@@ -247,8 +257,8 @@ nothrow
 
     All relation failures have been resolved before entry.
 
-    RasterView and WritableRasterView remain the semantic sample-access
-    boundaries.
+    Unit sample strides use safe scoped row slices; other sample strides
+    retain checked RasterView/WritableRasterView semantic traversal.
 +/
 private
 void convertApprovedUbyteToFloatAffine2D(
@@ -262,6 +272,23 @@ void convertApprovedUbyteToFloatAffine2D(
 nothrow
 @nogc
 {
+    ptrdiff_t sourceRowStride, sourceSampleStride,
+        targetRowStride, targetSampleStride;
+    const sourceStridesOk = source.tryExecutionPlaneStrides(
+        sourcePlaneIndex, sourceRowStride, sourceSampleStride);
+    const targetStridesOk = target.tryExecutionPlaneStrides(
+        targetPlaneIndex, targetRowStride, targetSampleStride);
+    assert(sourceStridesOk && targetStridesOk);
+
+    if (sourceSampleStride == 1 && targetSampleStride == 1)
+    {
+        executeApprovedRows(
+            source.executionRegionBase(sourcePlaneIndex), sourceRowStride,
+            target.executionRegionBase(targetPlaneIndex), targetRowStride,
+            source.width, source.height);
+        return;
+    }
+
     foreach (y; 0 .. source.height)
     {
         foreach (x; 0 .. source.width)
@@ -447,6 +474,31 @@ nothrow
 
 
 /++
+    Converts one already-approved contiguous ubyte row to float using the ordinary exact scalar/Mir-compatible path.
++/
+private
+bool convertApprovedUbyteToFloatContiguous1D(
+    scope const(ubyte)* sourceBase,
+    scope float* targetBase,
+    size_t elementCount
+)
+@trusted
+pure
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(targetBase !is null);
+    assert(elementCount != 0);
+
+    return scalarConvertUbyteToFloatSlice(
+        sourceBase[0 .. elementCount],
+        targetBase[0 .. elementCount]
+    );
+}
+
+
+/++
     Converts one ubyte source plane into a contiguous float target.
 
     Preconditions are established internally in this order:
@@ -550,14 +602,10 @@ nothrow
         case PhysicalByteRangeRelation.nonOverlapping:
         {
             const converted =
-                scalarConvertUbyteToFloatContiguous1D(
-                    asMirContiguousFlat(
-                        source,
-                        planeIndex
-                    ),
-                    asMirTargetContiguousFlat(
-                        target
-                    )
+                convertApprovedUbyteToFloatContiguous1D(
+                    sourceBase,
+                    targetBase,
+                    traits.flatElementCount
                 );
 
             /*
@@ -848,18 +896,10 @@ nothrow
 
                 case PhysicalByteRangeRelation.nonOverlapping:
                 {
-                    const converted =
-                        scalarConvertUbyteToFloatContiguous1D(
-                            asMirContiguousFlat(
-                                source,
-                                sourcePlaneIndex
-                            ),
-                            asMirTargetContiguousFlat(
-                                contiguousDestination
-                            )
-                        );
-
-                    assert(converted);
+                    executeApprovedRows(
+                        sourceBase, sourceRowStrideElements,
+                        destinationBase, destinationRowStrideElements,
+                        source.width, source.height);
 
                     return
                         ExactUbyteToFloatRasterError.none;
@@ -2049,4 +2089,300 @@ unittest
     }
 }
 
+}
+
+/++
+    Safety: callers have validated retained backing, matching geometry, unit
+    sample strides, injective destination and exact global sample-byte
+    disjointness. Each signed row offset and width-sample slice is reachable
+    within that backing. Source rows may repeat. These scoped borrows do not
+    escape; only pointer arithmetic and slice formation require trust.
++/
+private const(T)[] readApprovedRow(T)(
+    return scope const(T)* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private T[] writeApprovedRow(T)(
+    return scope T* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+version (DigitalMars)
+{
+    version (X86_64)
+    {
+        import core.simd :
+            XMM,
+            __simd,
+            float4,
+            loadUnaligned,
+            storeUnaligned,
+            ubyte16;
+
+        /++
+            Reads one unaligned sixteen-byte source block.
+
+            Safety: the sole caller passes a live scoped sixteen-byte subslice.
+            The intrinsic reads exactly those bytes, requires no alignment and
+            does not let a pointer escape.
+        +/
+        private ubyte16 readApprovedUbyteVectorBlock(
+            scope const(ubyte)[] block
+        )
+        @trusted pure nothrow @nogc
+        {
+            assert(block.length == 16);
+
+            return loadUnaligned(
+                cast(const(ubyte16)*) block.ptr
+            );
+        }
+
+        /++
+            Writes one unaligned four-float destination block.
+
+            Safety: the sole caller passes a live writable four-float
+            subslice. The intrinsic writes exactly sixteen bytes, requires no
+            alignment and does not let a pointer escape.
+        +/
+        private void writeApprovedFloatVectorBlock(
+            scope float[] block,
+            float4 result
+        )
+        @trusted pure nothrow @nogc
+        {
+            assert(block.length == 4);
+
+            storeUnaligned(
+                cast(float4*) block.ptr,
+                result
+            );
+        }
+
+        /++
+            Exact SSE2 ubyte-to-float row conversion for an already-approved
+            DMD x86-64 row.
+
+            ubyte values are widened losslessly before CVTDQ2PS; every value
+            0..255 is exactly representable as float. Sixteen-sample vector
+            blocks are followed by the scalar tail in logical order.
+
+            Reference-XPS qualification against the previous bounded pointer
+            Production kernel retained a material full-public benefit from
+            width 64 onward, while below-threshold and non-DMD controls stayed
+            neutral.
+        +/
+        private void convertApprovedUbyteToFloatDmdRow(
+            scope const(ubyte)[] row,
+            scope float[] destination
+        )
+        @safe pure nothrow @nogc
+        {
+            assert(row.length == destination.length);
+
+            size_t x;
+
+            while (row.length - x >= 16)
+            {
+                const packed =
+                    readApprovedUbyteVectorBlock(
+                        row[x .. x + 16]
+                    );
+
+                const ubyte16 zero = 0;
+
+                const lowWords =
+                    __simd(
+                        XMM.PUNPCKLBW,
+                        packed,
+                        zero
+                    );
+
+                const highWords =
+                    __simd(
+                        XMM.PUNPCKHBW,
+                        packed,
+                        zero
+                    );
+
+                const float4 a =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKLWD,
+                            lowWords,
+                            zero
+                        )
+                    );
+
+                const float4 b =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKHWD,
+                            lowWords,
+                            zero
+                        )
+                    );
+
+                const float4 c =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKLWD,
+                            highWords,
+                            zero
+                        )
+                    );
+
+                const float4 d =
+                    cast(float4) __simd(
+                        XMM.CVTDQ2PS,
+                        __simd(
+                            XMM.PUNPCKHWD,
+                            highWords,
+                            zero
+                        )
+                    );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x .. x + 4],
+                    a
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 4 .. x + 8],
+                    b
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 8 .. x + 12],
+                    c
+                );
+
+                writeApprovedFloatVectorBlock(
+                    destination[x + 12 .. x + 16],
+                    d
+                );
+
+                x += 16;
+            }
+
+            foreach (i; x .. row.length)
+            {
+                destination[i] =
+                    cast(float) row[i];
+            }
+        }
+    }
+}
+
+
+/++
+    LDC x86-64 row-local optimizer boundary for an already-approved
+    ubyte-to-float conversion whose source row direction is negative.
+
+    This helper changes only the inlining/vectorization boundary. It uses the
+    same scoped row slices as the generic executor and introduces no new trust.
+
+    Reference-XPS qualification showed a material full-public benefit from
+    width 64 onward specifically for negative source row strides. Positive
+    source rows, negative-target-only layouts and Universal traversal remain on
+    the existing executor.
++/
+pragma(inline, false)
+private void convertApprovedUbyteToFloatLdcNegativeSourceRow(
+    scope const(ubyte)[] row,
+    scope float[] destination
+)
+@safe pure nothrow @nogc
+{
+    assert(row.length == destination.length);
+
+    foreach (x, value; row)
+    {
+        destination[x] =
+            cast(float) value;
+    }
+}
+
+
+private void executeApprovedRows(S, D)(
+    scope const(S)* source,
+    ptrdiff_t sourceRowStride,
+    scope D* target,
+    ptrdiff_t targetRowStride,
+    size_t width,
+    size_t height
+)
+@safe pure nothrow @nogc
+{
+    foreach (y; 0 .. height)
+    {
+        scope const row =
+            readApprovedRow(source, sourceRowStride, y, width);
+        scope auto destination =
+            writeApprovedRow(target, targetRowStride, y, width);
+
+        static if (is(S == D))
+        {
+            destination[] = row[];
+        }
+        else
+        {
+            static assert(is(S == ubyte) && is(D == float));
+
+            version (DigitalMars)
+            {
+                version (X86_64)
+                {
+                    if (width >= 64)
+                    {
+                        convertApprovedUbyteToFloatDmdRow(
+                            row,
+                            destination
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            version (LDC)
+            {
+                version (X86_64)
+                {
+                    if (
+                        sourceRowStride < 0
+                        && width >= 64
+                    )
+                    {
+                        convertApprovedUbyteToFloatLdcNegativeSourceRow(
+                            row,
+                            destination
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            foreach (x, value; row)
+            {
+                destination[x] =
+                    cast(float) value;
+            }
+        }
+    }
 }

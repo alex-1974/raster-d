@@ -4,6 +4,11 @@
     Raster storage is interpreted as raw externally managed bytes. A sample
     type must therefore be safely loadable and copyable without hidden
     ownership, destruction, or indirection semantics.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.sample;
 
@@ -54,6 +59,17 @@ template isRasterSampleType(T)
             && !hasIndirections!T;
     }
 }
+
+/// Example checking raw raster sample representations.
+@safe unittest
+{
+    import raster;
+
+    static assert(isRasterSampleType!ubyte);
+    static assert(isRasterSampleType!(ubyte[4]));
+    static assert(!isRasterSampleType!(ubyte*));
+}
+
 
 
 version (unittest)

@@ -1,7 +1,6 @@
 # raster-d
 
-`raster-d` is an experimental high-performance generic raster library written
-in D.
+`raster-d` is a high-performance generic raster library written in D.
 
 It provides the reusable raster foundation for large resident and streamed
 datasets without imposing image, colour, radiometric or geospatial-image
@@ -21,7 +20,15 @@ or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-Active generic raster-core implementation.
+v0.1.0 release candidate.
+
+The v0.1.0 public source contract is frozen at `freeze/api-0.1.0`. Release
+qualification covers the controlled compiler-generation matrix, supported
+platform matrix, compiler floors, strict public-only DDox, external archive
+consumers and the reference-XPS M2/M3 Production benchmark.
+
+Because raster-d is pre-1.0, later minor releases may deliberately evolve the
+API. The published v0.1.0 contract itself is treated as fixed.
 
 The production DUB package is `raster-d` and the public D namespace is
 `raster` / `raster.*`.
@@ -38,19 +45,29 @@ The retained raster foundation includes:
 - checked physical-range and affine-overlap analysis;
 - strict `trySumFloatToDouble()`;
 - checked `tryCopyRasterPlane()`;
+- generic exact `tryFillRasterPlane()`;
+- generic compile-time `tryTransformRasterPlane!transform()`;
+- generic fixed 3 x 3 `tryApplyRasterNeighbourhood3x3!kernel()`, with
+  measured internal Canonical fast paths;
 - exact `tryConvertUbyteToFloatPlane()`.
 
 Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
 types, affine-relation machinery, checked-wide arithmetic and operation
 dispatch internals remain non-public.
 
-R0.3 research has additionally demonstrated decomposition-independent streamed
+R0.3 research additionally demonstrated decomposition-independent streamed
 identity and neighbourhood/halo execution with bounded raster residency.
-Those research types are not promoted into the stable production API merely by
-the repository pivot.
 
-The public API remains experimental. Performance-sensitive implementation is
-developed from measured evidence and validated with both DMD and LDC.
+M1 has now promoted and qualified the smallest production contracts needed for
+requested-region dependency planning, synchronous caller-owned materialization,
+bounded request residency, bounded retained reuse, multi-block dependency
+assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
+decomposition, cache-block selection/replacement and scheduling remain outside
+the public raster contract.
+
+Performance-sensitive implementation is developed from measured evidence and
+validated with both DMD and LDC. Compiler/ISA-specific execution remains an
+internal implementation choice rather than a public switch.
 
 ## Primary goals
 
@@ -98,11 +115,9 @@ API by default.
 ```text
 source/raster/        production library
 tests/                correctness and external-consumer tests
-tools/                maintained verification/probe tooling
-experiments/          research and reproducible experiment evidence
+tools/                maintained production verification tooling
 docs/adr/             architecture decision records
 docs/architecture/    current architecture contracts
-docs/research/        research results and retained technical evidence
 ```
 
 Historical research artifacts retain their original naming where changing them
@@ -129,7 +144,9 @@ its provenance and reproducibility are controlled.
 Performance-sensitive work will be tested with both DMD and LDC. LDC/LLVM is
 expected to become the primary performance compiler.
 
-See `ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md`.
+See `docs/API.md` for the v0.1 public contract, `CHANGELOG.md` for release
+history, `docs/V0_1_RELEASE_NOTES.md` for the first release, and
+`ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md` for engineering context.
 
 ## Compiler support
 
@@ -148,8 +165,17 @@ packages are not compatible with current macOS 15 runners:
 | macOS ARM64 | — | 1.41.0 |
 | Windows ARM64 | experimental | experimental |
 
-Current DMD and LDC releases remain part of the normal CI matrix. See
-`docs/research/compiler-floor-audit.md` for the evidence and boundary tests.
+Normal `develop` integration uses the controlled fast compiler floor:
+
+- DMD 2.111.0;
+- LDC 1.41.0.
+
+Release qualification additionally exercises the controlled compiler-generation
+matrix DMD 2.111.0 / 2.112.1 / 2.113.0 and LDC 1.41.0 / 1.42.0 / 1.43.0,
+plus the supported platform matrix and the minimum compiler-package floor.
+
+See `RESEARCH.md` and the retained `docs/research/compiler-floor-audit.md` in
+`raster-d-research` for the evidence and boundary tests.
 
 ## Workspace context
 

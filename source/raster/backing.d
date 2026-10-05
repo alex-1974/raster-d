@@ -5,6 +5,11 @@
 
     RasterLease retains the backing representation from which such views
     borrow their descriptor metadata and pixel resources.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.backing;
 
@@ -167,6 +172,55 @@ private alias RasterBackingOwner =
         RasterBacking,
         RefCountedAutoInitialize.no
     );
+
+
+private
+struct PhysicalResourceByteCount
+{
+    bool ok;
+
+    size_t bytes;
+}
+
+
+/++
+    Sums the byte lengths of the physical resources retained by one backing.
+
+    Each ResourceEntry represents one physical resource and is therefore
+    counted exactly once even when multiple logical planes reference it.
++/
+private
+PhysicalResourceByteCount physicalResourceByteCount(
+    return ref RasterBacking backing
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    size_t total;
+
+    foreach (ref const resource; backing.resources_)
+    {
+        if (
+            resource.byteLength
+            > size_t.max - total
+        )
+        {
+            return
+                PhysicalResourceByteCount.init;
+        }
+
+        total +=
+            resource.byteLength;
+    }
+
+    return
+        PhysicalResourceByteCount(
+            true,
+            total
+        );
+}
 
 
 /++
@@ -336,7 +390,57 @@ public:
 
 
     /++
+        Attempts to return the physical raster-resource payload retained by this
+        lease.
+
+        Resource metadata and owner bookkeeping are deliberately excluded.
+
+        Each retained ResourceEntry is counted exactly once. This prevents
+        double-counting when several logical planes share one physical
+        allocation.
+
+        Failure returns false and stores zero in byteCount.
+    +/
+    package(raster)
+    bool tryPhysicalResourceBytes(
+        out size_t byteCount
+    )
+    @trusted
+    nothrow
+    @nogc
+    {
+        byteCount = 0;
+
+        if (!owner_.refCountedStore.isInitialized)
+        {
+            return false;
+        }
+
+        const result =
+            owner_.borrow!(
+                physicalResourceByteCount
+            );
+
+        if (!result.ok)
+        {
+            return false;
+        }
+
+        byteCount =
+            result.bytes;
+
+        return true;
+    }
+
+
+    /++
         Returns a non-owning read-only RasterView borrowing from this lease.
+
+        RasterLease.init is a valid inert lifetime capability. For an
+        uninitialized lease this method returns RasterView!T.init instead of
+        entering the retained-owner borrow path.
+
+        A non-empty returned view remains lifetime-bound to this lease.
     +/
     RasterView!T view()
     return
@@ -344,10 +448,35 @@ public:
     nothrow
     @nogc
     {
+        if (!owner_.refCountedStore.isInitialized)
+        {
+            return RasterView!T.init;
+        }
+
         return owner_.borrow!(
             makeViewFromBacking!T
         );
     }
+
+/// Example borrowing a read-only view from a retained lease.
+@system unittest
+{
+    import core.stdc.stdlib : malloc;
+    import raster;
+
+    void* memory = malloc(4);
+    assert(memory !is null);
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+    const PlaneByteLayout[1] planes = [PlaneByteLayout(0, 2, 1)];
+    RasterLease!ubyte lease;
+    assert(tryImportOwnedRaster!ubyte(resource, planes[], Region2D(0, 0, 2, 2), lease).ok);
+
+    scope auto view = lease.view();
+    assert(view.planeCount == 1);
+    assert(view.width == 2 && view.height == 2);
+}
+
 
 
     /++
@@ -415,7 +544,35 @@ public:
 
         return view;
     }
+
+/// Example requesting writable access from an empty lease.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto view = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(view.planeCount == 0);
 }
+
+}
+
+/// Example inspecting the default retained-lifetime capability.
+@safe unittest
+{
+    import raster;
+
+    RasterLease!ubyte lease;
+    bool success;
+    scope auto writable = lease.tryWritableView(success);
+
+    assert(!success);
+    assert(writable.empty);
+}
+
 
 
 version (unittest)
@@ -966,5 +1123,81 @@ unittest
     assert(writable.planeCount == 0);
 }
 
+
+
+unittest
+{
+    /*
+     * Resource byte accounting must fail rather than wrap when the retained
+     * physical payload is not representable in size_t.
+     */
+    ResourceEntry[2] resources =
+    [
+        ResourceEntry(
+            null,
+            size_t.max,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            1,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(!result.ok);
+    assert(result.bytes == 0);
+}
+
+
+unittest
+{
+    ResourceEntry[3] resources =
+    [
+        ResourceEntry(
+            null,
+            11,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            13,
+            null,
+            null
+        ),
+        ResourceEntry(
+            null,
+            17,
+            null,
+            null
+        )
+    ];
+
+    RasterBacking backing;
+
+    backing.resources_ =
+        resources[];
+
+    const result =
+        physicalResourceByteCount(
+            backing
+        );
+
+    assert(result.ok);
+    assert(result.bytes == 41);
+}
 
 } // version (unittest)

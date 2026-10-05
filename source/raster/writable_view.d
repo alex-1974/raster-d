@@ -28,6 +28,11 @@
 
     Construction/certification and execution-oriented members remain
     package-internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.writable_view;
 
@@ -99,6 +104,15 @@ public:
         return planes_.length;
     }
 
+/// Example reading the plane count of the default writable view.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.planeCount == 0);
+}
+
+
 
     /++
         Resident descriptor-space region represented by this view.
@@ -112,6 +126,15 @@ public:
     {
         return region_;
     }
+
+/// Example reading the default writable region.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.region == Region2D.init);
+}
+
 
 
     /++
@@ -127,6 +150,15 @@ public:
         return region_.width;
     }
 
+/// Example reading the default writable width.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.width == 0);
+}
+
+
 
     /++
         Resident height.
@@ -141,6 +173,15 @@ public:
         return region_.height;
     }
 
+/// Example reading the default writable height.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.height == 0);
+}
+
+
 
     /++
         Whether the represented region has zero area.
@@ -154,6 +195,15 @@ public:
     {
         return region_.empty();
     }
+
+/// Example recognizing an empty default writable view.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.empty);
+}
+
 
 
     /++
@@ -351,6 +401,18 @@ public:
         );
     }
 
+/// Example rejecting an out-of-range writable child ROI.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    bool success;
+    scope auto child = view.tryRoi(Region2D(1, 0, 0, 0), success);
+    assert(!success);
+    assert(child.empty);
+}
+
+
 
     /++
         Attempts to read one logical sample.
@@ -390,6 +452,17 @@ public:
             value
         );
     }
+
+/// Example reading safely from an empty writable view.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    ubyte value = 99;
+    assert(!view.trySample(0, 0, 0, value));
+    assert(value == ubyte.init);
+}
+
 
 
     /++
@@ -482,7 +555,26 @@ public:
 
         return true;
     }
+
+/// Example rejecting a write outside the default writable view.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(!view.trySetSample(0, 0, 0, cast(ubyte) 7));
 }
+
+}
+
+/// Example using the default writable semantic capability.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte view;
+    assert(view.planeCount == 0);
+    assert(view.empty);
+}
+
 
 
 /++

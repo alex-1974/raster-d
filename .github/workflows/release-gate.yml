@@ -1,0 +1,219 @@
+name: Release Gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compiler-generation:
+    name: ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Compiler / DMD 2.111.0
+            compiler: dmd-2.111.0
+            dub: 1.40.0
+          - name: Compiler / DMD 2.112.1
+            compiler: dmd-2.112.1
+            dub: 1.40.0
+          - name: Compiler / DMD 2.113.0
+            compiler: dmd-2.113.0
+            dub: 1.40.0
+          - name: Compiler / LDC 1.41.0
+            compiler: ldc-1.41.0
+            dub: 1.40.0
+          - name: Compiler / LDC 1.42.0
+            compiler: ldc-1.42.0
+            dub: 1.40.0
+          - name: Compiler / LDC 1.43.0
+            compiler: ldc-1.43.0
+            dub: 1.40.0
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dub: ${{ matrix.dub }}
+          dc_format: shortname
+
+      - name: Environment
+        shell: bash
+        run: |
+          echo "Runner OS:          $RUNNER_OS"
+          echo "Runner arch:        $RUNNER_ARCH"
+          echo "Requested compiler: ${{ matrix.compiler }}"
+          echo "DC:                 $DC"
+          echo
+
+          "$DC" --version
+          dub --version
+
+      - name: Build
+        shell: bash
+        run: |
+          dub build --compiler="$DC"
+
+      - name: Test
+        shell: bash
+        run: |
+          dub test --compiler="$DC"
+
+      - name: Raster contract probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_construction_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_owned_resource.sh "$DC"
+          bash tools/compile-negative/raster_import_public.sh "$DC"
+          bash tools/compile-negative/raster_execution_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_target_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_neighbourhood_fast_path_internal.sh "$DC"
+          bash tools/compile-negative/raster_validated_affine_relation_internal.sh "$DC"
+          bash tools/compile-negative/raster_transform_dispatch_internal.sh "$DC"
+          bash tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"
+          bash tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
+          bash tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
+          bash tools/compile-negative/raster_copy_conversion_internal.sh "$DC"
+          bash tools/compile-negative/raster_copy_conversion_trust.sh "$DC"
+          bash tools/compile-negative/raster_public_operations.sh "$DC"
+          dub run --root=tests/integration/raster_copy_conversion --compiler="$DC" --build=release --force
+
+      - name: Raster retained-import external link probe
+        shell: bash
+        run: |
+          dub test \
+            --root=tests/external/raster_import_link \
+            --compiler="$DC"
+
+  platform:
+    name: ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Platform / Linux x86-64 / DMD current
+            os: ubuntu-24.04
+            compiler: dmd
+            experimental: false
+
+          - name: Platform / Linux x86-64 / LDC current
+            os: ubuntu-24.04
+            compiler: ldc
+            experimental: false
+
+          - name: Platform / Linux ARM64 / LDC current
+            os: ubuntu-24.04-arm
+            compiler: ldc
+            experimental: false
+
+          - name: Platform / Windows x86-64 / DMD current
+            os: windows-2025
+            compiler: dmd
+            experimental: false
+
+          - name: Platform / Windows x86-64 / LDC current
+            os: windows-2025
+            compiler: ldc
+            experimental: false
+
+          - name: Platform / macOS x86-64 / DMD current
+            os: macos-15-intel
+            compiler: dmd
+            experimental: false
+
+          - name: Platform / macOS x86-64 / LDC current
+            os: macos-15-intel
+            compiler: ldc
+            experimental: false
+
+          - name: Platform / macOS ARM64 / LDC current
+            os: macos-15
+            compiler: ldc
+            experimental: false
+
+          - name: Platform / Windows ARM64 / LDC current
+            os: windows-11-arm
+            compiler: ldc
+            experimental: true
+
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+          dc_format: shortname
+
+      - name: Environment
+        shell: bash
+        run: |
+          echo "Runner OS:   $RUNNER_OS"
+          echo "Runner arch: $RUNNER_ARCH"
+          echo "DC:          $DC"
+          echo
+
+          "$DC" --version || true
+          dub --version
+
+      - name: Build
+        shell: bash
+        run: |
+          dub build --compiler="$DC"
+
+      - name: Test
+        shell: bash
+        run: |
+          dub test --compiler="$DC"
+
+      - name: Raster contract probes
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_construction_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_owned_resource.sh "$DC"
+          bash tools/compile-negative/raster_import_public.sh "$DC"
+          bash tools/compile-negative/raster_execution_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_target_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+          bash tools/compile-negative/raster_neighbourhood_fast_path_internal.sh "$DC"
+          bash tools/compile-negative/raster_validated_affine_relation_internal.sh "$DC"
+          bash tools/compile-negative/raster_transform_dispatch_internal.sh "$DC"
+          bash tools/compile-negative/raster_transform_dispatch_trust.sh "$DC"
+          bash tools/compile-negative/raster_fill_dispatch_internal.sh "$DC"
+          bash tools/compile-negative/raster_fill_dispatch_trust.sh "$DC"
+          bash tools/compile-negative/raster_copy_conversion_internal.sh "$DC"
+          bash tools/compile-negative/raster_copy_conversion_trust.sh "$DC"
+          bash tools/compile-negative/raster_public_operations.sh "$DC"
+          dub run --root=tests/integration/raster_copy_conversion --compiler="$DC" --build=release --force
+
+      - name: Raster retained-import external link probe
+        shell: bash
+        run: |
+          dub test \
+            --root=tests/external/raster_import_link \
+            --compiler="$DC"

@@ -3,6 +3,11 @@
 
     The raster package keeps semantic raster types independent from any
     particular execution substrate such as Mir.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster;
 
@@ -36,6 +41,17 @@ public import raster.writable_view :
 
 public import raster.reduction :
     trySumFloatToDouble;
+
+public import raster.fill :
+    tryFillRasterPlane;
+
+public import raster.transform :
+    RasterTransformError,
+    tryTransformRasterPlane;
+
+public import raster.neighbourhood :
+    RasterNeighbourhood3x3Error,
+    tryApplyRasterNeighbourhood3x3;
 
 public import raster.copy :
     RasterCopyError,

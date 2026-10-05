@@ -4,6 +4,11 @@
     This module exposes semantic operations only. Execution-layout
     classification, Mir adaptation, fixed-lane reduction graphs and kernel
     dispatch remain package-internal.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.reduction;
 
@@ -40,6 +45,17 @@ nothrow
         sum
     );
 }
+
+/// Example observing failure and output reset for an invalid plane.
+@safe unittest
+{
+    import raster;
+    RasterView!float source;
+    double sum = 42.0;
+    assert(!trySumFloatToDouble(source, 0, sum));
+    assert(sum == 0.0);
+}
+
 
 version (unittest)
 {

@@ -1,0 +1,370 @@
+module raster.internal.residency;
+
+
+/++
+    Package-internal byte budget for explicitly admitted resident raster work.
+
+    This is not a cache policy and does not own raster resources.
++/
+package(raster)
+struct ResidencyBudget
+{
+private:
+    size_t limitBytes_;
+
+    size_t admittedBytes_;
+
+public:
+    package(raster)
+    this(size_t limitBytes)
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        limitBytes_ =
+            limitBytes;
+    }
+
+
+    package(raster)
+    @property
+    /++
+        Returns the configured request-residency byte limit.
+    +/
+    size_t limitBytes() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return limitBytes_;
+    }
+
+
+    package(raster)
+    @property
+    /++
+        Returns bytes currently admitted to request residency.
+    +/
+    size_t admittedBytes() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return admittedBytes_;
+    }
+
+
+    package(raster)
+    @property
+    /++
+        Returns remaining request-residency capacity without underflow.
+    +/
+    size_t availableBytes() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        assert(admittedBytes_ <= limitBytes_);
+
+        return
+            limitBytes_
+            - admittedBytes_;
+    }
+
+
+    /++
+        Attempts to admit one resident byte obligation.
+
+        Failure leaves the current admitted byte count unchanged.
+    +/
+    package(raster)
+    bool tryAdmit(size_t requiredBytes)
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        assert(admittedBytes_ <= limitBytes_);
+
+        if (
+            requiredBytes
+            > limitBytes_ - admittedBytes_
+        )
+        {
+            return false;
+        }
+
+        admittedBytes_ +=
+            requiredBytes;
+
+        return true;
+    }
+
+
+    /++
+        Releases one previously admitted byte obligation.
+
+        Failure leaves the current admitted byte count unchanged.
+    +/
+    package(raster)
+    bool tryRelease(size_t releasedBytes)
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        if (
+            releasedBytes
+            > admittedBytes_
+        )
+        {
+            return false;
+        }
+
+        admittedBytes_ -=
+            releasedBytes;
+
+        return true;
+    }
+}
+
+
+version (unittest)
+{
+
+import core.stdc.stdlib :
+    malloc;
+
+import raster :
+    OwnedByteResource,
+    PlaneByteLayout,
+    RasterLease,
+    Region2D,
+    tryAdoptMallocResource,
+    tryImportOwnedRaster;
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(100);
+
+    assert(budget.limitBytes == 100);
+    assert(budget.admittedBytes == 0);
+    assert(budget.availableBytes == 100);
+
+    assert(budget.tryAdmit(100));
+    assert(budget.admittedBytes == 100);
+    assert(budget.availableBytes == 0);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(100);
+
+    assert(!budget.tryAdmit(101));
+    assert(budget.admittedBytes == 0);
+    assert(budget.availableBytes == 100);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(100);
+
+    assert(budget.tryAdmit(40));
+    assert(budget.tryAdmit(60));
+
+    assert(budget.admittedBytes == 100);
+
+    assert(!budget.tryAdmit(1));
+    assert(budget.admittedBytes == 100);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(100);
+
+    assert(budget.tryAdmit(60));
+    assert(budget.tryRelease(20));
+
+    assert(budget.admittedBytes == 40);
+    assert(budget.availableBytes == 60);
+
+    assert(budget.tryAdmit(60));
+    assert(budget.admittedBytes == 100);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(10);
+
+    assert(budget.tryAdmit(0));
+    assert(budget.admittedBytes == 0);
+
+    assert(budget.tryAdmit(7));
+
+    assert(!budget.tryRelease(8));
+    assert(budget.admittedBytes == 7);
+
+    assert(budget.tryRelease(0));
+    assert(budget.admittedBytes == 7);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(size_t.max);
+
+    assert(budget.tryAdmit(size_t.max));
+    assert(budget.admittedBytes == size_t.max);
+
+    assert(!budget.tryAdmit(1));
+    assert(budget.admittedBytes == size_t.max);
+
+    assert(budget.tryRelease(size_t.max));
+    assert(budget.admittedBytes == 0);
+}
+
+
+unittest
+{
+    ResidencyBudget budget =
+        ResidencyBudget(size_t.max);
+
+    assert(budget.tryAdmit(size_t.max - 1));
+
+    const before =
+        budget.admittedBytes;
+
+    assert(!budget.tryAdmit(2));
+    assert(budget.admittedBytes == before);
+}
+
+
+unittest
+{
+    /*
+     * One physical padded/interleaved allocation backs two logical planes.
+     * Physical resource cost must be counted once, not once per plane.
+     */
+    enum size_t width = 11;
+    enum size_t height = 5;
+    enum size_t rowPaddingBytes = 7;
+    enum size_t rowStrideBytes =
+        width * 2 + rowPaddingBytes;
+    enum size_t physicalBytes =
+        rowStrideBytes * height;
+
+    static assert(physicalBytes == 145);
+
+    auto memory =
+        malloc(physicalBytes);
+
+    assert(memory !is null);
+
+    OwnedByteResource resource;
+
+    assert(
+        tryAdoptMallocResource(
+            memory,
+            physicalBytes,
+            resource
+        )
+    );
+
+    RasterLease!ubyte lease;
+
+    const importResult =
+        tryImportOwnedRaster!ubyte(
+            resource,
+            [
+                PlaneByteLayout(
+                    0,
+                    cast(ptrdiff_t) rowStrideBytes,
+                    2
+                ),
+                PlaneByteLayout(
+                    1,
+                    cast(ptrdiff_t) rowStrideBytes,
+                    2
+                )
+            ],
+            Region2D(
+                0,
+                0,
+                width,
+                height
+            ),
+            lease
+        );
+
+    assert(importResult.ok);
+
+    size_t retainedBytes;
+
+    assert(
+        lease.tryPhysicalResourceBytes(
+            retainedBytes
+        )
+    );
+
+    assert(retainedBytes == physicalBytes);
+
+    ResidencyBudget tooSmall =
+        ResidencyBudget(
+            physicalBytes - 1
+        );
+
+    assert(
+        !tooSmall.tryAdmit(
+            retainedBytes
+        )
+    );
+
+    assert(tooSmall.admittedBytes == 0);
+
+    ResidencyBudget exact =
+        ResidencyBudget(
+            physicalBytes
+        );
+
+    assert(
+        exact.tryAdmit(
+            retainedBytes
+        )
+    );
+
+    assert(exact.admittedBytes == physicalBytes);
+}
+
+
+unittest
+{
+    RasterLease!ubyte emptyLease;
+
+    size_t retainedBytes =
+        size_t.max;
+
+    assert(
+        !emptyLease.tryPhysicalResourceBytes(
+            retainedBytes
+        )
+    );
+
+    assert(retainedBytes == 0);
+}
+
+} // version (unittest)

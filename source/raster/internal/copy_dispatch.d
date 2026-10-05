@@ -13,6 +13,9 @@
 +/
 module raster.internal.copy_dispatch;
 
+import raster.internal.validated_affine_relation :
+    classifyValidatedSameTypeAffine2DByteOverlap;
+
 import core.stdc.string :
     memcpy;
 
@@ -88,6 +91,9 @@ struct NonOverlappingCopyResult
 }
 
 
+/++
+    Constructs the internal successful same-type copy result.
++/
 private
 NonOverlappingCopyResult copySuccess()
 @safe
@@ -104,6 +110,9 @@ nothrow
 }
 
 
+/++
+    Constructs an internal same-type copy failure result for one semantic error.
++/
 private
 NonOverlappingCopyResult copyFailure(
     NonOverlappingCopyError error
@@ -250,7 +259,7 @@ nothrow
     assert(width != 0);
     assert(height != 0);
 
-    return classifySameTypeAffine2DByteOverlap(
+    return classifyValidatedSameTypeAffine2DByteOverlap(
         width,
         height,
 
@@ -268,7 +277,8 @@ nothrow
 
 
 /++
-    Scalar semantic execution for an already-approved affine same-type copy.
+    Row-slice execution for an already-approved unit-sample-stride copy,
+    with checked scalar semantic traversal for other sample strides.
 
     All failure conditions that can occur for valid operands are established
     before entering this function.
@@ -281,7 +291,8 @@ nothrow
     - source and target sample bytes are physically disjoint.
 
     RasterView and WritableRasterView remain the semantic access boundaries.
-    No new writable execution representation is introduced for E5.4f.5c.2.
+    Scoped row slices exist only within this approved invocation; no retained
+    writable execution representation is introduced.
 +/
 private
 void copyApprovedAffine2D(T)(
@@ -295,6 +306,23 @@ void copyApprovedAffine2D(T)(
 nothrow
 @nogc
 {
+    ptrdiff_t sourceRowStride, sourceSampleStride,
+        targetRowStride, targetSampleStride;
+    const sourceStridesOk = source.tryExecutionPlaneStrides(
+        sourcePlaneIndex, sourceRowStride, sourceSampleStride);
+    const targetStridesOk = target.tryExecutionPlaneStrides(
+        targetPlaneIndex, targetRowStride, targetSampleStride);
+    assert(sourceStridesOk && targetStridesOk);
+
+    if (sourceSampleStride == 1 && targetSampleStride == 1)
+    {
+        executeApprovedRows(
+            source.executionRegionBase(sourcePlaneIndex), sourceRowStride,
+            target.executionRegionBase(targetPlaneIndex), targetRowStride,
+            source.width, source.height);
+        return;
+    }
+
     foreach (y; 0 .. source.height)
     {
         foreach (x; 0 .. source.width)
@@ -2255,4 +2283,61 @@ unittest
     assert(value == 4);
 }
 
+}
+
+/++
+    Safety: callers have validated retained backing, matching geometry, unit
+    sample strides, injective destination and exact global sample-byte
+    disjointness. Each signed row offset and width-sample slice is reachable
+    within that backing. Source rows may repeat. These scoped borrows do not
+    escape; only pointer arithmetic and slice formation require trust.
++/
+private const(T)[] readApprovedRow(T)(
+    return scope const(T)* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private T[] writeApprovedRow(T)(
+    return scope T* base,
+    ptrdiff_t stride,
+    size_t y,
+    size_t width
+)
+@trusted pure nothrow @nogc
+{
+    return (base + cast(ptrdiff_t)y * stride)[0 .. width];
+}
+
+private void executeApprovedRows(S, D)(
+    scope const(S)* source,
+    ptrdiff_t sourceRowStride,
+    scope D* target,
+    ptrdiff_t targetRowStride,
+    size_t width,
+    size_t height
+)
+@safe pure nothrow @nogc
+{
+    foreach (y; 0 .. height)
+    {
+        scope const row =
+            readApprovedRow(source, sourceRowStride, y, width);
+        scope auto destination =
+            writeApprovedRow(target, targetRowStride, y, width);
+
+        static if (is(S == D))
+            destination[] = row[];
+        else
+        {
+            static assert(is(S == ubyte) && is(D == float));
+            foreach (x, value; row)
+                destination[x] = cast(float)value;
+        }
+    }
 }

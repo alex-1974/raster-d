@@ -10,6 +10,11 @@
 
     Coordinates and extents use size_t. Arithmetic involving translated
     extents must remain overflow-safe.
+
+    Authors: Alexander Bernardi
+    Copyright: Copyright © 2026, Alexander Bernardi
+    License: MIT
+    Date: 2026-10-05
 +/
 module raster.region;
 
@@ -44,6 +49,16 @@ struct Region2D
         return width == 0 || height == 0;
     }
 
+/// Example checking an empty region.
+@safe unittest
+{
+    import raster;
+
+    assert(Region2D(4, 7, 0, 3).empty);
+    assert(!Region2D(4, 7, 2, 3).empty);
+}
+
+
 
     /++
         Returns true when the translated end coordinates can be represented
@@ -61,6 +76,16 @@ struct Region2D
         return width <= size_t.max - x
             && height <= size_t.max - y;
     }
+
+/// Example checking translated extent overflow.
+@safe unittest
+{
+    import raster;
+
+    assert(Region2D(10, 20, 30, 40).hasRepresentableExtent);
+    assert(!Region2D(size_t.max, 0, 1, 1).hasRepresentableExtent);
+}
+
 
 
     /++
@@ -93,6 +118,17 @@ struct Region2D
 
         return true;
     }
+
+/// Example testing a child region relative to its parent.
+@safe unittest
+{
+    import raster;
+
+    const parent = Region2D(100, 200, 8, 6);
+    assert(parent.containsRelative(Region2D(2, 1, 3, 4)));
+    assert(!parent.containsRelative(Region2D(7, 0, 2, 1)));
+}
+
 
 
     /++
@@ -145,7 +181,31 @@ struct Region2D
 
         return resolved.hasRepresentableExtent();
     }
+
+/// Example resolving relative coordinates into the parent's coordinate space.
+@safe unittest
+{
+    import raster;
+
+    Region2D resolved;
+    const parent = Region2D(100, 200, 8, 6);
+
+    assert(parent.tryResolveRelative(Region2D(2, 1, 3, 4), resolved));
+    assert(resolved == Region2D(102, 201, 3, 4));
 }
+
+}
+
+/// Example using Region2D as coordinate-free rectangular geometry.
+@safe unittest
+{
+    import raster;
+
+    const region = Region2D(12, 9, 5, 4);
+    assert(region.x == 12 && region.y == 9);
+    assert(region.width == 5 && region.height == 4);
+}
+
 
 
 unittest
