@@ -174,6 +174,10 @@ alias MetadataFreeFn =
     @nogc;
 
 
+/++
+    Allocates raw metadata storage for `count` values of `T`.
+    Returns null when the requested size is zero or allocation fails.
++/
 private
 void* allocateMetadata(
     size_t byteLength
@@ -185,6 +189,9 @@ nothrow
 }
 
 
+/++
+    Releases metadata storage previously returned by `allocateMetadata`.
++/
 private
 void freeMetadata(
     void* allocation
