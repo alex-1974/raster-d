@@ -1,6 +1,6 @@
 # raster-d v0.1.0 release readiness
 
-Status: **RELEASE QUALIFIED — PUBLICATION PENDING**
+Status: **PRE-TAG — RELEASE CANDIDATE QUALIFIED; PUBLICATION ACTIONS REMAIN**
 
 Feature-freeze checkpoint:
 
@@ -101,11 +101,17 @@ Excluded:
 
 ## Release decision
 
-Current decision: **READY TO PROMOTE TO `main`; DO NOT CREATE `v0.1.0` UNTIL THE `main` RELEASE GATE PASSES.**
+Current decision: **DO NOT TAG YET**.
 
-Feature freeze, API freeze, reference-XPS benchmark qualification, compiler
-floor, controlled compiler-generation matrix, supported platform matrix,
-documentation quality, and external archive-consumer qualification are
-complete. Remaining work is release promotion and publication verification:
-`main`, the signed final tag, GitHub Release/stable documentation, and a fresh
-consumer against the published DUB package.
+The release candidate is qualified through feature freeze, API freeze,
+documentation quality, reference-XPS benchmark evidence, compiler-generation
+matrix, supported platform matrix, compiler floors and clean external
+git-archive consumers.
+
+The remaining actions are deliberate publication actions:
+
+1. promote `release/0.1` to `main` with the required release-branch merge;
+2. verify the main-branch release/documentation gates and GitHub Pages build;
+3. create the annotated/signed `v0.1.0` tag;
+4. publish the GitHub Release and stable/versioned documentation;
+5. publish/verify the DUB package from a fresh external consumer.
