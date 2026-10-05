@@ -1,6 +1,6 @@
 # raster-d v0.1.0 release readiness
 
-Status: **TAGGED — PUBLICATION VERIFICATION REMAINS**
+Status: **RELEASED — PUBLICATION VERIFIED**
 
 Feature-freeze checkpoint:
 
@@ -16,8 +16,8 @@ release/0.1
 ~~~
 
 The release branch was merged to `main` through PR #80 and removed after
-successful promotion. No v0.1.0 tag or publication is authorized until the
-remaining publication gates below are complete.
+successful promotion. The annotated/signed `v0.1.0` tag resolves to the
+qualified release commit `0681e05b0c86f9bcf5fdbc4b6ed2cb7b1024a6a2`.
 
 ## R1 — scope
 
@@ -96,20 +96,23 @@ Excluded:
 - [x] CHANGELOG and v0.1.0 release notes complete;
 - [x] release candidate promoted to `main`;
 - [x] final annotated/signed `v0.1.0` tag created;
-- [ ] GitHub Release published;
-- [ ] DDox/GitHub Pages stable documentation verified;
-- [ ] published DUB package verified from a fresh consumer.
+- [x] GitHub Release published;
+- [x] DDox/GitHub Pages stable documentation verified;
+- [x] published DUB package verified from a fresh consumer.
 
 ## Release decision
 
-Current decision: **TAGGED — COMPLETE FINAL PUBLICATION VERIFICATION**.
+Current decision: **RELEASED — PUBLICATION VERIFIED**.
 
 The release candidate is qualified through feature freeze, API freeze,
 documentation quality, reference-XPS benchmark evidence, compiler-generation
 matrix, supported platform matrix, compiler floors and clean external
 git-archive consumers.
 
-The remaining actions are deliberate publication actions:
+Post-release publication verification is complete:
 
-1. publish and verify the GitHub Release and stable/versioned documentation;
-2. verify the published DUB package from a fresh external consumer.
+1. the GitHub Release for `v0.1.0` is published;
+2. stable and versioned GitHub Pages documentation is verified;
+3. a fresh external DUB consumer resolved `raster-d` `0.1.0` without a local
+   path dependency, workspace override or other local substitution, and passed
+   with DMD 2.111.0 and LDC 1.41.0.
