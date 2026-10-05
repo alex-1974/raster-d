@@ -9,6 +9,10 @@ on:
       - 'source/raster/**'
       - 'docs/**'
       - 'tools/build-docs.sh'
+      - 'tools/build-versioned-docs.sh'
+      - '.github/workflows/pages.yml'
+      - 'CHANGELOG.md'
+      - 'README.md'
       - 'tools/validate-docs.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
@@ -22,6 +26,10 @@ on:
       - 'source/raster/**'
       - 'docs/**'
       - 'tools/build-docs.sh'
+      - 'tools/build-versioned-docs.sh'
+      - '.github/workflows/pages.yml'
+      - 'CHANGELOG.md'
+      - 'README.md'
       - 'tools/validate-docs.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
@@ -52,6 +60,9 @@ jobs:
           INVENTORY_ONLY: '0'
           DC: dmd
         run: bash tools/build-docs.sh
+      - name: Build versioned Pages site
+        shell: bash
+        run: bash tools/build-versioned-docs.sh
       - name: Upload DDox inventory site
         uses: actions/upload-artifact@v7
         with:
