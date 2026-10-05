@@ -1,7 +1,6 @@
 # raster-d
 
-`raster-d` is an experimental high-performance generic raster library written
-in D.
+`raster-d` is a high-performance generic raster library written in D.
 
 It provides the reusable raster foundation for large resident and streamed
 datasets without imposing image, colour, radiometric or geospatial-image
@@ -21,7 +20,9 @@ or application-specific raster systems may use `raster-d` directly.
 
 ## Status
 
-Active generic raster-core implementation.
+`v0.1.0` release candidate. The 0.1 public source contract is frozen at
+`freeze/api-0.1.0`; the library remains pre-1.0 and may evolve incompatibly in
+later minor releases.
 
 The production DUB package is `raster-d` and the public D namespace is
 `raster` / `raster.*`.
@@ -58,8 +59,9 @@ assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
 decomposition, cache-block selection/replacement and scheduling remain outside
 the public raster contract.
 
-The public API remains experimental. Performance-sensitive implementation is
-developed from measured evidence and validated with both DMD and LDC.
+The 0.1 public API has completed release audit and API freeze. Performance-
+sensitive implementation is developed from measured evidence and qualified
+with DMD and LDC.
 
 ## Primary goals
 
