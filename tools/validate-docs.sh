@@ -16,6 +16,7 @@ required=(
   docs/V0_1_DOCUMENTATION_QUALITY_AUDIT.md
   docs/V0_1_CODE_DOCUMENTATION_AUDIT.md
   docs/V0_1_RELEASE_NOTES.md
+  CHANGELOG.md
 )
 
 for f in "${required[@]}"; do
@@ -43,3 +44,36 @@ for symbol in     Region2D PlaneDescriptor PlaneByteLayout     OwnedByteResource
 done
 
 echo "PASS: release documentation structure and API-family inventory"
+
+
+grep -q '^## 0.1.0 — 2026-10-05$' "$repo/CHANGELOG.md" || {
+    echo "FAIL: CHANGELOG.md does not contain the finalized 0.1.0 entry" >&2
+    exit 1
+}
+
+grep -q 'freeze/api-0.1.0' "$repo/README.md" || {
+    echo "FAIL: README.md does not identify the frozen 0.1.0 API checkpoint" >&2
+    exit 1
+}
+
+grep -q 'v0.1.0 release candidate' "$repo/README.md" || {
+    echo "FAIL: README.md release status is not synchronized" >&2
+    exit 1
+}
+
+grep -q 'freeze/api-0.1.0' "$repo/docs/V0_1_RELEASE_NOTES.md" || {
+    echo "FAIL: release notes do not identify the API freeze" >&2
+    exit 1
+}
+
+grep -q '^description "High-performance raster engine for large and streamed raster data"$' "$repo/dub.sdl" || {
+    echo "FAIL: unexpected DUB package description" >&2
+    exit 1
+}
+
+grep -q '^authors "Alexander Bernardi"$' "$repo/dub.sdl" || {
+    echo "FAIL: unexpected DUB package author metadata" >&2
+    exit 1
+}
+
+echo "PASS: v0.1.0 release-facing metadata is synchronized"

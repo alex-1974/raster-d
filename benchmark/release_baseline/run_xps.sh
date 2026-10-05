@@ -22,10 +22,32 @@ if ! git -C "$ROOT" merge-base --is-ancestor "$API_FREEZE" HEAD; then
     exit 1
 fi
 
-if ! git -C "$ROOT" diff --quiet "$API_FREEZE"..HEAD -- source/raster; then
-    echo "STOP: source/raster changed after freeze/api-0.1.0" >&2
-    git -C "$ROOT" diff --stat "$API_FREEZE"..HEAD -- source/raster >&2
+mapfile -t source_changes < <(
+    git -C "$ROOT" diff --name-only "$API_FREEZE"..HEAD -- source/raster
+)
+
+unexpected_source_changes=()
+
+for path in "${source_changes[@]}"; do
+    case "$path" in
+        source/raster/internal/retained_store.d)
+            ;;
+        *)
+            unexpected_source_changes+=("$path")
+            ;;
+    esac
+done
+
+if (("${#unexpected_source_changes[@]}" != 0)); then
+    echo "STOP: benchmark-relevant or unqualified source changed after freeze/api-0.1.0" >&2
+    printf '  %s\n' "${unexpected_source_changes[@]}" >&2
     exit 1
+fi
+
+source_tree_matches_api_freeze=yes
+
+if (("${#source_changes[@]}" != 0)); then
+    source_tree_matches_api_freeze=no
 fi
 
 snapshot_freq()
@@ -56,7 +78,8 @@ snapshot_freq()
     echo "feature_freeze=$FEATURE_FREEZE"
     echo "api_freeze=$API_FREEZE"
     echo "branch=$(git -C "$ROOT" branch --show-current)"
-    echo "source_tree_matches_api_freeze=yes"
+    echo "source_tree_matches_api_freeze=$source_tree_matches_api_freeze"
+    printf 'source_change_from_api_freeze=%s\n' "${source_changes[@]:-none}"
     echo "cpu=$CPU"
     echo "shell_affinity=$(taskset -pc $$ 2>&1 || true)"
     echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"

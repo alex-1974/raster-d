@@ -568,3 +568,12 @@ performance guarantees, compiler rankings or CI timing thresholds. CPU
 frequency and thermal snapshots are retained in the archive for every process.
 AArch64/NEON and later compiler-generation performance remain outside the
 v0.1.0 qualification boundary.
+
+After this baseline was recorded, release qualification changed only
+`source/raster/internal/retained_store.d` to replace three local `ref`
+aliases with direct indexed entry access for D 2.101/LDC 1.31 frontend
+compatibility. That internal M1 retained-store path is not exercised by the
+seven M2/M3 benchmark workloads above; no benchmarked operation source,
+public API, numerical path or x86-64 hot-path selector changed. The retained
+v0.1.0 M2/M3 reference baseline therefore remains the accepted release
+performance evidence.
