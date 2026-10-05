@@ -1,6 +1,6 @@
 # raster-d v0.1.0 release readiness
 
-Status: **PRE-TAG — RELEASE CANDIDATE QUALIFIED; PUBLICATION ACTIONS REMAIN**
+Status: **PRE-TAG — QUALIFIED ON MAIN; PUBLICATION ACTIONS REMAIN**
 
 Feature-freeze checkpoint:
 
@@ -9,14 +9,15 @@ freeze/feature-0.1.0
 d8cbcb270d24a344f59c4a7f1880848add38c975
 ~~~
 
-Release branch:
+Release branch (completed stabilization line):
 
 ~~~text
 release/0.1
 ~~~
 
-No v0.1.0 tag or publication is authorized until every mandatory gate below is
-complete.
+The release branch was merged to `main` through PR #80 and removed after
+successful promotion. No v0.1.0 tag or publication is authorized until the
+remaining publication gates below are complete.
 
 ## R1 — scope
 
@@ -93,7 +94,7 @@ Excluded:
 - [x] external archive/package consumer passes baseline DMD and LDC;
 - [x] README/package metadata/release docs agree with frozen API;
 - [x] CHANGELOG and v0.1.0 release notes complete;
-- [ ] release candidate promoted to `main`;
+- [x] release candidate promoted to `main`;
 - [ ] final annotated/signed `v0.1.0` tag created;
 - [ ] GitHub Release published;
 - [ ] DDox/GitHub Pages stable documentation verified;
@@ -101,7 +102,7 @@ Excluded:
 
 ## Release decision
 
-Current decision: **DO NOT TAG YET**.
+Current decision: **QUALIFIED ON MAIN — COMPLETE FINAL PUBLICATION GATES BEFORE TAGGING**.
 
 The release candidate is qualified through feature freeze, API freeze,
 documentation quality, reference-XPS benchmark evidence, compiler-generation
@@ -110,8 +111,7 @@ git-archive consumers.
 
 The remaining actions are deliberate publication actions:
 
-1. promote `release/0.1` to `main` with the required release-branch merge;
-2. verify the main-branch release/documentation gates and GitHub Pages build;
-3. create the annotated/signed `v0.1.0` tag;
-4. publish the GitHub Release and stable/versioned documentation;
-5. publish/verify the DUB package from a fresh external consumer.
+1. verify the final `main` release/documentation gates and GitHub Pages publication;
+2. create the annotated/signed `v0.1.0` tag at that qualified `main` commit;
+3. publish and verify the GitHub Release and stable/versioned documentation;
+4. verify the published DUB package from a fresh external consumer.
