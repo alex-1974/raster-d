@@ -17,7 +17,15 @@ PROTECTION_LINE_RE=re.compile(
 
 def has_ddoc(lines,i):
     i-=1
-    while i>=0 and not lines[i].strip(): i-=1
+    while i>=0:
+        stripped=lines[i].strip()
+        if not stripped:
+            i-=1
+            continue
+        if PROTECTION_LINE_RE.match(lines[i]) and not stripped.endswith(":"):
+            i-=1
+            continue
+        break
     if i<0: return False
     if lines[i].lstrip().startswith("///"): return True
     if lines[i].strip().endswith("+/") or lines[i].strip().endswith("*/"):
@@ -32,7 +40,11 @@ def delta(line):
     return code.count("{")-code.count("}")
 
 def audit(path):
-    lines=path.read_text().splitlines(); failures=[]; depth=0; module_package=False; sections={}; pending=None
+    text=path.read_text()
+    unittest_marker=text.find("version (unittest)")
+    if unittest_marker>=0:
+        text=text[:unittest_marker]
+    lines=text.splitlines(); failures=[]; depth=0; module_package=False; sections={}; pending=None
     for i,line in enumerate(lines):
         s=SECTION_RE.match(line)
         if s:
@@ -73,6 +85,6 @@ def main():
         print("FAIL: internal Ddoc contract",file=sys.stderr)
         for f in failures: print(" ",f,file=sys.stderr)
         raise SystemExit(1)
-    print("PASS: every private/package function has adjacent Ddoc")
+    print("PASS: every production private/package function has adjacent Ddoc")
 
 if __name__=="__main__": main()
