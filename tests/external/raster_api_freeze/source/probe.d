@@ -198,6 +198,12 @@ unittest
 {
     inertViewContract();
 
+    // RasterLease.init is a valid inert lifetime capability.
+    RasterLease!ubyte emptyLease;
+    scope auto emptyView = emptyLease.view();
+    assert(emptyView.planeCount == 0);
+    assert(emptyView.empty);
+
     OwnedRasterImportResult result;
     assert(!result.ok);
     assert(result.error == OwnedRasterImportError.internalConstructionFailure);
