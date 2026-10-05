@@ -1,6 +1,6 @@
 # raster-d v0.1.0 public API audit
 
-Status: **IN PROGRESS**
+Status: **COMPLETE — READY FOR API FREEZE**
 
 Baseline branch:
 
@@ -66,7 +66,7 @@ Automated negative probes cover:
 - raw read/write view factories;
 - `RasterBacking`.
 
-Status: pending CI confirmation.
+Status: complete.
 
 ## A2 — sample/template constraints
 
@@ -87,7 +87,7 @@ Rejected examples include:
 The release API probe instantiates public types with supported and rejected
 representatives.
 
-Status: pending CI confirmation.
+Status: complete.
 
 ## A3 — names and argument order
 
@@ -133,7 +133,7 @@ tryImportOwnedRaster:
 Retained/view parameter names are likewise source-compatible where the baseline
 compiler accepts D named arguments.
 
-Status: pending compiler gate.
+Status: complete.
 
 ## A4 — default state
 
@@ -151,7 +151,7 @@ Accepted `.init` contracts:
   fallible writable borrow fails cleanly. The API audit explicitly probes
   whether its read-only `view()` also yields `RasterView!T.init`.
 
-Status: pending runtime gate.
+Status: complete.
 
 ## A5 — ownership and lifetime
 
@@ -170,7 +170,7 @@ DIP1000 borrows must not escape their owner.
 
 A const lease must not recover writable capability.
 
-Status: existing negative lifetime probes plus release API CI.
+Status: complete.
 
 ## A6 — failure and mutation
 
@@ -188,8 +188,7 @@ supported, including non-injective mappings, because repeated writes of one
 identical value are idempotent. Its only public false result is invalid plane
 selection.
 
-Status: covered by existing package tests; frozen wording reconciled with
-Ddoc/API.md during sign-off.
+Status: complete.
 
 ## A7 — attributes and CTFE
 
@@ -205,7 +204,7 @@ Owned import is `@safe` but is not promoted to a stronger `nothrow/@nogc`
 contract without separate evidence because retained construction owns
 allocation/resource-management work.
 
-Status: pending DMD/LDC compile gate.
+Status: complete.
 
 ## A8 — numerical semantics
 
@@ -226,23 +225,44 @@ Status: previously qualified by M2/M3 tests and release documentation.
 
 ## A9 — release blockers discovered by this audit
 
-Pending automated API-gate results.
+Two release-audit findings were corrected before the API freeze:
 
-Any caller-visible correction discovered here is allowed on `release/0.1`
-because the feature freeze permits API corrections exposed by the release
-audit. No `freeze/api-0.1.0` tag exists yet.
+1. The working API document/probe used the reduction output parameter name
+   `result`, while the source declaration is `sum`. The source name is
+   retained and the documentation/contract is corrected to `sum`.
+2. `RasterLease!T.init.view()` entered `SafeRefCounted.borrow()` on an
+   uninitialized payload and asserted at runtime. The public default-state
+   contract is now coherent: an empty lease returns `RasterView!T.init`.
+
+No additional public names, signatures, template constraints, error categories,
+ownership transitions, numerical contracts or supported direct-import surfaces
+require correction.
+
+Release API Audit workflow run 37299283370 passes completely on:
+
+- DMD 2.111.0;
+- LDC 1.41.0.
+
+For both compilers it passes:
+
+- complete package unittests;
+- external positive API freeze contract;
+- negative external package/internal surface probes;
+- owned-resource/import source contracts;
+- lifetime/writable-view DIP1000 contracts;
+- external retained-import link closure.
 
 ## Completion criteria
 
-The audit is complete only when:
+Completion evidence:
 
-- DMD 2.111 and LDC 1.41 pass the external positive API package;
-- all unsupported direct/internal surfaces are compiler-rejected externally;
-- ownership/lifetime negative probes pass;
-- external retained-import link closure passes;
-- supported template instantiations and rejected sample types are verified;
-- default-state runtime probes pass;
-- names/signatures/attributes are reconciled with source Ddoc and
+- [x] DMD 2.111 and LDC 1.41 pass the external positive API package;
+- [x] all unsupported direct/internal surfaces are compiler-rejected externally;
+- [x] ownership/lifetime negative probes pass;
+- [x] external retained-import link closure passes;
+- [x] supported template instantiations and rejected sample types are verified;
+- [x] default-state runtime probes pass;
+- [x] names/signatures/attributes are reconciled with source Ddoc and
   `docs/API.md`;
-- all release-blocking API defects are resolved;
-- the final API contract is recorded before creating `freeze/api-0.1.0`.
+- [x] all release-blocking API defects are resolved;
+- [x] the final API contract is recorded before creating `freeze/api-0.1.0`.
