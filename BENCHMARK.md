@@ -808,5 +808,78 @@ compiler are collected by the reference-XPS runner. Each process uses 18
 rotating timed samples and requires identical per-operation checksums plus
 unchanged row padding.
 
-Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The family
-remains `partial` until reference-XPS evidence is retained.
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 fill / copy qualification
+
+Reference archive:
+
+    raster-v0.2-fill-copy-20261006-224753.tar.gz
+
+SHA256:
+
+    31d1210072cc069729a7b0054852562adbec5714ecfed8dec79f4fe498711e8b
+
+Benchmark head:
+
+    a3cac473191bcb02222b6bd51f3f3e9d6e8fe524
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- ubyte;
+- 2048 x 512 logical samples;
+- 32 elements row padding;
+- Canonical sample stride 1;
+- independent backing;
+- allocation outside timed regions;
+- 6 warmups;
+- 16 iterations per timed sample;
+- 18 rotating timed samples per process;
+- six independent processes per compiler.
+
+The recursive archive manifest verifies all 47 retained files. Every path leaves
+destination row padding unchanged. Stable operation-specific checksums are:
+
+    fill d924c80e436d0383
+    copy 76d6d3c997828383
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired v0.2/semantic ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | fill public v0.2 | 0.027529 | 1.005535 |
+| DMD 2.111 | fill legacy public | 0.027974 | — |
+| DMD 2.111 | fill semantic engine | 0.027423 | — |
+| DMD 2.111 | copy public v0.2 | 0.037129 | 1.004333 |
+| DMD 2.111 | copy legacy public | 0.036973 | — |
+| DMD 2.111 | copy semantic engine | 0.037016 | — |
+| LDC 1.41 | fill public v0.2 | 0.027293 | 0.997239 |
+| LDC 1.41 | fill legacy public | 0.027342 | — |
+| LDC 1.41 | fill semantic engine | 0.027370 | — |
+| LDC 1.41 | copy public v0.2 | 0.042728 | 0.997127 |
+| LDC 1.41 | copy legacy public | 0.042633 | — |
+| LDC 1.41 | copy semantic engine | 0.042798 | — |
+
+The paired v0.2/semantic ranges remain close to parity:
+
+- DMD fill: 0.994670-1.009141;
+- DMD copy: 0.997453-1.050954;
+- LDC fill: 0.985225-0.999774;
+- LDC copy: 0.993939-1.002829.
+
+One DMD Copy process is an absolute timing outlier, with all three Copy paths
+slowing together. Its paired ratios do not support a v0.2-wrapper regression.
+
+Conclusion: the v0.2 API spelling and public error bridge add no measured
+material cost above the existing semantic engines on the qualified reference
+machine. Together with retained M3.3/M3.5 executor evidence, the fill/copy
+family is qualified for M5.1.
