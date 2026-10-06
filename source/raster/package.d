@@ -101,6 +101,10 @@ public import raster.neighbourhood_into :
     RasterNeighbourhoodError,
     applyNeighbourhoodInto;
 
+public import raster.convolution :
+    FixedConvolutionKernel,
+    convolveInto;
+
 public import raster.copy :
     RasterCopyError,
     tryCopyRasterPlane,
