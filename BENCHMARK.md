@@ -638,3 +638,37 @@ The earlier diagnostic archive
 as qualification evidence because its harness measured all legacy samples
 before all v0.2 samples and therefore confounded call-surface comparison with
 frequency/thermal drift.
+
+
+## M5.1 v0.2 benchmark-family contract
+
+Issue #115 establishes a coverage matrix for the performance-relevant v0.2
+processing surface. The detailed contract is
+`docs/V0_2_M5_BENCHMARK_FAMILIES.md`; the machine-readable inventory is
+`benchmark/v0_2_families/families.tsv`.
+
+M5 measurements distinguish, where materially separable:
+
+~~~text
+public_semantic
+preflight
+hot_executor
+layout_specialization
+numeric_kernel
+~~~
+
+The layers are measurement vocabulary, not new public abstractions.
+
+The M4.6 convolution qualification is the first explicit example. On the
+reference XPS, `one_shot / direct_fixed` was about 10.27x for DMD and 10.37x
+for LDC, while `direct_fixed / prepared` showed noise-level parity for DMD and
+a material regression for LDC. The large public/direct gap is therefore tracked
+as semantic/preflight/execution evidence rather than being attributed to
+coefficient preparation.
+
+A family is not considered covered merely because an older executor experiment
+exists. Current public wrappers and policies require representative evidence
+whenever they can add material work.
+
+Fast CI validates the family manifest and compile-smokes every retained v0.2
+benchmark harness. Absolute timing remains reference-machine evidence.
