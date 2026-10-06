@@ -37,9 +37,11 @@ Both paths must produce identical checksums.
 
 ## Reference XPS
 
-From the repository root on branch
-`research/v0.2-m4-prepared-convolution`:
+From the repository root on a commit that contains the merged qualification
+harness (normally current `develop`):
 
+    git switch develop
+    git pull --ff-only origin develop
     bash benchmark/v0_2_prepared_convolution/run_xps.sh
 
 Optional:
