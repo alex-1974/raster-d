@@ -1,0 +1,8 @@
+name "raster-v0-2-sum-benchmark"
+description "raster-d v0.2 generic strict sum and C++ reference benchmark"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dflags "-preview=dip1000"
+dependency "raster-d" path="../.."
