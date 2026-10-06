@@ -317,6 +317,8 @@ if (
 version (unittest)
 {
 
+import std.stdio : writeln;
+
 import raster.descriptor :
     PlaneDescriptor;
 
@@ -573,6 +575,19 @@ unittest
     }
 
     assert(error == RasterNeighbourhoodError.none);
+
+    if (destinationStorage[0] != cast(float) expected)
+    {
+        writeln(
+            "CONV_DIAG actual=",
+            destinationStorage[0],
+            " expected=",
+            cast(float) expected,
+            " rawExpected=",
+            expected
+        );
+    }
+
     assert(destinationStorage[0] == cast(float) expected);
 }
 
