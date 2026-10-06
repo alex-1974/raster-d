@@ -63,7 +63,7 @@ Current families are:
 | --- | --- | --- |
 | reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
-| fill-copy | `fill`, `copyInto` | historical executor evidence; v0.2 family gap |
+| fill-copy | `fill`, `copyInto` | partial — retained API/semantic harness; reference-XPS evidence pending |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
 | conversion | `convertRasterInto`, allocated conversion wrapper | historical exact-conversion evidence; generic v0.2 gap |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
@@ -177,6 +177,32 @@ public execution engine or as a reason to reject the family qualification.
 The binary-transform/arithmetic family is therefore `qualified` for M5.1.
 
 A cross-language reference is intentionally deferred to M5.7 / Issue #121.
+
+### Fill / copy
+
+`benchmark/v0_2_fill_copy` measures the current v0.2 API bridge for both
+operations without changing production visibility:
+
+~~~text
+fill:
+    public v0.2 fill
+    legacy public tryFillRasterPlane
+    package semantic engine tryFillRasterPlaneScalar
+
+copy:
+    public v0.2 copyInto
+    legacy public tryCopyRasterPlane
+    package semantic engine copySameTypeRasterPlane
+~~~
+
+The actual Canonical execution helpers remain private. M5.1 does not expose
+them solely for benchmarking. Their execution-level behavior is already covered
+by retained M3.3/M3.5 qualification evidence.
+
+The new harness therefore answers the missing v0.2 question: whether the current
+public spelling and public error bridge add material cost above the existing
+semantic engine. The family remains `partial` until stable reference-XPS
+evidence is retained.
 
 ### Fill / copy / conversion
 

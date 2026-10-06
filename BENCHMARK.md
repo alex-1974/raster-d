@@ -780,3 +780,33 @@ Interpretation:
 
 The binary-transform/arithmetic family is accepted as qualified M5.1 benchmark
 evidence. Cross-language comparison remains M5.7 / Issue #121.
+
+## M5.1 fill / copy harness
+
+The retained harness at `benchmark/v0_2_fill_copy` covers the v0.2 API bridge
+for fill and same-type copy.
+
+The production Canonical execution helpers remain private and are not exposed
+for benchmark convenience. Retained M3.3/M3.5 evidence remains the executor-level
+qualification. The current harness measures:
+
+~~~text
+fill:
+    public_v0_2
+    public_legacy
+    semantic_engine
+
+copy:
+    public_v0_2
+    public_legacy
+    semantic_engine
+~~~
+
+The representative workload is padded Canonical `ubyte`, 2048 x 512, with
+allocation outside timed regions. Six independent CPU-pinned processes per
+compiler are collected by the reference-XPS runner. Each process uses 18
+rotating timed samples and requires identical per-operation checksums plus
+unchanged row padding.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The family
+remains `partial` until reference-XPS evidence is retained.
