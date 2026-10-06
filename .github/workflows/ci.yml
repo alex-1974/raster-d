@@ -119,6 +119,11 @@ jobs:
         run: |
           bash tools/compile-negative/raster_neighbourhood_into_api.sh "$DC"
 
+      - name: Border policy compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_border_policy_api.sh "$DC"
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
