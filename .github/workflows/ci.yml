@@ -65,6 +65,25 @@ jobs:
         run: |
           dub test --compiler="$DC"
 
+      - name: Generic sum benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_sum \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+          g++ \
+            -O3 \
+            -std=c++20 \
+            -fno-fast-math \
+            -ffp-contract=off \
+            -fno-tree-vectorize \
+            -fno-tree-slp-vectorize \
+            benchmark/v0_2_sum/cpp/reference.cpp \
+            -o /tmp/raster-v0-2-sum-cpp-reference
+
       - name: Raster lifetime compile probes
         shell: bash
         run: |

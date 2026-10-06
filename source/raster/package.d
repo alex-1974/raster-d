@@ -40,6 +40,9 @@ public import raster.writable_view :
     WritableRasterView;
 
 public import raster.reduction :
+    RasterSumError,
+    RasterSumResult,
+    sum,
     trySumFloatToDouble;
 
 public import raster.fill :
