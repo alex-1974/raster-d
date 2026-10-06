@@ -161,6 +161,15 @@ jobs:
             --build=release \
             --force
 
+      - name: Fill/copy benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_fill_copy \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
