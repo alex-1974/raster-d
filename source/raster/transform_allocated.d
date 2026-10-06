@@ -58,6 +58,9 @@ import raster.transform :
 import raster.transform_into :
     transformInto;
 
+import raster.view :
+    RasterView;
+
 
 /++
     Failure category for tryTransformAllocated().
