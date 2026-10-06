@@ -89,6 +89,9 @@ public import raster.copy :
     tryCopyRasterPlane,
     copyInto;
 
+public import raster.conversion_policy :
+    RasterConversionPolicy;
+
 public import raster.conversion :
     UbyteToFloatConversionError,
     tryConvertUbyteToFloatPlane;
