@@ -63,7 +63,7 @@ Current families are:
 | --- | --- | --- |
 | reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
-| fill-copy | `fill`, `copyInto` | partial — retained API/semantic harness; reference-XPS evidence pending |
+| fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
 | conversion | `convertRasterInto`, allocated conversion wrapper | historical exact-conversion evidence; generic v0.2 gap |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
@@ -201,8 +201,86 @@ by retained M3.3/M3.5 qualification evidence.
 
 The new harness therefore answers the missing v0.2 question: whether the current
 public spelling and public error bridge add material cost above the existing
-semantic engine. The family remains `partial` until stable reference-XPS
-evidence is retained.
+semantic engine.
+
+Reference-XPS evidence recorded on 2026-10-06:
+
+~~~text
+archive:
+    raster-v0.2-fill-copy-20261006-224753.tar.gz
+
+SHA256:
+    31d1210072cc069729a7b0054852562adbec5714ecfed8dec79f4fe498711e8b
+
+benchmark head:
+    a3cac473191bcb02222b6bd51f3f3e9d6e8fe524
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    ubyte
+    2048 x 512
+    32 elements row padding
+    Canonical sample stride 1
+    16 iterations per timed sample
+    6 warmups
+    18 timed samples per process
+    6 independent processes per compiler
+~~~
+
+The recursive archive manifest verifies all 47 retained files. Every compared
+path preserves row padding and produces the same stable operation-specific
+checksum:
+
+~~~text
+fill: d924c80e436d0383
+copy: 76d6d3c997828383
+~~~
+
+Retained medians and paired ratios:
+
+| Compiler | Operation/path | ns/sample | public v0.2 / semantic |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | fill public v0.2 | 0.027529 | 1.005535 |
+| DMD 2.111 | fill legacy public | 0.027974 | — |
+| DMD 2.111 | fill semantic engine | 0.027423 | — |
+| DMD 2.111 | copy public v0.2 | 0.037129 | 1.004333 |
+| DMD 2.111 | copy legacy public | 0.036973 | — |
+| DMD 2.111 | copy semantic engine | 0.037016 | — |
+| LDC 1.41 | fill public v0.2 | 0.027293 | 0.997239 |
+| LDC 1.41 | fill legacy public | 0.027342 | — |
+| LDC 1.41 | fill semantic engine | 0.027370 | — |
+| LDC 1.41 | copy public v0.2 | 0.042728 | 0.997127 |
+| LDC 1.41 | copy legacy public | 0.042633 | — |
+| LDC 1.41 | copy semantic engine | 0.042798 | — |
+
+Paired public-v0.2 / semantic ratio ranges are:
+
+~~~text
+DMD fill: 0.994670 .. 1.009141
+DMD copy: 0.997453 .. 1.050954
+LDC fill: 0.985225 .. 0.999774
+LDC copy: 0.993939 .. 1.002829
+~~~
+
+One DMD Copy process is an absolute machine-state outlier: all three Copy paths
+slow together, while its paired public/semantic ratio remains close enough to
+the rest of the cohort to reject a v0.2-wrapper explanation. No systematic
+public-v0.2 or public-error-bridge penalty is observed on either compiler.
+
+Combined with the retained M3.3/M3.5 executor evidence, the fill/copy family is
+therefore `qualified` for M5.1.
 
 ### Fill / copy / conversion
 
