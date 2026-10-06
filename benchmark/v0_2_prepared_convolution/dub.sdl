@@ -1,0 +1,8 @@
+name "raster-v0-2-prepared-convolution-benchmark"
+description "raster-d v0.2 prepared convolution qualification research"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dflags "-preview=dip1000"
+dependency "raster-d" path="../.."
