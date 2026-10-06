@@ -52,6 +52,11 @@ public import raster.transform :
 public import raster.transform_into :
     transformInto;
 
+public import raster.transform_allocated :
+    RasterAllocatedTransformError,
+    RasterAllocatedTransformResult,
+    tryTransformAllocated;
+
 public import raster.neighbourhood :
     RasterNeighbourhood3x3Error,
     tryApplyRasterNeighbourhood3x3;
