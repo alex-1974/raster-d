@@ -93,7 +93,9 @@ public import raster.conversion_policy :
     RasterConversionPolicy;
 
 public import raster.conversion :
+    RasterConversionError,
     UbyteToFloatConversionError,
+    convertRasterInto,
     tryConvertUbyteToFloatPlane;
 
 public import raster.backing :
