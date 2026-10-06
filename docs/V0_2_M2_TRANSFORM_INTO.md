@@ -1,6 +1,6 @@
 # raster-d v0.2 M2.1 — transformInto
 
-Status: implementation candidate; representative reference-machine timing still required before #95 closes.
+Status: **qualified implementation candidate; semantic CI and reference-XPS performance evidence complete.**
 
 Baseline develop commit:
 
@@ -158,21 +158,45 @@ CPU-pinned multi-process style used by repository performance qualification.
 
 GitHub-hosted CI is not treated as stable performance evidence.
 
-## 10. #95 completion gate
+## 10. #95 qualification result
 
 Code/semantic gates:
 
-- transformInto exported from root package;
+- transformInto is exported from the root package;
 - ordinary and UFCS forms compile;
 - semantic/layout equivalence tests pass;
-- DMD 2.111 and LDC 1.41 Fast CI pass;
-- no new allocation or execution engine.
+- DMD 2.111 and LDC 1.41 Fast CI qualify the branch;
+- no new allocation or execution engine is introduced.
 
-Performance gate:
+Reference-XPS performance gate:
 
-- run benchmark/v0_2_transform_into/run_xps.sh on the reference XPS;
-- retain DMD and LDC summaries plus archive checksum;
-- confirm checksum equality;
-- record the measured legacy/new ratio in BENCHMARK.md.
+Accepted archive:
 
-Until that measurement is recorded, #95 remains open.
+    raster-v0.2-transform-into-20261006-130132.tar.gz
+    SHA256 4cda1310ba6cc52f6d503a3f6171056a17f19350ea589dc188b2ff7b472dc4c7
+
+Accepted paired-call medians:
+
+    DMD 2.111
+        legacy          0.522385 ns/pixel
+        transformInto   0.510475 ns/pixel
+        legacy/new      1.014082
+
+    LDC 1.41
+        legacy          0.203886 ns/pixel
+        transformInto   0.200155 ns/pixel
+        legacy/new      1.003748
+
+Every retained process reports checksum:
+
+    37cee2ef2e81c0c3
+
+The paired, alternating harness shows no material wrapper penalty on the
+qualified reference machine. Absolute process timing varies with system and
+thermal state; the qualification claim is therefore API-bridge equivalence,
+not a new throughput guarantee.
+
+Detailed evidence and the rejected order-biased diagnostic run are recorded in
+BENCHMARK.md and benchmark/v0_2_transform_into/README.md.
+
+#95 is ready to close once the final PR head passes Fast CI.
