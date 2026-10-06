@@ -1539,14 +1539,18 @@ unittest
 /*
  * Public sample constraints are explicit compile contracts.
  */
-static assert(
-    __traits(
-        compiles,
-        typeof(
-            RasterView!ubyte.init.min(0)
-        )
-    )
-);
+unittest
+{
+    RasterView!ubyte source;
+
+    const result =
+        min(
+            source,
+            0
+        );
+
+    assert(!result.ok);
+}
 
 static assert(
     __traits(
