@@ -685,7 +685,7 @@ if (isSupportedExtremaSample!T)
             planeIndex
         );
 
-    return extremaResult(
+    return extremaResult!T(
         execution.status,
         execution.minimum
     );
@@ -725,7 +725,7 @@ if (isSupportedExtremaSample!T)
             planeIndex
         );
 
-    return extremaResult(
+    return extremaResult!T(
         execution.status,
         execution.maximum
     );
@@ -764,7 +764,7 @@ if (isSupportedExtremaSample!T)
             planeIndex
         );
 
-    return minMaxResult(
+    return minMaxResult!T(
         execution.status,
         execution.minimum,
         execution.maximum
