@@ -29,7 +29,7 @@ import raster.writable_view :
     nested ROI translation is equivalent to direct composition when all
     intermediate regions are representable and contained.
 +/
-@safe
+@system
 unittest
 {
     ubyte[20] samples;
@@ -238,7 +238,7 @@ unittest
     ROI creation preserves signed-stride interpretation and performs no
     layout normalization.
 +/
-@safe
+@system
 unittest
 {
     ubyte[12] samples;
@@ -326,7 +326,7 @@ unittest
     M1.4 executable contract:
     overlapping read-only ROIs remain aliases of the same backing.
 +/
-@safe
+@system
 unittest
 {
     ubyte[8] samples =
@@ -400,7 +400,7 @@ unittest
     inherited by contained ROIs. Overlapping writable ROIs remain aliases;
     ROI creation establishes no uniqueness or noalias promise.
 +/
-@safe
+@system
 unittest
 {
     ubyte[8] samples;
@@ -501,7 +501,7 @@ unittest
     M1.4 executable contract:
     failed ROI creation is deterministic and side-effect free.
 +/
-@safe
+@system
 unittest
 {
     ubyte[8] samples =
