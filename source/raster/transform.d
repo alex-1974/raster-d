@@ -14,11 +14,10 @@
 module raster.transform;
 
 import raster.internal.affine_relation :
-    AffineByteOverlapRelation,
     affine2DMappingIsInjective;
 
-import raster.internal.validated_affine_relation :
-    classifyValidatedSameTypeAffine2DByteOverlap;
+import raster.internal.same_type_overlap :
+    validatedSameTypePlaneRegionsOverlap;
 
 import raster.internal.transform_dispatch :
     executeApprovedCanonicalPointTransform;
@@ -77,110 +76,6 @@ nothrow
 @nogc
 {
     return transform(value);
-}
-
-
-/++
-    Exact allocation-free fallback for same-type source/destination sample-byte
-    overlap.
-
-    The normal relation path uses the checked-wide affine classifier.
-
-    This fallback is reached only if that defensive classifier reports
-    arithmetic failure. The operands already originate from validated raster
-    views, so their reachable sample pointers are valid. The fallback enumerates
-    the finite reachable sample sets before any destination write.
-
-    Destination injectivity has already been established.
-
-    For equal-sized T samples, two byte intervals overlap exactly when the
-    absolute difference between sample starts is less than T.sizeof.
-+/
-private
-bool sameTypeSampleBytesOverlapFallback(T)(
-    scope const(T)* sourceBase,
-    ptrdiff_t sourceRowStrideElements,
-    ptrdiff_t sourceSampleStrideElements,
-
-    scope T* destinationBase,
-    ptrdiff_t destinationRowStrideElements,
-    ptrdiff_t destinationSampleStrideElements,
-
-    size_t width,
-    size_t height
-)
-@trusted
-nothrow
-@nogc
-{
-    assert(sourceBase !is null);
-    assert(destinationBase !is null);
-    assert(width != 0);
-    assert(height != 0);
-
-    auto sourceRow =
-        sourceBase;
-
-    foreach (sourceY; 0 .. height)
-    {
-        auto sourceSample =
-            sourceRow;
-
-        foreach (sourceX; 0 .. width)
-        {
-            const sourceAddress =
-                cast(size_t) sourceSample;
-
-            auto destinationRow =
-                destinationBase;
-
-            foreach (destinationY; 0 .. height)
-            {
-                auto destinationSample =
-                    destinationRow;
-
-                foreach (destinationX; 0 .. width)
-                {
-                    const destinationAddress =
-                        cast(size_t) destinationSample;
-
-                    const distance =
-                        sourceAddress <= destinationAddress
-                        ? destinationAddress - sourceAddress
-                        : sourceAddress - destinationAddress;
-
-                    if (distance < T.sizeof)
-                        return true;
-
-                    if (destinationX + 1 < width)
-                    {
-                        destinationSample +=
-                            destinationSampleStrideElements;
-                    }
-                }
-
-                if (destinationY + 1 < height)
-                {
-                    destinationRow +=
-                        destinationRowStrideElements;
-                }
-            }
-
-            if (sourceX + 1 < width)
-            {
-                sourceSample +=
-                    sourceSampleStrideElements;
-            }
-        }
-
-        if (sourceY + 1 < height)
-        {
-            sourceRow +=
-                sourceRowStrideElements;
-        }
-    }
-
-    return false;
 }
 
 
@@ -311,55 +206,25 @@ nothrow
     assert(destinationBase !is null);
 
 
-    final switch (
-        classifyValidatedSameTypeAffine2DByteOverlap(
-            source.width,
-            source.height,
-
-            cast(size_t) sourceBase,
+    if (
+        validatedSameTypePlaneRegionsOverlap(
+            sourceBase,
             sourceRowStrideElements,
             sourceSampleStrideElements,
 
-            cast(size_t) destinationBase,
+            destinationBase,
             destinationRowStrideElements,
             destinationSampleStrideElements,
 
-            T.sizeof
+            source.width,
+            source.height
         )
     )
     {
-        case AffineByteOverlapRelation.overlap:
-            error =
-                RasterTransformError.sourceDestinationOverlap;
+        error =
+            RasterTransformError.sourceDestinationOverlap;
 
-            return false;
-
-        case AffineByteOverlapRelation.disjoint:
-            break;
-
-        case AffineByteOverlapRelation.arithmeticFailure:
-            if (
-                sameTypeSampleBytesOverlapFallback(
-                    sourceBase,
-                    sourceRowStrideElements,
-                    sourceSampleStrideElements,
-
-                    destinationBase,
-                    destinationRowStrideElements,
-                    destinationSampleStrideElements,
-
-                    source.width,
-                    source.height
-                )
-            )
-            {
-                error =
-                    RasterTransformError.sourceDestinationOverlap;
-
-                return false;
-            }
-
-            break;
+        return false;
     }
 
 
