@@ -672,3 +672,34 @@ whenever they can add material work.
 
 Fast CI validates the family manifest and compile-smokes every retained v0.2
 benchmark harness. Absolute timing remains reference-machine evidence.
+
+
+## M5.1 binary transform / arithmetic harness
+
+The retained harness at
+`benchmark/v0_2_binary_transform_arithmetic` covers the previously missing
+binary-transform/arithmetic family without adding a new execution engine.
+
+Representative Canonical padded `float` paths are:
+
+~~~text
+add:
+    public zipTransformInto
+    public addInto wrapper
+    approved Canonical zip executor
+
+subtract / multiply / divide:
+    public wrapper
+    approved Canonical zip executor
+~~~
+
+This separates arithmetic-wrapper cost from the public
+validation/relation/dispatch boundary and from the already-approved hot executor.
+Every compared path for one operation must produce the same logical checksum;
+destination padding is verified unchanged.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+The family remains only `partial` until a stable reference-XPS run is retained
+with the metadata required by the M5.1 benchmark-family contract. No C++
+performance conclusion is made here; the comparable C++ gate belongs to M5.7 /
+Issue #121.
