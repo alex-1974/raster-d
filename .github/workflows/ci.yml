@@ -129,6 +129,15 @@ jobs:
         run: |
           bash tools/compile-negative/raster_convolution_api.sh "$DC"
 
+      - name: Prepared convolution benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_prepared_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
