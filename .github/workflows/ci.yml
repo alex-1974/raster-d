@@ -138,6 +138,20 @@ jobs:
             --build=release \
             --force
 
+      - name: v0.2 benchmark family manifest
+        shell: bash
+        run: |
+          bash tools/check_v0_2_benchmark_families.sh
+
+      - name: transformInto benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_transform_into \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
