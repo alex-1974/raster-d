@@ -17,6 +17,9 @@ import raster.internal.conversion_dispatch :
     ExactUbyteToFloatRasterError,
     convertUbyteToFloatRasterPlane;
 
+import raster.internal.conversion_policy :
+    isUniversallyExactRasterConversion;
+
 import raster.view :
     RasterView;
 
@@ -59,6 +62,14 @@ enum UbyteToFloatConversionError : ubyte
 static assert(
     UbyteToFloatConversionError.init
     == UbyteToFloatConversionError.none
+);
+
+
+static assert(
+    isUniversallyExactRasterConversion!(
+        ubyte,
+        float
+    )
 );
 
 
