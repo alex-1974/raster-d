@@ -883,3 +883,45 @@ Conclusion: the v0.2 API spelling and public error bridge add no measured
 material cost above the existing semantic engines on the qualified reference
 machine. Together with retained M3.3/M3.5 executor evidence, the fill/copy
 family is qualified for M5.1.
+
+
+## M5.1 conversion harness
+
+The retained harness at `benchmark/v0_2_conversion` covers the generic exact
+conversion policy and allocating convenience surface without adding a second
+conversion engine or widening internal executor visibility.
+
+Representative comparisons:
+
+~~~text
+ubyte -> float:
+    public_generic
+    public_specialized
+    semantic_engine
+
+ushort -> float:
+    public_generic
+    semantic_engine
+
+allocated ushort -> float:
+    public_allocated
+    explicit_allocate_convert
+~~~
+
+The destination-oriented workload is padded Canonical, 2048 x 512, with
+allocation outside timed regions. The allocating pair intentionally includes
+allocation, retained backing construction, writable-view acquisition and
+conversion in both paths.
+
+The ubyte pair is a control over the already-qualified M3.5 specialized path.
+The ushort pair exercises the generic v0.2 exact-policy engine. The allocating
+pair isolates the convenience wrapper from the same explicit sequence.
+
+Six independent CPU-pinned processes per compiler are collected by the
+reference-XPS runner. Each process uses six warmups and eighteen rotating timed
+samples. Destination-oriented paths require identical per-pair checksums and
+unchanged row padding; allocating paths receive a semantic preflight before
+timing.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
+conversion family remains `partial` until reference-XPS evidence is retained.
