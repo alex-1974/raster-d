@@ -22,6 +22,36 @@ mkdir -p "$OUT"
     ldc2 --version
 } > "$OUT/environment.txt"
 
+snapshot_freq()
+{
+    local tag="$1"
+    {
+        echo "tag=$tag"
+        date -u +%Y-%m-%dT%H:%M:%SZ
+
+        for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+            [[ -d "$cpu/cpufreq" ]] || continue
+
+            id="${cpu##*cpu}"
+            gov="$(cat "$cpu/cpufreq/scaling_governor 2>/dev/null || true)"
+            cur="$(cat "$cpu/cpufreq/scaling_cur_freq 2>/dev/null || true)"
+            min="$(cat "$cpu/cpufreq/scaling_min_freq 2>/dev/null || true)"
+            max="$(cat "$cpu/cpufreq/scaling_max_freq 2>/dev/null || true)"
+
+            printf 'cpu=%s governor=%s cur_khz=%s min_khz=%s max_khz=%s\n' \
+                "$id" "$gov" "$cur" "$min" "$max"
+        done
+
+        for path in /sys/class/thermal/thermal_zone*/temp; do
+            [[ -r "$path" ]] || continue
+            printf '%s=' "$path"
+            cat "$path"
+        done
+    } > "$OUT/frequency-thermal-$tag.txt"
+}
+
+snapshot_freq before
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
@@ -103,6 +133,8 @@ with (root / "summary.txt").open("w") as out:
     )
 PY
 done
+
+snapshot_freq after
 
 (
     cd "$OUT"
