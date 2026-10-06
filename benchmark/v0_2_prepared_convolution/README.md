@@ -4,12 +4,13 @@ Issue: #113 — qualify whether prepared convolution state deserves production.
 
 This benchmark deliberately does **not** add a public prepared-state type.
 
-It compares:
+It compares three paths:
 
 - production one-shot fixed 3x3 convolution through `convolveInto`;
-- a research-only prepared candidate whose float coefficients are converted once
-  to double and whose repeated path receives already validated Canonical raw
-  pointers.
+- a research-only direct-fixed Canonical executor with the same compile-time
+  coefficients and no repeated structural validation;
+- a research-only prepared candidate with runtime coefficients converted once
+  to double, using the same validation-free Canonical execution shape.
 
 The prepared candidate is intentionally advantaged:
 
@@ -29,11 +30,14 @@ Therefore:
 Measured series:
 
 - repeated one-shot latency;
+- validation-free direct-fixed latency;
 - preparation cost;
 - prepared repeated latency;
-- approximate break-even reuse count.
+- one-shot/direct-fixed ratio, isolating public preflight/dispatch overhead;
+- direct-fixed/prepared ratio, isolating prepared coefficient-state benefit;
+- approximate prepared-state break-even reuse count.
 
-Both paths must produce identical checksums.
+All three execution paths must produce identical checksums.
 
 ## Reference XPS
 
