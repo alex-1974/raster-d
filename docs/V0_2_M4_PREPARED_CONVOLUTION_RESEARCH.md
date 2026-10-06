@@ -1,6 +1,6 @@
 # raster-d v0.2 M4.6 — prepared convolution qualification research
 
-Status: measurement harness for Issue #113.
+Status: qualification complete; prepared runtime coefficient state rejected for production.
 
 Baseline:
 
@@ -250,5 +250,252 @@ The measurement harness is implemented.
 
 No production prepared-state type has been promoted.
 
-Issue #113 remains open until reference-XPS evidence is recorded and the
-decision gate is evaluated.
+Issue #113 can close once this final reference-XPS evidence and decision are integrated.
+
+
+## 14. Follow-up isolation benchmark
+
+The first reference-XPS run showed a very large gap between the public one-shot
+path and the deliberately advantaged prepared candidate:
+
+~~~text
+DMD:
+    one-shot  100.903678 ns/pixel
+    prepared   10.490990 ns/pixel
+    ratio       9.644405x
+
+LDC:
+    one-shot   16.305238 ns/pixel
+    prepared    2.421022 ns/pixel
+    ratio       6.756027x
+~~~
+
+Those results are reproducible across six pinned processes and both paths
+produced checksum:
+
+~~~text
+7596c236fe0ac383
+~~~
+
+However this does not isolate coefficient preparation because the prepared
+candidate also bypasses structural validation and public API dispatch.
+
+The original break-even calculation also divided preparation cost by the
+savings of the complete multi-iteration timing batch rather than one convolution
+invocation. That value is therefore not accepted as the final reuse threshold.
+
+A second qualification run now adds:
+
+~~~text
+direct_fixed
+~~~
+
+This path uses the same validation-free Canonical execution shape as prepared
+but keeps the convolution coefficients compile-time fixed.
+
+The decisive comparisons become:
+
+~~~text
+one_shot / direct_fixed
+    -> repeated validation / public dispatch effect
+
+direct_fixed / prepared
+    -> prepared runtime coefficient-state effect
+~~~
+
+Prepared-state production promotion must be based on the second comparison, not
+on the original one-shot/prepared gap.
+
+The corrected break-even calculation uses preparation cost divided by savings
+per single convolution invocation.
+
+
+## 15. Final reference-XPS isolation evidence
+
+The second reference-XPS run used the isolation harness from:
+
+~~~text
+benchmark HEAD:
+074c3f9cce2982176268b894e5dbf6e780c88d60
+
+archive:
+raster-v0.2-prepared-convolution-20261006-213617.tar.gz
+
+archive SHA256:
+e432900bdefc0e6b5b4eeca604667b0d06069ff236c3666c14cc02f787185e4b
+~~~
+
+No additional prepared-convolution benchmark run is required for M4.6.
+
+All timed execution modes produced checksum:
+
+~~~text
+7596c236fe0ac383
+~~~
+
+### DMD 2.111.0
+
+Six pinned process runs produced:
+
+~~~text
+one_shot_n=6
+median_ns_per_pixel=107.191503
+min=106.150500
+max=108.647124
+
+direct_fixed_n=6
+median_ns_per_pixel=10.442197
+min=10.354889
+max=10.605424
+
+prepared_n=6
+median_ns_per_pixel=10.440517
+min=10.388581
+max=10.631346
+
+prepare_n=6
+median_ns_per_prepare=1.165500
+min=1.165500
+max=1.179500
+~~~
+
+The public-path overhead signal was:
+
+~~~text
+one_shot_over_direct_fixed_n=6
+median=10.274735
+min=10.107153
+max=10.395756
+~~~
+
+The isolated prepared-state signal was:
+
+~~~text
+direct_fixed_over_prepared_n=6
+median=1.000142
+min=0.987192
+max=1.003855
+~~~
+
+Three runs produced formally finite break-even values, but only because the
+measured advantage was at noise level:
+
+~~~text
+prepared_break_even_reuse_finite_n=3
+median=0.001068915
+min=0.000825682
+max=0.002961610
+~~~
+
+The median difference between direct-fixed and prepared is about 0.014 percent,
+and the process ratios cross both sides of 1.0. DMD therefore shows no material,
+reproducible benefit from runtime prepared coefficient state.
+
+### LDC 1.41.0
+
+Six pinned process runs produced:
+
+~~~text
+one_shot_n=6
+median_ns_per_pixel=16.832161
+min=16.732717
+max=16.914678
+
+direct_fixed_n=6
+median_ns_per_pixel=1.621008
+min=1.609015
+max=1.642942
+
+prepared_n=6
+median_ns_per_pixel=2.382672
+min=2.360487
+max=2.395868
+
+prepare_n=6
+median_ns_per_prepare=1.165500
+min=1.165500
+max=1.179500
+~~~
+
+The public-path overhead signal was:
+
+~~~text
+one_shot_over_direct_fixed_n=6
+median=10.374125
+min=10.250595
+max=10.416368
+~~~
+
+The isolated prepared-state signal was:
+
+~~~text
+direct_fixed_over_prepared_n=6
+median=0.680331
+min=0.672684
+max=0.695998
+~~~
+
+No run produced a finite break-even:
+
+~~~text
+prepared_break_even_reuse_finite_n=0
+~~~
+
+At the medians, prepared execution is about 1.47 times the direct-fixed cost,
+or roughly 47 percent slower. Every process run has the same direction. LDC
+therefore provides clear evidence against runtime prepared coefficient state for
+this fixed-convolution family.
+
+## 16. M4.6 production decision
+
+The final decision is:
+
+~~~text
+DO NOT PROMOTE prepared runtime coefficient state.
+~~~
+
+Specifically:
+
+- DMD shows only noise-level parity between `direct_fixed` and `prepared`;
+- LDC makes `prepared` approximately 47 percent slower than `direct_fixed`;
+- no public `PreparedConvolution`, `PreparedKernel`, `ConvolutionPlan`, or
+  equivalent runtime prepared-coefficient type is justified;
+- the production contract remains `FixedConvolutionKernel` plus
+  `convolveInto` with compile-time fixed coefficients.
+
+This result reinforces the current use of D compile-time specialization for the
+fixed-kernel family rather than adding runtime state without measured benefit.
+
+## 17. Separate M5 performance signal
+
+The same isolation run exposes a different performance question that must not be
+misattributed to coefficient preparation.
+
+Median public one-shot versus direct-fixed ratios were:
+
+~~~text
+DMD: 10.274735x
+LDC: 10.374125x
+~~~
+
+This gap lies between the public semantic path and the already-approved
+validation-free direct execution shape. It may contain structural preflight,
+region validation, injectivity checking, overlap classification, dispatch,
+inlining, or compiler-code-generation cost.
+
+It is not evidence for a public prepared-convolution API.
+
+M5 benchmark work should therefore keep at least these cost classes separately
+measurable where applicable:
+
+~~~text
+semantic/public operation latency
+approved hot executor latency
+preflight/validation cost
+layout specialization cost
+numeric kernel cost
+~~~
+
+The first follow-up belongs to M5.1 / Issue #115: establish v0.2 benchmark
+families with a deliberate separation between public semantic paths and approved
+execution kernels.
