@@ -25,18 +25,19 @@ mkdir -p "$OUT"
 snapshot_freq()
 {
     local tag="$1"
+
     {
         echo "tag=$tag"
         date -u +%Y-%m-%dT%H:%M:%SZ
 
-        for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
-            [[ -d "$cpu/cpufreq" ]] || continue
+        for cpu_path in /sys/devices/system/cpu/cpu[0-9]*; do
+            [[ -d "$cpu_path/cpufreq" ]] || continue
 
-            id="${cpu##*cpu}"
-            gov="$(cat "$cpu/cpufreq/scaling_governor 2>/dev/null || true)"
-            cur="$(cat "$cpu/cpufreq/scaling_cur_freq 2>/dev/null || true)"
-            min="$(cat "$cpu/cpufreq/scaling_min_freq 2>/dev/null || true)"
-            max="$(cat "$cpu/cpufreq/scaling_max_freq 2>/dev/null || true)"
+            id="${cpu_path##*cpu}"
+            gov="$(cat "$cpu_path/cpufreq/scaling_governor" 2>/dev/null || true)"
+            cur="$(cat "$cpu_path/cpufreq/scaling_cur_freq" 2>/dev/null || true)"
+            min="$(cat "$cpu_path/cpufreq/scaling_min_freq" 2>/dev/null || true)"
+            max="$(cat "$cpu_path/cpufreq/scaling_max_freq" 2>/dev/null || true)"
 
             printf 'cpu=%s governor=%s cur_khz=%s min_khz=%s max_khz=%s\n' \
                 "$id" "$gov" "$cur" "$min" "$max"
@@ -62,18 +63,30 @@ for compiler in dmd ldc2; do
     dir="$OUT/$label"
     mkdir -p "$dir"
 
-    dub build         --root="$ROOT/benchmark/v0_2_transform_into"         --compiler="$compiler"         --build=release         --force         > "$dir/build.txt" 2>&1
+    dub build \
+        --root="$ROOT/benchmark/v0_2_transform_into" \
+        --compiler="$compiler" \
+        --build=release \
+        --force \
+        > "$dir/build.txt" 2>&1
 
-    cp "$ROOT/benchmark/v0_2_transform_into/raster-v0-2-transform-into-benchmark"         "$tmp/$label"
+    cp \
+        "$ROOT/benchmark/v0_2_transform_into/raster-v0-2-transform-into-benchmark" \
+        "$tmp/$label"
 
     sha256sum "$tmp/$label" > "$dir/binary.sha256"
     "$compiler" --version > "$dir/compiler.txt" 2>&1
 
     for process in 0 1 2 3 4 5; do
-        taskset -c "$CPU" "$tmp/$label"             > "$dir/run-$process.txt"
+        snapshot_freq "$label-pre-$process"
+
+        taskset -c "$CPU" "$tmp/$label" \
+            > "$dir/run-$process.txt"
 
         test "$(grep -c '^transform_into_benchmark ' "$dir/run-$process.txt")" -eq 2
         test "$(grep -c '^transform_into_ratio ' "$dir/run-$process.txt")" -eq 1
+
+        snapshot_freq "$label-post-$process"
     done
 
     python3 - "$dir" <<'PY'
@@ -94,12 +107,14 @@ for path in sorted(root.glob("run-*.txt")):
         if line.startswith("transform_into_benchmark "):
             fields = dict(item.split("=", 1) for item in line.split()[1:])
             value = float(fields["ns_per_pixel"])
+
             if fields["api"] == "legacy":
                 legacy.append(value)
                 legacy_hashes.add(fields["checksum"])
             elif fields["api"] == "transformInto":
                 current.append(value)
                 current_hashes.add(fields["checksum"])
+
         elif line.startswith("transform_into_ratio "):
             fields = dict(item.split("=", 1) for item in line.split()[1:])
             ratios.append(float(fields["legacy_over_new"]))
@@ -138,7 +153,9 @@ snapshot_freq after
 
 (
     cd "$OUT"
-    find . -type f ! -name SHA256SUMS -print0         | sort -z         | xargs -0 sha256sum
+    find . -type f ! -name SHA256SUMS -print0 \
+        | sort -z \
+        | xargs -0 sha256sum
 ) > "$OUT/SHA256SUMS"
 
 ARCHIVE="$OUT.tar.gz"
@@ -147,9 +164,11 @@ tar -C "$(dirname "$OUT")" -czf "$ARCHIVE" "$(basename "$OUT")"
 echo
 echo "=== DMD ==="
 cat "$OUT/dmd/summary.txt"
+
 echo
 echo "=== LDC ==="
 cat "$OUT/ldc/summary.txt"
+
 echo
 echo "=== ARCHIVE ==="
 sha256sum "$ARCHIVE"
