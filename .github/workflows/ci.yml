@@ -124,6 +124,11 @@ jobs:
         run: |
           bash tools/compile-negative/raster_border_policy_api.sh "$DC"
 
+      - name: Convolution compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_convolution_api.sh "$DC"
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
