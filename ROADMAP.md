@@ -891,6 +891,52 @@ qualified x86-64 results.
 
 ---
 
+
+## M5 — v0.2 Performance Qualification
+
+Status: active.
+
+M5 treats performance as a layered property of the supported v0.2 operation
+families. It does not expose execution-layout or compiler choices through the
+public API.
+
+### M5.1 — Establish v0.2 benchmark families
+
+Status: in progress.
+
+Issue #115 owns the benchmark coverage matrix.
+
+The first M5.1 slice establishes:
+
+- six representative processing families;
+- an explicit distinction between public semantic latency, preflight,
+  approved hot-executor, layout-specialization and numeric-kernel cost;
+- a machine-readable family inventory;
+- CI validation of that inventory;
+- DMD/LDC release compile smoke for every retained v0.2 benchmark harness;
+- a qualification metadata contract covering compiler, build flags, platform,
+  workload, warm-up, samples/distribution, semantic preflight and baseline
+  commit.
+
+Current coverage remains intentionally truthful:
+
+- reduction: partial;
+- unary transform: partial;
+- fill/copy: gap;
+- binary transform/arithmetic: gap;
+- conversion: gap;
+- neighbourhood/convolution: partial.
+
+M5.1 closes only when every family is qualified or has an explicit justified
+not-applicable decision. Historical M3 executor evidence remains valid
+provenance but is not silently treated as complete v0.2 public-family evidence.
+
+The M4.6 prepared-convolution isolation also creates an explicit M5 signal:
+public `convolveInto` and the validation-free direct-fixed execution shape are
+roughly an order of magnitude apart on both baseline compilers. M5 investigates
+that as public/preflight/dispatch/execution cost, not as a prepared-state
+benefit.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
