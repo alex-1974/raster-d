@@ -98,5 +98,10 @@ public import raster.conversion :
     convertRasterInto,
     tryConvertUbyteToFloatPlane;
 
+public import raster.conversion_allocated :
+    RasterAllocatedConversionError,
+    RasterAllocatedConversionResult,
+    tryConvertAllocated;
+
 public import raster.backing :
     RasterLease;
