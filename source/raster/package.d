@@ -56,6 +56,12 @@ public import raster.zip_transform_into :
     RasterZipTransformError,
     zipTransformInto;
 
+public import raster.arithmetic_into :
+    addInto,
+    subtractInto,
+    multiplyInto,
+    divideInto;
+
 public import raster.transform_allocated :
     RasterAllocatedTransformError,
     RasterAllocatedTransformResult,
