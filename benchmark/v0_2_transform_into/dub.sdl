@@ -1,0 +1,8 @@
+name "raster-v0-2-transform-into-benchmark"
+description "raster-d v0.2 transformInto compatibility/performance benchmark"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dflags "-preview=dip1000"
+dependency "raster-d" path="../.."
