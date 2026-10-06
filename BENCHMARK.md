@@ -577,3 +577,64 @@ seven M2/M3 benchmark workloads above; no benchmarked operation source,
 public API, numerical path or x86-64 hot-path selector changed. The retained
 v0.1.0 M2/M3 reference baseline therefore remains the accepted release
 performance evidence.
+
+
+## v0.2 M2.1 transformInto API-bridge qualification
+
+Issue #95 adds the v0.2 destination-oriented/UFCS spelling
+`transformInto!transform` as a direct wrapper over the already-qualified
+`tryTransformRasterPlane!transform` semantic engine.
+
+The reference-XPS qualification compares both public call surfaces inside one
+fixed release binary over the same padded 2048 x 512 float workload with 16
+iterations per timed sample.
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DMD 2.111.0;
+- LDC 1.41.0 / LLVM 19.1.7;
+- DUB 1.40.0.
+
+The accepted harness uses 16 paired samples per process, alternates whether the
+legacy or v0.2 API is timed first on every sample, warms both call surfaces and
+records CPU-frequency/thermal snapshots around every process. Six independent
+processes are retained per compiler.
+
+Accepted archive:
+
+    raster-v0.2-transform-into-20261006-130132.tar.gz
+    SHA256 4cda1310ba6cc52f6d503a3f6171056a17f19350ea589dc188b2ff7b472dc4c7
+    head   60b486331f65de74ad2c5d541efb3a1243e41f1b
+
+The archive manifest verifies completely and every retained process reports the
+same semantic checksum:
+
+    37cee2ef2e81c0c3
+
+Retained summary:
+
+| Compiler | legacy ns/pixel | transformInto ns/pixel | median legacy/new ratio | ratio range |
+| --- | ---: | ---: | ---: | ---: |
+| DMD 2.111 | 0.522385 | 0.510475 | 1.014082 | 0.975698-1.060577 |
+| LDC 1.41 | 0.203886 | 0.200155 | 1.003748 | 0.923124-1.034650 |
+
+One DMD process ran both call surfaces at roughly 1.5 ns/pixel while retaining a
+near-parity ratio (1.014788), demonstrating a process-level system/frequency
+outlier rather than v0.2 wrapper overhead. LDC likewise shows absolute
+process-to-process variation while the paired API ratio remains centered near
+1.0.
+
+The qualification therefore supports the narrow conclusion required by #95:
+there is no measured material performance penalty from the v0.2
+`transformInto` API bridge on the qualified reference machine. This is API
+wrapper-equivalence evidence, not a new point-transform throughput claim and
+not a portable timing guarantee.
+
+The earlier diagnostic archive
+`raster-v0.2-transform-into-20261006-125147.tar.gz` is intentionally not used
+as qualification evidence because its harness measured all legacy samples
+before all v0.2 samples and therefore confounded call-surface comparison with
+frequency/thermal drift.
