@@ -82,6 +82,9 @@ public import raster.transform_allocated :
     RasterAllocatedTransformResult,
     tryTransformAllocated;
 
+public import raster.neighbourhood_shape :
+    NeighbourhoodShape;
+
 public import raster.neighbourhood :
     RasterNeighbourhood3x3Error,
     tryApplyRasterNeighbourhood3x3;
