@@ -20,6 +20,13 @@ import raster.internal.conversion_dispatch :
 import raster.internal.conversion_policy :
     isUniversallyExactRasterConversion;
 
+import raster.internal.exact_conversion :
+    ExactRasterConversionError,
+    convertExactRasterPlane;
+
+import raster.conversion_policy :
+    RasterConversionPolicy;
+
 import raster.view :
     RasterView;
 
@@ -71,6 +78,179 @@ static assert(
         float
     )
 );
+
+
+/++
+    Semantic failure category for generic destination-oriented raster
+    conversion.
+
+    The exact policy has no per-sample numerical failure. Therefore every false
+    result is a structural/request failure detected before the first
+    destination write.
++/
+enum RasterConversionError : ubyte
+{
+    none,
+
+    invalidSourcePlane,
+
+    invalidDestinationPlane,
+
+    shapeMismatch,
+
+    nonInjectiveDestination,
+
+    sourceDestinationOverlap
+}
+
+
+/++
+    Converts one selected logical source plane into an equally shaped writable
+    destination plane under one explicit conversion policy.
+
+    The first v0.2 production policy is RasterConversionPolicy.exact.
+
+    Ordinary form:
+
+        convertRasterInto!(
+            float,
+            RasterConversionPolicy.exact
+        )(
+            source,
+            sourcePlaneIndex,
+            destination,
+            destinationPlaneIndex,
+            error
+        );
+
+    UFCS form:
+
+        source.convertRasterInto!(
+            float,
+            RasterConversionPolicy.exact
+        )(
+            sourcePlaneIndex,
+            destination,
+            destinationPlaneIndex,
+            error
+        );
+
+    Because exact is currently the only promoted policy it is also the template
+    default:
+
+        source.convertRasterInto!float(...);
+
+    Exact-policy type legality is compile-time. Unsupported From -> To pairs do
+    not instantiate this API.
+
+    Structural semantics:
+
+    - source and destination plane indices must be valid;
+    - shapes must match;
+    - matching empty shapes succeed as a no-op;
+    - destination mapping must be injective;
+    - actual source/destination sample-byte overlap is rejected;
+    - every structural failure is resolved before the first destination write;
+    - every validated resident signed affine layout is semantically supported;
+    - source self-aliasing is permitted;
+    - no allocation, ownership transfer or scheduling occurs.
+
+    On entry error is reset to RasterConversionError.none. On false, destination
+    content is unchanged and error identifies the structural failure.
++/
+bool convertRasterInto(
+    To,
+    RasterConversionPolicy Policy = RasterConversionPolicy.exact,
+    From
+)(
+    scope RasterView!From source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!To destination,
+    size_t destinationPlaneIndex,
+
+    out RasterConversionError error
+)
+@safe
+nothrow
+@nogc
+if (
+    Policy == RasterConversionPolicy.exact
+    && isUniversallyExactRasterConversion!(
+        From,
+        To
+    )
+)
+{
+    error =
+        RasterConversionError.none;
+
+    final switch (
+        convertExactRasterPlane!(
+            From,
+            To
+        )(
+            source,
+            sourcePlaneIndex,
+            destination,
+            destinationPlaneIndex
+        )
+    )
+    {
+        case ExactRasterConversionError.none:
+            return true;
+
+        case ExactRasterConversionError.invalidSourcePlane:
+            error =
+                RasterConversionError.invalidSourcePlane;
+            return false;
+
+        case ExactRasterConversionError.invalidDestinationPlane:
+            error =
+                RasterConversionError.invalidDestinationPlane;
+            return false;
+
+        case ExactRasterConversionError.shapeMismatch:
+            error =
+                RasterConversionError.shapeMismatch;
+            return false;
+
+        case ExactRasterConversionError.nonInjectiveDestination:
+            error =
+                RasterConversionError.nonInjectiveDestination;
+            return false;
+
+        case ExactRasterConversionError.sourceDestinationOverlap:
+            error =
+                RasterConversionError.sourceDestinationOverlap;
+            return false;
+    }
+}
+
+
+/// Example compiling the default exact-policy UFCS surface.
+@safe unittest
+{
+    import raster;
+
+    RasterView!ubyte source;
+    WritableRasterView!float destination;
+    RasterConversionError error;
+
+    assert(
+        !source.convertRasterInto!float(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(
+        error
+        == RasterConversionError.invalidSourcePlane
+    );
+}
 
 
 /++
@@ -836,5 +1016,532 @@ unittest
         == [4.0f, 3.0f, 2.0f, 1.0f]
     );
 }
+
+
+
+private
+WritableRasterView!To makeWritableConversionTestView(To)(
+    return scope const(ResourceEntry)[] resources,
+    return scope const(PlaneDescriptor)[] descriptors,
+    Region2D region
+)
+@safe
+nothrow
+@nogc
+{
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+
+    auto result =
+        tryMakeWritableRasterView!To(
+            resources,
+            descriptors,
+            region,
+            validation,
+            certification
+        );
+
+    assert(validation.ok);
+    assert(certification.ok);
+
+    return result;
+}
+
+
+/*
+ * Generic default exact policy reuses the qualified ubyte -> float semantic.
+ */
+unittest
+{
+    ubyte[4] sourceStorage =
+        [0, 17, 128, 255];
+
+    float[4] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.length * float.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!float(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    RasterConversionError error;
+
+    assert(
+        source.convertRasterInto!float(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterConversionError.none);
+
+    assert(
+        destinationStorage
+        == [0.0f, 17.0f, 128.0f, 255.0f]
+    );
+}
+
+
+/*
+ * Explicit exact policy and integer widening work over signed affine layouts.
+ */
+unittest
+{
+    ushort[8] sourceStorage =
+        [1, 99, 2, 99, 3, 99, 4, 99];
+
+    int[4] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr + 6,
+            -4,
+            -2
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr + 3,
+            -2,
+            -1
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.length * int.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ushort(
+            sourceDescriptors[],
+            Region2D(0, 0, 2, 2)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!int(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 2, 2)
+        );
+
+    RasterConversionError error;
+
+    assert(
+        source.convertRasterInto!(
+            int,
+            RasterConversionPolicy.exact
+        )(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterConversionError.none);
+    /*
+     * Logical destination order is [4,3;2,1], but the negative destination
+     * strides map that logical order back onto ascending physical storage.
+     */
+    assert(destinationStorage == [1, 2, 3, 4]);
+}
+
+
+/*
+ * float -> double preserves finite values, infinities and NaN-ness exactly
+ * under the promoted policy.
+ */
+unittest
+{
+    float[4] sourceStorage =
+        [
+            -0.0f,
+            1.5f,
+            float.infinity,
+            float.nan
+        ];
+
+    double[4] destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            4,
+            1
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.length * double.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!float(
+            sourceDescriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!double(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    RasterConversionError error;
+
+    assert(
+        source.convertRasterInto!double(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterConversionError.none);
+    assert(destinationStorage[0] == 0.0);
+    assert(destinationStorage[1] == 1.5);
+    assert(destinationStorage[2] == double.infinity);
+    assert(destinationStorage[3] != destinationStorage[3]);
+}
+
+
+/*
+ * Shape failure leaves the destination unchanged.
+ */
+unittest
+{
+    ubyte[4] sourceStorage =
+        [1, 2, 3, 4];
+
+    float[4] destinationStorage =
+        [11.0f, 12.0f, 13.0f, 14.0f];
+
+    const expected =
+        destinationStorage;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            2,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            2,
+            1
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.length * float.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 2, 2)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!float(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 1, 2)
+        );
+
+    RasterConversionError error;
+
+    assert(
+        !source.convertRasterInto!float(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterConversionError.shapeMismatch);
+    assert(destinationStorage == expected);
+}
+
+
+/*
+ * Actual byte overlap is rejected before writing for a generic different-size
+ * exact pair, not only for the historical ubyte -> float specialization.
+ */
+unittest
+{
+    union Storage
+    {
+        ubyte[32] bytes;
+        uint[8] words;
+    }
+
+    Storage storage;
+    storage.bytes[3] = 77;
+
+    const expected =
+        storage.bytes;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            storage.bytes.ptr + 3,
+            0,
+            0
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            storage.words.ptr,
+            0,
+            0
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            storage.bytes.ptr,
+            storage.bytes.length,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(0, 0, 1, 1)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!uint(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 1, 1)
+        );
+
+    RasterConversionError error;
+
+    assert(
+        !source.convertRasterInto!uint(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(
+        error
+        == RasterConversionError.sourceDestinationOverlap
+    );
+
+    assert(storage.bytes == expected);
+}
+
+
+/*
+ * Matching empty shapes succeed without touching destination storage.
+ */
+unittest
+{
+    short[1] sourceStorage = [7];
+    double[1] destinationStorage = [33.0];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            1,
+            1
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            1,
+            1
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.length * double.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!short(
+            sourceDescriptors[],
+            Region2D(0, 0, 0, 1)
+        );
+
+    scope auto destination =
+        makeWritableConversionTestView!double(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 0, 1)
+        );
+
+    RasterConversionError error =
+        RasterConversionError.shapeMismatch;
+
+    assert(
+        source.convertRasterInto!double(
+            0,
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterConversionError.none);
+    assert(destinationStorage[0] == 33.0);
+}
+
+
+/*
+ * Public compile constraints: accepted and rejected type pairs are semantic
+ * compatibility surface.
+ */
+static assert(
+    isUniversallyExactRasterConversion!(
+        ubyte,
+        float
+    )
+);
+
+static assert(
+    isUniversallyExactRasterConversion!(
+        ushort,
+        int
+    )
+);
+
+static assert(
+    isUniversallyExactRasterConversion!(
+        float,
+        double
+    )
+);
+
+static assert(
+    !isUniversallyExactRasterConversion!(
+        int,
+        float
+    )
+);
+
+static assert(
+    !isUniversallyExactRasterConversion!(
+        long,
+        double
+    )
+);
+
+static assert(
+    !isUniversallyExactRasterConversion!(
+        double,
+        float
+    )
+);
+
+static assert(
+    !isUniversallyExactRasterConversion!(
+        float,
+        int
+    )
+);
 
 } // version (unittest)
