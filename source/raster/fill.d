@@ -54,6 +54,73 @@ nothrow
         );
 }
 
+
+/++
+    Fills one selected logical destination plane with one exact sample value.
+
+    This is the v0.2 destination-oriented spelling of tryFillRasterPlane().
+
+    Fill has no source operand. The writable destination is therefore the
+    semantic subject and remains the first runtime argument:
+
+        fill(destination, planeIndex, value);
+        destination.fill(planeIndex, value);
+
+    Semantics are exactly those of tryFillRasterPlane():
+
+    - planeIndex must select a logical destination plane;
+    - every validated writable signed affine layout is supported;
+    - non-injective mappings are valid because repeated writes of the same
+      exact T value are idempotent;
+    - an empty selected plane succeeds as a no-op;
+    - the operation allocates nothing and retains no operand.
+
+    A second error enum is intentionally not introduced. The existing boolean
+    result already completely represents the single request failure category.
+
+    The explicit plane index is a compatibility bridge while
+    WritableRasterPlaneView is not yet a production type.
++/
+bool fill(T)(
+    scope ref WritableRasterView!T destination,
+    size_t planeIndex,
+    T value
+)
+@safe
+nothrow
+@nogc
+{
+    return tryFillRasterPlane(
+        destination,
+        planeIndex,
+        value
+    );
+}
+
+
+/// Example compiling both ordinary and UFCS v0.2 fill forms.
+@safe unittest
+{
+    import raster;
+
+    WritableRasterView!ubyte destination;
+
+    assert(
+        !fill(
+            destination,
+            0,
+            cast(ubyte) 7
+        )
+    );
+
+    assert(
+        !destination.fill(
+            0,
+            cast(ubyte) 7
+        )
+    );
+}
+
 /// Example rejecting a fill when no destination plane exists.
 @safe unittest
 {
