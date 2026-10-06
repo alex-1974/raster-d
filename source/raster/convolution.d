@@ -47,7 +47,7 @@ import raster.writable_view :
 struct FixedConvolutionKernel(
     alias Shape,
     Coefficient,
-    Coefficient Coefficients...
+    Coefficients...
 )
 if (
     is(Coefficient == float)
