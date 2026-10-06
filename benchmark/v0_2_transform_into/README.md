@@ -58,3 +58,35 @@ overhead evidence, not as a new speedup claim.
 
 GitHub-hosted CI remains correctness/compile-contract evidence and is not used
 as a stable performance gate.
+
+
+## First diagnostic run — not qualification evidence
+
+The first XPS archive:
+
+    raster-v0.2-transform-into-20261006-125147.tar.gz
+    SHA256 70fabc573fc49551b459437b39344be7695cc52ff7b33222951b1a669ffa161d
+
+passed manifest verification and checksum equality, but is deliberately not
+accepted as performance qualification.
+
+That harness measured all legacy samples before all transformInto samples inside
+each process. The result showed:
+
+    DMD median legacy/new ratio 0.924718
+    LDC median legacy/new ratio 1.128844
+
+with LDC process ratios ranging from 0.810332 to 1.991492.
+
+This spread and the systematic DMD second-half slowdown make thermal/frequency
+and measurement-order bias materially confounded with API cost.
+
+The revised harness therefore:
+
+- uses one shared source and separate equivalent destinations;
+- warms both public call surfaces;
+- pairs legacy and transformInto inside every timed sample;
+- alternates which API is measured first on every sample;
+- records frequency/thermal snapshots before and after every process.
+
+Only the revised run is eligible as #95 performance evidence.
