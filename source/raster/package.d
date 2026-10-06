@@ -45,10 +45,13 @@ public import raster.reduction :
     RasterExtremaError,
     RasterExtremaResult,
     RasterMinMaxResult,
+    RasterMeanError,
+    RasterMeanResult,
     sum,
     min,
     max,
     minMax,
+    mean,
     trySumFloatToDouble;
 
 public import raster.fill :
