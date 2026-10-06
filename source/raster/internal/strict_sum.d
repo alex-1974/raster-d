@@ -135,7 +135,9 @@ if (isSupportedIntegralAccumulator!Accumulator)
     }
 
     result =
-        total + value;
+        cast(Accumulator)(
+            total + value
+        );
 
     return true;
 }
