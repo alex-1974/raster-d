@@ -252,3 +252,60 @@ No production prepared-state type has been promoted.
 
 Issue #113 remains open until reference-XPS evidence is recorded and the
 decision gate is evaluated.
+
+
+## 14. Follow-up isolation benchmark
+
+The first reference-XPS run showed a very large gap between the public one-shot
+path and the deliberately advantaged prepared candidate:
+
+~~~text
+DMD:
+    one-shot  100.903678 ns/pixel
+    prepared   10.490990 ns/pixel
+    ratio       9.644405x
+
+LDC:
+    one-shot   16.305238 ns/pixel
+    prepared    2.421022 ns/pixel
+    ratio       6.756027x
+~~~
+
+Those results are reproducible across six pinned processes and both paths
+produced checksum:
+
+~~~text
+7596c236fe0ac383
+~~~
+
+However this does not isolate coefficient preparation because the prepared
+candidate also bypasses structural validation and public API dispatch.
+
+The original break-even calculation also divided preparation cost by the
+savings of the complete multi-iteration timing batch rather than one convolution
+invocation. That value is therefore not accepted as the final reuse threshold.
+
+A second qualification run now adds:
+
+~~~text
+direct_fixed
+~~~
+
+This path uses the same validation-free Canonical execution shape as prepared
+but keeps the convolution coefficients compile-time fixed.
+
+The decisive comparisons become:
+
+~~~text
+one_shot / direct_fixed
+    -> repeated validation / public dispatch effect
+
+direct_fixed / prepared
+    -> prepared runtime coefficient-state effect
+~~~
+
+Prepared-state production promotion must be based on the second comparison, not
+on the original one-shot/prepared gap.
+
+The corrected break-even calculation uses preparation cost divided by savings
+per single convolution invocation.
