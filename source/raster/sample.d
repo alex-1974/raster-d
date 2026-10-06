@@ -71,6 +71,176 @@ template isRasterSampleType(T)
 }
 
 
+/++
+    Whether T is one portable numeric raster sample supported by the v0.2
+    generic numerical operation families.
+
+    This trait is intentionally narrower than isRasterSampleType.
+
+    Supported:
+
+        byte, ubyte, short, ushort, int, uint, long, ulong, float, double
+
+    real is deliberately excluded because its precision/representation is
+    target-dependent.
+
+    Static arrays and POD pixel structs may still be valid raw raster sample
+    representations, but they are not scalar numeric samples under this trait.
++/
+template isNumericRasterSample(T)
+{
+    enum isNumericRasterSample =
+        isRasterSampleType!T
+        && (
+            is(T == byte)
+            || is(T == ubyte)
+            || is(T == short)
+            || is(T == ushort)
+            || is(T == int)
+            || is(T == uint)
+            || is(T == long)
+            || is(T == ulong)
+            || is(T == float)
+            || is(T == double)
+        );
+}
+
+
+/++
+    Whether every possible From value is exactly representable in To under the
+    v0.2 exact raster conversion policy.
+
+    This is a universal type relation, not a runtime value test.
+
+    Exact integer conversion requires complete source-range containment.
+
+    Exact integer-to-floating conversion requires the entire integer domain to
+    fit within the destination significand precision.
+
+    Exact floating conversion currently permits identity and float -> double.
+
+    Floating -> integer and double -> float are not universally exact.
+
+    Both From and To must satisfy isNumericRasterSample.
++/
+template isExactConvertible(
+    From,
+    To
+)
+{
+    static if (
+        !isNumericRasterSample!From
+        || !isNumericRasterSample!To
+    )
+    {
+        enum isExactConvertible =
+            false;
+    }
+    else static if (is(From == To))
+    {
+        enum isExactConvertible =
+            true;
+    }
+    else static if (
+        (
+            is(From == byte)
+            || is(From == short)
+            || is(From == int)
+            || is(From == long)
+        )
+        && (
+            is(To == byte)
+            || is(To == short)
+            || is(To == int)
+            || is(To == long)
+        )
+    )
+    {
+        enum isExactConvertible =
+            From.sizeof <= To.sizeof;
+    }
+    else static if (
+        (
+            is(From == ubyte)
+            || is(From == ushort)
+            || is(From == uint)
+            || is(From == ulong)
+        )
+        && (
+            is(To == ubyte)
+            || is(To == ushort)
+            || is(To == uint)
+            || is(To == ulong)
+        )
+    )
+    {
+        enum isExactConvertible =
+            From.sizeof <= To.sizeof;
+    }
+    else static if (
+        (
+            is(From == ubyte)
+            || is(From == ushort)
+            || is(From == uint)
+            || is(From == ulong)
+        )
+        && (
+            is(To == byte)
+            || is(To == short)
+            || is(To == int)
+            || is(To == long)
+        )
+    )
+    {
+        enum isExactConvertible =
+            From.sizeof < To.sizeof;
+    }
+    else static if (
+        is(To == float)
+    )
+    {
+        enum isExactConvertible =
+            is(From == byte)
+            || is(From == ubyte)
+            || is(From == short)
+            || is(From == ushort);
+    }
+    else static if (
+        is(To == double)
+    )
+    {
+        enum isExactConvertible =
+            is(From == byte)
+            || is(From == ubyte)
+            || is(From == short)
+            || is(From == ushort)
+            || is(From == int)
+            || is(From == uint)
+            || is(From == float);
+    }
+    else
+    {
+        enum isExactConvertible =
+            false;
+    }
+}
+
+
+/// Example checking semantic sample capabilities.
+@safe unittest
+{
+    import raster;
+
+    static assert(isNumericRasterSample!float);
+    static assert(!isNumericRasterSample!real);
+    static assert(!isNumericRasterSample!(ubyte[4]));
+
+    static assert(isExactConvertible!(ubyte, float));
+    static assert(isExactConvertible!(float, double));
+    static assert(!isExactConvertible!(double, float));
+}
+
+
 
 version (unittest)
 {
@@ -136,5 +306,42 @@ static assert(
 static assert(
     !isRasterSampleType!DestructibleSample
 );
+
+
+
+static assert(isNumericRasterSample!byte);
+static assert(isNumericRasterSample!ubyte);
+static assert(isNumericRasterSample!short);
+static assert(isNumericRasterSample!ushort);
+static assert(isNumericRasterSample!int);
+static assert(isNumericRasterSample!uint);
+static assert(isNumericRasterSample!long);
+static assert(isNumericRasterSample!ulong);
+static assert(isNumericRasterSample!float);
+static assert(isNumericRasterSample!double);
+
+static assert(!isNumericRasterSample!real);
+static assert(!isNumericRasterSample!(float[4]));
+static assert(!isNumericRasterSample!PlainRgb);
+static assert(!isNumericRasterSample!(ubyte*));
+
+static assert(isExactConvertible!(byte, short));
+static assert(isExactConvertible!(ubyte, short));
+static assert(isExactConvertible!(uint, long));
+static assert(isExactConvertible!(ushort, float));
+static assert(isExactConvertible!(int, double));
+static assert(isExactConvertible!(uint, double));
+static assert(isExactConvertible!(float, double));
+static assert(isExactConvertible!(double, double));
+
+static assert(!isExactConvertible!(short, ubyte));
+static assert(!isExactConvertible!(int, uint));
+static assert(!isExactConvertible!(ulong, long));
+static assert(!isExactConvertible!(int, float));
+static assert(!isExactConvertible!(long, double));
+static assert(!isExactConvertible!(double, float));
+static assert(!isExactConvertible!(float, int));
+static assert(!isExactConvertible!(real, double));
+static assert(!isExactConvertible!(PlainRgb, PlainRgb));
 
 } // version (unittest)
