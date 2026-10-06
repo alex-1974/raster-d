@@ -1078,10 +1078,8 @@ unittest
 
 
 /*
- * The exact fallback itself handles overlap and disjoint same-type samples
- * without allocation. It is separately tested because reaching the defensive
- * classifier arithmetic-failure branch through fully validated metadata is not
- * expected during ordinary operation.
+ * The shared exact same-type overlap helper handles both disjoint and
+ * overlapping validated plane regions without allocation.
  */
 unittest
 {
@@ -1091,7 +1089,7 @@ unittest
     ubyte[4] destination;
 
     assert(
-        !sameTypeSampleBytesOverlapFallback(
+        !validatedSameTypePlaneRegionsOverlap(
             source.ptr,
             4,
             1,
@@ -1106,7 +1104,7 @@ unittest
     );
 
     assert(
-        sameTypeSampleBytesOverlapFallback(
+        validatedSameTypePlaneRegionsOverlap(
             source.ptr,
             4,
             1,
