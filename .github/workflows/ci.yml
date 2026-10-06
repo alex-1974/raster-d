@@ -114,6 +114,11 @@ jobs:
         run: |
           bash tools/compile-negative/raster_neighbourhood_shape_api.sh "$DC"
 
+      - name: Generic neighbourhood compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_neighbourhood_into_api.sh "$DC"
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
