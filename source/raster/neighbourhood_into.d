@@ -207,7 +207,8 @@ nothrow
             destinationRow[x] =
                 invokeNeighbourhoodKernel!(
                     Shape,
-                    kernel
+                    kernel,
+                    T
                 )(
                     neighbourhood
                 );
