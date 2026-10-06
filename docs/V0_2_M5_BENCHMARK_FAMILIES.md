@@ -64,7 +64,7 @@ Current families are:
 | reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
 | fill-copy | `fill`, `copyInto` | historical executor evidence; v0.2 family gap |
-| binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | partial — retained layered harness; reference-XPS evidence pending |
+| binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
 | conversion | `convertRasterInto`, allocated conversion wrapper | historical exact-conversion evidence; generic v0.2 gap |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
 
@@ -110,7 +110,71 @@ their corresponding numeric operation.
 
 All compared paths for an operation require identical logical checksums and
 unchanged destination padding. The harness is retained and compile-smoked under
-DMD/LDC; the family remains `partial` until reference-XPS evidence is recorded.
+DMD/LDC.
+
+Reference-XPS evidence recorded on 2026-10-06:
+
+~~~text
+archive:
+    raster-v0.2-binary-transform-arithmetic-20261006-221741.tar.gz
+
+SHA256:
+    96e00251d079b3c49ebfa6097d7430bb98e95fcee65153132427aa39163521d8
+
+benchmark head:
+    714e808b56b5a8cfb9bc8b53265d1112652b1e13
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    float
+    2048 x 512
+    32 elements row padding
+    Canonical sample stride 1
+    8 iterations per timed sample
+    18 timed samples per process
+    6 independent processes per compiler
+~~~
+
+The archive manifest verifies completely. All compared paths retain stable,
+operation-specific checksums and unchanged destination padding.
+
+Median ns/sample and paired ratios:
+
+| Compiler | Operation | Public path | Hot executor | Public/executor |
+| --- | --- | ---: | ---: | ---: |
+| DMD 2.111 | add public zip | 0.480881 | 0.483760 | 0.991960 |
+| DMD 2.111 | add wrapper | 0.487226 | 0.483760 | 0.996067 |
+| DMD 2.111 | subtract wrapper | 0.541404 | 0.541764 | 0.996800 |
+| DMD 2.111 | multiply wrapper | 0.540704 | 0.485399 | 1.113914 |
+| DMD 2.111 | divide wrapper | 0.758606 | 0.763014 | 0.995785 |
+| LDC 1.41 | add public zip | 0.429830 | 0.440601 | 0.988816 |
+| LDC 1.41 | add wrapper | 0.454840 | 0.440601 | 1.029881 |
+| LDC 1.41 | subtract wrapper | 0.399736 | 0.421235 | 0.975722 |
+| LDC 1.41 | multiply wrapper | 0.467124 | 0.401172 | 1.063160 |
+| LDC 1.41 | divide wrapper | 0.396779 | 0.419193 | 0.941382 |
+
+LDC absolute process timings vary materially with machine state, so paired
+same-process ratios are used for interpretation. The family shows no M4.6-style
+public/preflight/executor cliff.
+
+The DMD multiply wrapper shows a repeatable approximately 11% median overhead
+relative to the executor, with LDC around 6%. This is retained as a targeted
+M5.3 code-generation/inlining signal rather than interpreted as a separate
+public execution engine or as a reason to reject the family qualification.
+
+The binary-transform/arithmetic family is therefore `qualified` for M5.1.
 
 A cross-language reference is intentionally deferred to M5.7 / Issue #121.
 
