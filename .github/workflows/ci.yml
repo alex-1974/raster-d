@@ -107,7 +107,7 @@ jobs:
       - name: Generic conversion API compile contracts
         shell: bash
         run: |
-          tools/compile-negative/raster_conversion_api.sh "$DC"
+          bash tools/compile-negative/raster_conversion_api.sh "$DC"
 
       - name: Raster retained-import external link probe
         shell: bash
