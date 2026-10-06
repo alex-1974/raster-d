@@ -11,13 +11,10 @@ import raster;
 
 
 private enum size_t warmups = 4;
-private enum size_t samples = 15;
+private enum size_t samples = 16;
 
 
-private void require(
-    bool condition,
-    string message
-)
+private void require(bool condition, string message)
 @safe
 {
     if (!condition)
@@ -33,8 +30,7 @@ private bool makeFloatLease(
 )
 @system
 {
-    const rowElements =
-        width + rowPaddingElements;
+    const rowElements = width + rowPaddingElements;
 
     if (
         width == 0
@@ -44,20 +40,14 @@ private bool makeFloatLease(
     )
         return false;
 
-    const physicalElements =
-        rowElements * height;
+    const physicalElements = rowElements * height;
 
-    if (
-        physicalElements
-        > size_t.max / float.sizeof
-    )
+    if (physicalElements > size_t.max / float.sizeof)
         return false;
 
-    const byteLength =
-        physicalElements * float.sizeof;
+    const byteLength = physicalElements * float.sizeof;
 
-    void* memory =
-        malloc(byteLength);
+    void* memory = malloc(byteLength);
 
     if (memory is null)
         return false;
@@ -86,16 +76,11 @@ private bool makeFloatLease(
     )
         return false;
 
-    const rowStrideBytes =
-        cast(ptrdiff_t)(
-            rowElements * float.sizeof
-        );
-
     const PlaneByteLayout[1] layouts =
     [
         PlaneByteLayout(
             0,
-            rowStrideBytes,
+            cast(ptrdiff_t)(rowElements * float.sizeof),
             cast(ptrdiff_t) float.sizeof
         )
     ];
@@ -104,12 +89,7 @@ private bool makeFloatLease(
         tryImportOwnedRaster!float(
             resource,
             layouts[],
-            Region2D(
-                0,
-                0,
-                width,
-                height
-            ),
+            Region2D(0, 0, width, height),
             lease
         );
 
@@ -117,27 +97,20 @@ private bool makeFloatLease(
 }
 
 
-private float pointTransform(
-    float value
-)
+private float pointTransform(float value)
 @safe
 pure
 nothrow
 @nogc
 {
-    return
-        value * 1.0009765625f
-        + 0.25f;
+    return value * 1.0009765625f + 0.25f;
 }
 
 
-private ulong checksumFloat(
-    scope RasterView!float view
-)
+private ulong checksumFloat(scope RasterView!float view)
 @safe
 {
-    ulong hash =
-        1469598103934665603UL;
+    ulong hash = 1469598103934665603UL;
 
     foreach (y; 0 .. view.height)
     {
@@ -146,12 +119,7 @@ private ulong checksumFloat(
             float value;
 
             require(
-                view.trySample(
-                    0,
-                    x,
-                    y,
-                    value
-                ),
+                view.trySample(0, x, y, value),
                 "checksum sample read failed"
             );
 
@@ -162,14 +130,10 @@ private ulong checksumFloat(
             }
 
             Bits bits;
-            bits.value =
-                value;
+            bits.value = value;
 
-            hash ^=
-                bits.bits;
-
-            hash *=
-                1099511628211UL;
+            hash ^= bits.bits;
+            hash *= 1099511628211UL;
         }
     }
 
@@ -177,70 +141,28 @@ private ulong checksumFloat(
 }
 
 
-private long median(
-    long[samples] values
-)
+private long median(long[samples] values)
 {
     sort(values[]);
-    return values[samples / 2];
+    return (
+        values[samples / 2 - 1]
+        + values[samples / 2]
+    ) / 2;
 }
 
 
-private struct Measurement
-{
-    long medianNs;
-    ulong checksum;
-}
-
-
-private Measurement benchLegacy(
-    size_t width,
-    size_t height,
+private long timeLegacy(
+    scope RasterView!float source,
+    scope ref WritableRasterView!float target,
     size_t iterations
 )
-@system
+@safe
 {
-    RasterLease!float sourceLease;
-    RasterLease!float targetLease;
-
-    require(
-        makeFloatLease(
-            width,
-            height,
-            32,
-            sourceLease
-        ),
-        "source lease construction failed"
-    );
-
-    require(
-        makeFloatLease(
-            width,
-            height,
-            32,
-            targetLease
-        ),
-        "target lease construction failed"
-    );
-
-    scope auto source =
-        sourceLease.view();
-
-    bool writableOk;
-
-    scope auto target =
-        targetLease.tryWritableView(
-            writableOk
-        );
-
-    require(
-        writableOk,
-        "writable view construction failed"
-    );
-
     RasterTransformError error;
 
-    foreach (_; 0 .. warmups)
+    const start = MonoTime.currTime;
+
+    foreach (_; 0 .. iterations)
     {
         require(
             tryTransformRasterPlane!pointTransform(
@@ -254,91 +176,25 @@ private Measurement benchLegacy(
         );
     }
 
-    long[samples] times;
-
-    foreach (sample; 0 .. samples)
-    {
-        const start =
-            MonoTime.currTime;
-
-        foreach (_; 0 .. iterations)
-        {
-            require(
-                tryTransformRasterPlane!pointTransform(
-                    source,
-                    0,
-                    target,
-                    0,
-                    error
-                ),
-                "legacy transform failed"
-            );
-        }
-
-        times[sample] =
-            (
-                MonoTime.currTime
-                - start
-            ).total!"nsecs";
-    }
-
-    return Measurement(
-        median(times),
-        checksumFloat(
-            targetLease.view()
-        )
-    );
+    return (
+        MonoTime.currTime
+        - start
+    ).total!"nsecs";
 }
 
 
-private Measurement benchTransformInto(
-    size_t width,
-    size_t height,
+private long timeTransformInto(
+    scope RasterView!float source,
+    scope ref WritableRasterView!float target,
     size_t iterations
 )
-@system
+@safe
 {
-    RasterLease!float sourceLease;
-    RasterLease!float targetLease;
-
-    require(
-        makeFloatLease(
-            width,
-            height,
-            32,
-            sourceLease
-        ),
-        "source lease construction failed"
-    );
-
-    require(
-        makeFloatLease(
-            width,
-            height,
-            32,
-            targetLease
-        ),
-        "target lease construction failed"
-    );
-
-    scope auto source =
-        sourceLease.view();
-
-    bool writableOk;
-
-    scope auto target =
-        targetLease.tryWritableView(
-            writableOk
-        );
-
-    require(
-        writableOk,
-        "writable view construction failed"
-    );
-
     RasterTransformError error;
 
-    foreach (_; 0 .. warmups)
+    const start = MonoTime.currTime;
+
+    foreach (_; 0 .. iterations)
     {
         require(
             source.transformInto!pointTransform(
@@ -351,39 +207,10 @@ private Measurement benchTransformInto(
         );
     }
 
-    long[samples] times;
-
-    foreach (sample; 0 .. samples)
-    {
-        const start =
-            MonoTime.currTime;
-
-        foreach (_; 0 .. iterations)
-        {
-            require(
-                source.transformInto!pointTransform(
-                    0,
-                    target,
-                    0,
-                    error
-                ),
-                "transformInto failed"
-            );
-        }
-
-        times[sample] =
-            (
-                MonoTime.currTime
-                - start
-            ).total!"nsecs";
-    }
-
-    return Measurement(
-        median(times),
-        checksumFloat(
-            targetLease.view()
-        )
-    );
+    return (
+        MonoTime.currTime
+        - start
+    ).total!"nsecs";
 }
 
 
@@ -398,9 +225,7 @@ private string compilerName()
 }
 
 
-void main(
-    string[] args
-)
+void main(string[] args)
 @system
 {
     const width =
@@ -418,25 +243,127 @@ void main(
         ? args[3].to!size_t
         : 16;
 
-    const legacy =
-        benchLegacy(
-            width,
-            height,
-            iterations
+    RasterLease!float sourceLease;
+    RasterLease!float legacyTargetLease;
+    RasterLease!float currentTargetLease;
+
+    require(
+        makeFloatLease(width, height, 32, sourceLease),
+        "source lease construction failed"
+    );
+
+    require(
+        makeFloatLease(width, height, 32, legacyTargetLease),
+        "legacy target lease construction failed"
+    );
+
+    require(
+        makeFloatLease(width, height, 32, currentTargetLease),
+        "transformInto target lease construction failed"
+    );
+
+    scope auto source = sourceLease.view();
+
+    bool legacyWritableOk;
+    bool currentWritableOk;
+
+    scope auto legacyTarget =
+        legacyTargetLease.tryWritableView(
+            legacyWritableOk
         );
 
-    const current =
-        benchTransformInto(
-            width,
-            height,
-            iterations
+    scope auto currentTarget =
+        currentTargetLease.tryWritableView(
+            currentWritableOk
         );
 
     require(
-        legacy.checksum
-        == current.checksum,
+        legacyWritableOk && currentWritableOk,
+        "writable view construction failed"
+    );
+
+    /*
+     * Warm both call surfaces before timed work. Alternate order so no API is
+     * systematically the first or second hot consumer.
+     */
+    foreach (warmup; 0 .. warmups)
+    {
+        if ((warmup & 1) == 0)
+        {
+            timeLegacy(source, legacyTarget, 1);
+            timeTransformInto(source, currentTarget, 1);
+        }
+        else
+        {
+            timeTransformInto(source, currentTarget, 1);
+            timeLegacy(source, legacyTarget, 1);
+        }
+    }
+
+    long[samples] legacyTimes;
+    long[samples] currentTimes;
+
+    /*
+     * Pair the two measurements inside each sample and rotate order on every
+     * sample. This removes the systematic "all legacy first, all new second"
+     * thermal/frequency bias of the first qualification harness.
+     */
+    foreach (sample; 0 .. samples)
+    {
+        if ((sample & 1) == 0)
+        {
+            legacyTimes[sample] =
+                timeLegacy(
+                    source,
+                    legacyTarget,
+                    iterations
+                );
+
+            currentTimes[sample] =
+                timeTransformInto(
+                    source,
+                    currentTarget,
+                    iterations
+                );
+        }
+        else
+        {
+            currentTimes[sample] =
+                timeTransformInto(
+                    source,
+                    currentTarget,
+                    iterations
+                );
+
+            legacyTimes[sample] =
+                timeLegacy(
+                    source,
+                    legacyTarget,
+                    iterations
+                );
+        }
+    }
+
+    const legacyChecksum =
+        checksumFloat(
+            legacyTargetLease.view()
+        );
+
+    const currentChecksum =
+        checksumFloat(
+            currentTargetLease.view()
+        );
+
+    require(
+        legacyChecksum == currentChecksum,
         "legacy/new checksum mismatch"
     );
+
+    const legacyMedian =
+        median(legacyTimes);
+
+    const currentMedian =
+        median(currentTimes);
 
     const pixels =
         cast(double)(
@@ -446,33 +373,33 @@ void main(
         );
 
     writefln(
-        "transform_into_benchmark compiler=%s api=legacy width=%s height=%s iterations=%s median_ns=%s ns_per_pixel=%.6f checksum=%016x",
+        "transform_into_benchmark compiler=%s api=legacy width=%s height=%s iterations=%s samples=%s median_ns=%s ns_per_pixel=%.6f checksum=%016x",
         compilerName(),
         width,
         height,
         iterations,
-        legacy.medianNs,
-        cast(double) legacy.medianNs
-            / pixels,
-        legacy.checksum
+        samples,
+        legacyMedian,
+        cast(double) legacyMedian / pixels,
+        legacyChecksum
     );
 
     writefln(
-        "transform_into_benchmark compiler=%s api=transformInto width=%s height=%s iterations=%s median_ns=%s ns_per_pixel=%.6f checksum=%016x",
+        "transform_into_benchmark compiler=%s api=transformInto width=%s height=%s iterations=%s samples=%s median_ns=%s ns_per_pixel=%.6f checksum=%016x",
         compilerName(),
         width,
         height,
         iterations,
-        current.medianNs,
-        cast(double) current.medianNs
-            / pixels,
-        current.checksum
+        samples,
+        currentMedian,
+        cast(double) currentMedian / pixels,
+        currentChecksum
     );
 
     writefln(
         "transform_into_ratio compiler=%s legacy_over_new=%.6f",
         compilerName(),
-        cast(double) legacy.medianNs
-            / cast(double) current.medianNs
+        cast(double) legacyMedian
+            / cast(double) currentMedian
     );
 }
