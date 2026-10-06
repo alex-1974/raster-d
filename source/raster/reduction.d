@@ -413,6 +413,361 @@ if (
 }
 
 
+private
+template isSupportedMeanResult(T)
+{
+    enum isSupportedMeanResult =
+        is(T == float)
+        || is(T == double);
+}
+
+
+/++
+    Whether Sample -> Accumulator -> Result is one supported mean pipeline.
+
+    Accumulation legality is exactly the generic sum contract.
+
+    Integer samples:
+    - Accumulator must be one legal exact integer accumulator from sum();
+    - Result is double so fractional means are representable as floating output.
+
+    Floating samples:
+    - float accumulator may produce float or double;
+    - double accumulator produces double only;
+    - narrowing double -> float is rejected.
+
+    real remains deliberately excluded.
++/
+private
+template isSupportedRasterMeanTriple(
+    Sample,
+    Accumulator,
+    Result
+)
+{
+    static if (
+        !isSupportedRasterSumPair!(
+            Sample,
+            Accumulator
+        )
+        || !isSupportedMeanResult!Result
+    )
+    {
+        enum isSupportedRasterMeanTriple =
+            false;
+    }
+    else static if (
+        isSupportedSumInteger!Sample
+    )
+    {
+        enum isSupportedRasterMeanTriple =
+            is(Result == double);
+    }
+    else static if (
+        is(Sample == float)
+        && is(Accumulator == float)
+    )
+    {
+        enum isSupportedRasterMeanTriple =
+            is(Result == float)
+            || is(Result == double);
+    }
+    else
+    {
+        enum isSupportedRasterMeanTriple =
+            is(Sample == float)
+                && is(Accumulator == double)
+                && is(Result == double)
+            || is(Sample == double)
+                && is(Accumulator == double)
+                && is(Result == double);
+    }
+}
+
+
+/++
+    Failure category for the generic mean family.
++/
+enum RasterMeanError : ubyte
+{
+    none,
+
+    invalidPlane,
+
+    emptyInput,
+
+    countOverflow,
+
+    accumulatorOverflow
+}
+
+
+/++
+    Result carrier for one generic mean reduction.
+
+    The default state is deliberately unsuccessful.
+
+    value is meaningful only when ok is true. Failed results expose +0 in the
+    selected Result type rather than a partial or fabricated mean.
++/
+struct RasterMeanResult(Result)
+if (isSupportedMeanResult!Result)
+{
+private:
+    RasterMeanError error_ =
+        RasterMeanError.invalidPlane;
+
+    Result value_ =
+        cast(Result) 0;
+
+public:
+
+    @property
+    RasterMeanError error() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_;
+    }
+
+
+    @property
+    Result value() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return value_;
+    }
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_
+            == RasterMeanError.none;
+    }
+}
+
+
+private
+RasterMeanResult!Result failedMeanResult(Result)(
+    RasterMeanError error
+)
+@safe
+pure
+nothrow
+@nogc
+if (isSupportedMeanResult!Result)
+{
+    RasterMeanResult!Result result;
+
+    result.error_ =
+        error;
+
+    return result;
+}
+
+
+private
+RasterMeanResult!Result successfulMeanResult(Result)(
+    Result value
+)
+@safe
+pure
+nothrow
+@nogc
+if (isSupportedMeanResult!Result)
+{
+    RasterMeanResult!Result result;
+
+    result.error_ =
+        RasterMeanError.none;
+
+    result.value_ =
+        value;
+
+    return result;
+}
+
+
+/++
+    Computes the arithmetic mean of one selected logical raster plane.
+
+    Accumulator and Result are both explicit:
+
+        source.mean!(Accumulator, Result)(planeIndex)
+
+    The accumulation phase is exactly sum!Accumulator() and therefore inherits
+    its strict row-major order, checked integer-overflow behavior and floating
+    NaN/infinity semantics.
+
+    Legal pipelines:
+
+    Integer Sample:
+    - use any legal integer Accumulator accepted by sum();
+    - Result must be double.
+
+    Floating Sample:
+    - float -> float accumulator -> float or double Result;
+    - float -> double accumulator -> double Result;
+    - double -> double accumulator -> double Result.
+
+    There is no implicit default accumulator or result type.
+
+    For integer accumulation, the checked integer sum is converted once to
+    double before the final division. Large exact integer sums/counts may round
+    during this documented binary64 conversion; no hidden wider floating type
+    is used.
+
+    For floating accumulation, Result may preserve or widen the accumulator but
+    never narrow it.
+
+    The logical count is width * height. It is checked before accumulation and
+    must fit size_t exactly.
+
+    Failure order:
+    1. invalid plane;
+    2. empty input;
+    3. count overflow;
+    4. accumulator overflow from sum().
+
+    Floating NaN/infinity are successful numerical results, not failures.
+
+    The operation allocates nothing, retains no source, and introduces no
+    alternate reduction graph or hidden scheduling.
++/
+RasterMeanResult!Result mean(
+    Accumulator,
+    Result,
+    Sample
+)(
+    scope RasterView!Sample source,
+    size_t planeIndex
+)
+@safe
+nothrow
+@nogc
+if (
+    isSupportedRasterMeanTriple!(
+        Sample,
+        Accumulator,
+        Result
+    )
+)
+{
+    if (planeIndex >= source.planeCount)
+    {
+        return failedMeanResult!Result(
+            RasterMeanError.invalidPlane
+        );
+    }
+
+    if (source.empty)
+    {
+        return failedMeanResult!Result(
+            RasterMeanError.emptyInput
+        );
+    }
+
+    if (
+        source.height != 0
+        && source.width
+            > size_t.max / source.height
+    )
+    {
+        return failedMeanResult!Result(
+            RasterMeanError.countOverflow
+        );
+    }
+
+    const count =
+        source.width
+        * source.height;
+
+    assert(count != 0);
+
+    const accumulated =
+        source.sum!Accumulator(
+            planeIndex
+        );
+
+    if (!accumulated.ok)
+    {
+        final switch (accumulated.error)
+        {
+            case RasterSumError.none:
+                assert(0);
+
+            case RasterSumError.invalidPlane:
+                return failedMeanResult!Result(
+                    RasterMeanError.invalidPlane
+                );
+
+            case RasterSumError.accumulatorOverflow:
+                return failedMeanResult!Result(
+                    RasterMeanError.accumulatorOverflow
+                );
+        }
+    }
+
+    const numerator =
+        cast(Result)
+            accumulated.value;
+
+    const denominator =
+        cast(Result)
+            count;
+
+    return successfulMeanResult!Result(
+        numerator / denominator
+    );
+}
+
+
+/// Example compiling ordinary and UFCS mean forms.
+@safe unittest
+{
+    import raster;
+
+    RasterView!float source;
+
+    const ordinary =
+        mean!(
+            double,
+            double
+        )(
+            source,
+            0
+        );
+
+    const ufcs =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    assert(!ordinary.ok);
+    assert(!ufcs.ok);
+
+    assert(
+        ordinary.error
+        == RasterMeanError.invalidPlane
+    );
+
+    assert(ufcs.error == ordinary.error);
+}
+
+
 /++
     Common failure category for min, max and minMax reductions.
 
@@ -1562,5 +1917,436 @@ static assert(
     !isSupportedExtremaSample!ExtremaPairSample
 );
 
+
+
+
+/*
+ * Integer mean preserves fractional output through an explicit double result.
+ */
+unittest
+{
+    int[4] storage =
+        [1, 2, 3, 4];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            4,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!int(
+            descriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    const result =
+        source.mean!(
+            long,
+            double
+        )(
+            0
+        );
+
+    assert(result.ok);
+    assert(result.value == 2.5);
+}
+
+
+/*
+ * Signed strides preserve mean semantics through the shared sum path.
+ */
+unittest
+{
+    short[8] storage =
+        [1, 99, 2, 99, 3, 99, 4, 99];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr + 6,
+            -4,
+            -2
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!short(
+            descriptors[],
+            Region2D(0, 0, 2, 2)
+        );
+
+    const result =
+        source.mean!(
+            long,
+            double
+        )(
+            0
+        );
+
+    assert(result.ok);
+    assert(result.value == 2.5);
+}
+
+
+/*
+ * Accumulator precision is observable and therefore explicit.
+ *
+ * float accumulation:
+ *     16777216 + 1 - 16777216 + 1 == 1
+ *
+ * double accumulation after exact float->double conversion:
+ *     16777216 + 1 - 16777216 + 1 == 2
+ */
+unittest
+{
+    float[4] storage =
+    [
+        16777216.0f,
+        1.0f,
+        -16777216.0f,
+        1.0f
+    ];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            4,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!float(
+            descriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    const narrowAccumulator =
+        source.mean!(
+            float,
+            double
+        )(
+            0
+        );
+
+    const wideAccumulator =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    assert(narrowAccumulator.ok);
+    assert(wideAccumulator.ok);
+
+    assert(narrowAccumulator.value == 0.25);
+    assert(wideAccumulator.value == 0.5);
+}
+
+
+/*
+ * Empty input has no mean and is distinct from invalid plane.
+ */
+unittest
+{
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            null,
+            ptrdiff_t.min,
+            ptrdiff_t.min
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(
+                size_t.max,
+                size_t.max,
+                0,
+                3
+            )
+        );
+
+    const emptyResult =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    const invalidResult =
+        source.mean!(
+            double,
+            double
+        )(
+            1
+        );
+
+    assert(!emptyResult.ok);
+    assert(!invalidResult.ok);
+
+    assert(
+        emptyResult.error
+        == RasterMeanError.emptyInput
+    );
+
+    assert(
+        invalidResult.error
+        == RasterMeanError.invalidPlane
+    );
+}
+
+
+/*
+ * Count overflow is detected before accumulation.
+ *
+ * makeRasterViewAssumeValidated is intentionally used by this package-local
+ * boundary test so the mean preflight can be exercised without constructing an
+ * impossibly large physical backing.
+ */
+unittest
+{
+    double storage = 1.0;
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            &storage,
+            0,
+            0
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(
+                0,
+                0,
+                size_t.max,
+                2
+            )
+        );
+
+    const result =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == RasterMeanError.countOverflow
+    );
+}
+
+
+/*
+ * Checked integer sum overflow propagates as mean accumulator overflow.
+ */
+unittest
+{
+    long[2] storage =
+        [long.max, 1];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            2,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!long(
+            descriptors[],
+            Region2D(0, 0, 2, 1)
+        );
+
+    const result =
+        source.mean!(
+            long,
+            double
+        )(
+            0
+        );
+
+    assert(!result.ok);
+
+    assert(
+        result.error
+        == RasterMeanError.accumulatorOverflow
+    );
+}
+
+
+/*
+ * Floating NaN participates through strict sum and remains a successful mean.
+ */
+unittest
+{
+    float[3] storage =
+        [1.0f, float.nan, 2.0f];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            3,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!float(
+            descriptors[],
+            Region2D(0, 0, 3, 1)
+        );
+
+    const result =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    assert(result.ok);
+    assert(result.value != result.value);
+}
+
+
+/*
+ * Infinite floating sums remain successful numerical mean results.
+ */
+unittest
+{
+    double[2] storage =
+        [double.infinity, 1.0];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            2,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(0, 0, 2, 1)
+        );
+
+    const result =
+        source.mean!(
+            double,
+            double
+        )(
+            0
+        );
+
+    assert(result.ok);
+    assert(result.value == double.infinity);
+}
+
+
+/*
+ * Mean type boundary is explicit.
+ */
+static assert(
+    isSupportedRasterMeanTriple!(
+        int,
+        long,
+        double
+    )
+);
+
+static assert(
+    isSupportedRasterMeanTriple!(
+        ubyte,
+        ushort,
+        double
+    )
+);
+
+static assert(
+    isSupportedRasterMeanTriple!(
+        float,
+        float,
+        float
+    )
+);
+
+static assert(
+    isSupportedRasterMeanTriple!(
+        float,
+        float,
+        double
+    )
+);
+
+static assert(
+    isSupportedRasterMeanTriple!(
+        float,
+        double,
+        double
+    )
+);
+
+static assert(
+    isSupportedRasterMeanTriple!(
+        double,
+        double,
+        double
+    )
+);
+
+static assert(
+    !isSupportedRasterMeanTriple!(
+        int,
+        long,
+        float
+    )
+);
+
+static assert(
+    !isSupportedRasterMeanTriple!(
+        int,
+        double,
+        double
+    )
+);
+
+static assert(
+    !isSupportedRasterMeanTriple!(
+        double,
+        double,
+        float
+    )
+);
+
+static assert(
+    !isSupportedRasterMeanTriple!(
+        real,
+        real,
+        real
+    )
+);
 
 } // version (unittest)
