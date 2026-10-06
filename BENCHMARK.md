@@ -703,3 +703,80 @@ The family remains only `partial` until a stable reference-XPS run is retained
 with the metadata required by the M5.1 benchmark-family contract. No C++
 performance conclusion is made here; the comparable C++ gate belongs to M5.7 /
 Issue #121.
+
+
+## M5.1 binary transform / arithmetic qualification
+
+Reference archive:
+
+    raster-v0.2-binary-transform-arithmetic-20261006-221741.tar.gz
+
+SHA256:
+
+    96e00251d079b3c49ebfa6097d7430bb98e95fcee65153132427aa39163521d8
+
+Benchmark head:
+
+    714e808b56b5a8cfb9bc8b53265d1112652b1e13
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- 32 elements row padding;
+- Canonical sample stride 1;
+- independent source/destination backing;
+- 8 iterations per timed sample;
+- 18 timed samples per process;
+- six independent processes per compiler.
+
+The recursive archive manifest verifies completely. Every compared path for one
+operation produced the same stable checksum and destination padding remained
+unchanged.
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired public/executor ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | add public zip | 0.480881 | 0.991960 |
+| DMD 2.111 | add public wrapper | 0.487226 | 0.996067 |
+| DMD 2.111 | add hot executor | 0.483760 | — |
+| DMD 2.111 | subtract wrapper | 0.541404 | 0.996800 |
+| DMD 2.111 | subtract hot executor | 0.541764 | — |
+| DMD 2.111 | multiply wrapper | 0.540704 | 1.113914 |
+| DMD 2.111 | multiply hot executor | 0.485399 | — |
+| DMD 2.111 | divide wrapper | 0.758606 | 0.995785 |
+| DMD 2.111 | divide hot executor | 0.763014 | — |
+| LDC 1.41 | add public zip | 0.429830 | 0.988816 |
+| LDC 1.41 | add public wrapper | 0.454840 | 1.029881 |
+| LDC 1.41 | add hot executor | 0.440601 | — |
+| LDC 1.41 | subtract wrapper | 0.399736 | 0.975722 |
+| LDC 1.41 | subtract hot executor | 0.421235 | — |
+| LDC 1.41 | multiply wrapper | 0.467124 | 1.063160 |
+| LDC 1.41 | multiply hot executor | 0.401172 | — |
+| LDC 1.41 | divide wrapper | 0.396779 | 0.941382 |
+| LDC 1.41 | divide hot executor | 0.419193 | — |
+
+Interpretation:
+
+- generic public `zipTransformInto` and `addInto` are effectively at parity
+  with the approved Canonical executor on the qualified DMD run;
+- LDC absolute process timings show larger machine-state variation, but paired
+  same-process ratios show no systematic public/preflight/executor cliff;
+- the approximately 10x M4.6 convolution public/direct gap is not reproduced by
+  this family;
+- DMD multiply retains an approximately 11% median wrapper/executor difference,
+  with LDC around 6%; this is a focused M5.3 codegen/inlining signal, not a new
+  execution-family problem.
+
+The binary-transform/arithmetic family is accepted as qualified M5.1 benchmark
+evidence. Cross-language comparison remains M5.7 / Issue #121.
