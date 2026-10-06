@@ -196,7 +196,7 @@ private void executePreparedCanonical(
     size_t height,
     scope float* destinationBase,
     size_t destinationRowElements,
-    scope const PreparedKernel3x3* prepared
+    scope ref const PreparedKernel3x3 prepared
 )
 @trusted
 nothrow
@@ -345,7 +345,7 @@ private long timePrepared(
     size_t height,
     scope float* destinationBase,
     size_t destinationRowElements,
-    scope const PreparedKernel3x3* prepared,
+    scope ref const PreparedKernel3x3 prepared,
     size_t iterations
 )
 @safe
@@ -499,7 +499,7 @@ void main(string[] args)
         "one-shot writable destination unavailable"
     );
 
-    const runtimeCoefficients =
+    const float[9] runtimeCoefficients =
         [
              0.125f, -0.250f,  0.375f,
             -0.500f,  1.250f, -0.625f,
@@ -539,7 +539,7 @@ void main(string[] args)
         height,
         preparedBase,
         width,
-        &prepared
+        prepared
     );
 
     const oneShotChecksum =
@@ -583,7 +583,7 @@ void main(string[] args)
                 height,
                 preparedBase,
                 width,
-                &prepared,
+                prepared,
                 1
             );
         }
@@ -596,7 +596,7 @@ void main(string[] args)
                 height,
                 preparedBase,
                 width,
-                &prepared,
+                prepared,
                 1
             );
 
@@ -648,7 +648,7 @@ void main(string[] args)
                     height,
                     preparedBase,
                     width,
-                    &prepared,
+                    prepared,
                     iterations
                 );
         }
@@ -662,7 +662,7 @@ void main(string[] args)
                     height,
                     preparedBase,
                     width,
-                    &prepared,
+                    prepared,
                     iterations
                 );
 
