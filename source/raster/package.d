@@ -43,7 +43,8 @@ public import raster.reduction :
     trySumFloatToDouble;
 
 public import raster.fill :
-    tryFillRasterPlane;
+    tryFillRasterPlane,
+    fill;
 
 public import raster.transform :
     RasterTransformError,
@@ -73,7 +74,8 @@ public import raster.neighbourhood :
 
 public import raster.copy :
     RasterCopyError,
-    tryCopyRasterPlane;
+    tryCopyRasterPlane,
+    copyInto;
 
 public import raster.conversion :
     UbyteToFloatConversionError,
