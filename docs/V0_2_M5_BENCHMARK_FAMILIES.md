@@ -64,7 +64,7 @@ Current families are:
 | reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
 | fill-copy | `fill`, `copyInto` | historical executor evidence; v0.2 family gap |
-| binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | gap |
+| binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | partial — retained layered harness; reference-XPS evidence pending |
 | conversion | `convertRasterInto`, allocated conversion wrapper | historical exact-conversion evidence; generic v0.2 gap |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
 
@@ -91,6 +91,28 @@ already-qualified legacy public path. It establishes wrapper overhead evidence.
 
 Historical M3.2b evidence separately characterizes the public transform path and
 the approved Canonical executor.
+
+### Binary transform / arithmetic
+
+`benchmark/v0_2_binary_transform_arithmetic` measures one representative
+Canonical padded float workload at three relevant layers:
+
+~~~text
+generic public zip
+public arithmetic wrapper
+approved Canonical hot executor
+~~~
+
+Addition uses all three paths, so wrapper overhead can be separated from the
+larger public-semantic/preflight/dispatch boundary. Subtract, multiply and divide
+compare the public wrapper with the same approved Canonical executor shape using
+their corresponding numeric operation.
+
+All compared paths for an operation require identical logical checksums and
+unchanged destination padding. The harness is retained and compile-smoked under
+DMD/LDC; the family remains `partial` until reference-XPS evidence is recorded.
+
+A cross-language reference is intentionally deferred to M5.7 / Issue #121.
 
 ### Fill / copy / conversion
 
