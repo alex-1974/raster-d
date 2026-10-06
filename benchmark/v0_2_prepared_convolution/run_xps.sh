@@ -2,17 +2,18 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-BRANCH="research/v0.2-m4-prepared-convolution"
+HARNESS_BASE="adecb39ab5754ad331454bfe7c5a46623307f787"
 CPU="${1:-0}"
 OUT="${2:-/tmp/raster-v0.2-prepared-convolution-$(date +%Y%m%d-%H%M%S)}"
 
-test "$(git -C "$ROOT" branch --show-current)" = "$BRANCH"
+git -C "$ROOT" merge-base --is-ancestor "$HARNESS_BASE" HEAD
 test ! -e "$OUT"
 mkdir -p "$OUT"
 
 {
     echo "head=$(git -C "$ROOT" rev-parse HEAD)"
     echo "branch=$(git -C "$ROOT" branch --show-current)"
+    echo "harness_base=$HARNESS_BASE"
     echo "cpu=$CPU"
     echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     uname -a
