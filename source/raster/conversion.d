@@ -1187,7 +1187,11 @@ unittest
     );
 
     assert(error == RasterConversionError.none);
-    assert(destinationStorage == [4, 3, 2, 1]);
+    /*
+     * Logical destination order is [4,3;2,1], but the negative destination
+     * strides map that logical order back onto ascending physical storage.
+     */
+    assert(destinationStorage == [1, 2, 3, 4]);
 }
 
 
