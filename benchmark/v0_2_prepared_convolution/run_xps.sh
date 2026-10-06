@@ -220,7 +220,8 @@ with (root / "summary.txt").open("w") as out:
     out.write(
         f"checksum={next(iter(checksums['one_shot']))}\n"
     )
-PYdone
+PY
+done
 
 snapshot_freq after
 
