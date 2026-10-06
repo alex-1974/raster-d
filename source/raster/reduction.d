@@ -1552,14 +1552,18 @@ unittest
     assert(!result.ok);
 }
 
-static assert(
-    __traits(
-        compiles,
-        typeof(
-            RasterView!long.init.max(0)
-        )
-    )
-);
+unittest
+{
+    RasterView!long source;
+
+    const result =
+        max(
+            source,
+            0
+        );
+
+    assert(!result.ok);
+}
 
 static assert(
     __traits(
