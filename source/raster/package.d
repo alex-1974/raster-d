@@ -42,7 +42,13 @@ public import raster.writable_view :
 public import raster.reduction :
     RasterSumError,
     RasterSumResult,
+    RasterExtremaError,
+    RasterExtremaResult,
+    RasterMinMaxResult,
     sum,
+    min,
+    max,
+    minMax,
     trySumFloatToDouble;
 
 public import raster.fill :

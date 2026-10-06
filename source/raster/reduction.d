@@ -19,6 +19,11 @@ import raster.internal.strict_sum :
     StrictSumStatus,
     executeStrictSum;
 
+import raster.internal.extrema :
+    ExtremaMode,
+    ExtremaStatus,
+    executeExtrema;
+
 import raster.view :
     RasterView;
 
@@ -405,6 +410,402 @@ if (
     );
 
     assert(ufcs.error == ordinary.error);
+}
+
+
+/++
+    Common failure category for min, max and minMax reductions.
+
+    NaN is not a failure. A non-empty floating input containing NaN succeeds
+    with a NaN extrema result according to the M3.1 contract.
++/
+enum RasterExtremaError : ubyte
+{
+    none,
+
+    invalidPlane,
+
+    emptyInput
+}
+
+
+/++
+    Result carrier for one min or max reduction.
+
+    The default state is deliberately unsuccessful.
+
+    value is meaningful only when ok is true.
++/
+struct RasterExtremaResult(T)
+if (isSupportedExtremaSample!T)
+{
+private:
+    RasterExtremaError error_ =
+        RasterExtremaError.invalidPlane;
+
+    T value_ =
+        T.init;
+
+public:
+
+    @property
+    RasterExtremaError error() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_;
+    }
+
+
+    @property
+    T value() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return value_;
+    }
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_
+            == RasterExtremaError.none;
+    }
+}
+
+
+/++
+    Result carrier for one one-pass minMax reduction.
+
+    minimum and maximum are meaningful only when ok is true.
++/
+struct RasterMinMaxResult(T)
+if (isSupportedExtremaSample!T)
+{
+private:
+    RasterExtremaError error_ =
+        RasterExtremaError.invalidPlane;
+
+    T minimum_ =
+        T.init;
+
+    T maximum_ =
+        T.init;
+
+public:
+
+    @property
+    RasterExtremaError error() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_;
+    }
+
+
+    @property
+    T minimum() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return minimum_;
+    }
+
+
+    @property
+    T maximum() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return maximum_;
+    }
+
+
+    @property
+    bool ok() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return error_
+            == RasterExtremaError.none;
+    }
+}
+
+
+private
+template isSupportedExtremaSample(T)
+{
+    enum isSupportedExtremaSample =
+        is(T == byte)
+        || is(T == ubyte)
+        || is(T == short)
+        || is(T == ushort)
+        || is(T == int)
+        || is(T == uint)
+        || is(T == long)
+        || is(T == ulong)
+        || is(T == float)
+        || is(T == double);
+}
+
+
+private
+RasterExtremaError publicExtremaError(
+    ExtremaStatus status
+)
+@safe
+pure
+nothrow
+@nogc
+{
+    final switch (status)
+    {
+        case ExtremaStatus.none:
+            return RasterExtremaError.none;
+
+        case ExtremaStatus.invalidPlane:
+            return RasterExtremaError.invalidPlane;
+
+        case ExtremaStatus.emptyInput:
+            return RasterExtremaError.emptyInput;
+    }
+}
+
+
+private
+RasterExtremaResult!T extremaResult(T)(
+    ExtremaStatus status,
+    T value
+)
+@safe
+pure
+nothrow
+@nogc
+if (isSupportedExtremaSample!T)
+{
+    RasterExtremaResult!T result;
+
+    result.error_ =
+        publicExtremaError(status);
+
+    if (status == ExtremaStatus.none)
+    {
+        result.value_ =
+            value;
+    }
+
+    return result;
+}
+
+
+private
+RasterMinMaxResult!T minMaxResult(T)(
+    ExtremaStatus status,
+    T minimum,
+    T maximum
+)
+@safe
+pure
+nothrow
+@nogc
+if (isSupportedExtremaSample!T)
+{
+    RasterMinMaxResult!T result;
+
+    result.error_ =
+        publicExtremaError(status);
+
+    if (status == ExtremaStatus.none)
+    {
+        result.minimum_ =
+            minimum;
+
+        result.maximum_ =
+            maximum;
+    }
+
+    return result;
+}
+
+
+/++
+    Returns the minimum sample of one selected logical raster plane.
+
+    Supported sample types are:
+
+        byte, ubyte, short, ushort, int, uint, long, ulong, float, double
+
+    real and non-numeric representation-only Raster sample types are rejected at
+    compile time.
+
+    A valid empty selected plane fails with RasterExtremaError.emptyInput.
+
+    Floating semantics:
+
+    - if any logical sample is NaN, the operation succeeds with a NaN value;
+    - infinities participate as ordinary ordered floating values;
+    - when both signed zeros occur, the minimum is -0 independent of encounter
+      order.
+
+    All validated resident signed affine layouts are semantically equivalent.
+    The operation allocates nothing and retains no source.
++/
+RasterExtremaResult!T min(T)(
+    scope RasterView!T source,
+    size_t planeIndex
+)
+@safe
+nothrow
+@nogc
+if (isSupportedExtremaSample!T)
+{
+    const execution =
+        executeExtrema!(
+            ExtremaMode.minimum,
+            T
+        )(
+            source,
+            planeIndex
+        );
+
+    return extremaResult!T(
+        execution.status,
+        execution.minimum
+    );
+}
+
+
+/++
+    Returns the maximum sample of one selected logical raster plane.
+
+    Supported sample types and failure semantics match min().
+
+    Floating semantics:
+
+    - if any logical sample is NaN, the operation succeeds with a NaN value;
+    - infinities participate as ordinary ordered floating values;
+    - when both signed zeros occur, the maximum is +0 independent of encounter
+      order.
+
+    All validated resident signed affine layouts are semantically equivalent.
+    The operation allocates nothing and retains no source.
++/
+RasterExtremaResult!T max(T)(
+    scope RasterView!T source,
+    size_t planeIndex
+)
+@safe
+nothrow
+@nogc
+if (isSupportedExtremaSample!T)
+{
+    const execution =
+        executeExtrema!(
+            ExtremaMode.maximum,
+            T
+        )(
+            source,
+            planeIndex
+        );
+
+    return extremaResult!T(
+        execution.status,
+        execution.maximum
+    );
+}
+
+
+/++
+    Returns both minimum and maximum of one selected logical raster plane.
+
+    minMax performs one logical pass.
+
+    Its minimum and maximum are semantically identical to separate min() and
+    max() calls over the same logical samples, including NaN propagation,
+    infinities and signed-zero tie handling.
+
+    Empty input fails with RasterExtremaError.emptyInput.
+
+    All validated resident signed affine layouts are semantically equivalent.
+    The operation allocates nothing and retains no source.
++/
+RasterMinMaxResult!T minMax(T)(
+    scope RasterView!T source,
+    size_t planeIndex
+)
+@safe
+nothrow
+@nogc
+if (isSupportedExtremaSample!T)
+{
+    const execution =
+        executeExtrema!(
+            ExtremaMode.minMax,
+            T
+        )(
+            source,
+            planeIndex
+        );
+
+    return minMaxResult!T(
+        execution.status,
+        execution.minimum,
+        execution.maximum
+    );
+}
+
+
+/// Example compiling ordinary and UFCS extrema forms.
+@safe unittest
+{
+    import raster;
+
+    RasterView!float source;
+
+    const ordinary =
+        min(
+            source,
+            0
+        );
+
+    const ufcs =
+        source.max(
+            0
+        );
+
+    const pair =
+        source.minMax(
+            0
+        );
+
+    assert(!ordinary.ok);
+    assert(!ufcs.ok);
+    assert(!pair.ok);
+
+    assert(
+        ordinary.error
+        == RasterExtremaError.invalidPlane
+    );
+
+    assert(ufcs.error == ordinary.error);
+    assert(pair.error == ordinary.error);
 }
 
 /++
@@ -883,6 +1284,282 @@ static assert(
             RasterView!real.init.sum!real(0)
         )
     )
+);
+
+
+
+
+/*
+ * Integer extrema and one-pass minMax agree.
+ */
+unittest
+{
+    int[6] storage =
+        [7, -2, 9, 4, -8, 5];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            3,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!int(
+            descriptors[],
+            Region2D(0, 0, 3, 2)
+        );
+
+    const minimum =
+        source.min(0);
+
+    const maximum =
+        source.max(0);
+
+    const pair =
+        source.minMax(0);
+
+    assert(minimum.ok);
+    assert(maximum.ok);
+    assert(pair.ok);
+
+    assert(minimum.value == -8);
+    assert(maximum.value == 9);
+    assert(pair.minimum == minimum.value);
+    assert(pair.maximum == maximum.value);
+}
+
+
+/*
+ * Signed row/sample strides do not alter logical extrema.
+ */
+unittest
+{
+    short[8] storage =
+        [1, 99, 8, 99, -3, 99, 4, 99];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr + 6,
+            -4,
+            -2
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!short(
+            descriptors[],
+            Region2D(0, 0, 2, 2)
+        );
+
+    const pair =
+        source.minMax(0);
+
+    assert(pair.ok);
+    assert(pair.minimum == -3);
+    assert(pair.maximum == 8);
+}
+
+
+/*
+ * Empty is an explicit failure distinct from invalid plane.
+ */
+unittest
+{
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            null,
+            ptrdiff_t.min,
+            ptrdiff_t.min
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(
+                size_t.max,
+                size_t.max,
+                0,
+                3
+            )
+        );
+
+    const emptyResult =
+        source.minMax(0);
+
+    const invalidResult =
+        source.minMax(1);
+
+    assert(!emptyResult.ok);
+    assert(!invalidResult.ok);
+
+    assert(
+        emptyResult.error
+        == RasterExtremaError.emptyInput
+    );
+
+    assert(
+        invalidResult.error
+        == RasterExtremaError.invalidPlane
+    );
+}
+
+
+/*
+ * Any NaN produces successful NaN extrema and is not interpreted as missing
+ * data.
+ */
+unittest
+{
+    double[4] storage =
+        [4.0, -2.0, double.nan, 9.0];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            4,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(0, 0, 4, 1)
+        );
+
+    const minimum =
+        source.min(0);
+
+    const maximum =
+        source.max(0);
+
+    const pair =
+        source.minMax(0);
+
+    assert(minimum.ok);
+    assert(maximum.ok);
+    assert(pair.ok);
+
+    assert(minimum.value != minimum.value);
+    assert(maximum.value != maximum.value);
+    assert(pair.minimum != pair.minimum);
+    assert(pair.maximum != pair.maximum);
+}
+
+
+/*
+ * Signed zero is order independent for separate and combined extrema.
+ */
+unittest
+{
+    import std.math : signbit;
+
+    float[2] storage =
+        [+0.0f, -0.0f];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            2,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!float(
+            descriptors[],
+            Region2D(0, 0, 2, 1)
+        );
+
+    const minimum =
+        source.min(0);
+
+    const maximum =
+        source.max(0);
+
+    const pair =
+        source.minMax(0);
+
+    assert(minimum.ok);
+    assert(maximum.ok);
+    assert(pair.ok);
+
+    assert(signbit(minimum.value));
+    assert(!signbit(maximum.value));
+
+    assert(signbit(pair.minimum));
+    assert(!signbit(pair.maximum));
+}
+
+
+/*
+ * Infinities remain ordinary ordered values.
+ */
+unittest
+{
+    double[3] storage =
+        [
+            -double.infinity,
+            3.0,
+            double.infinity
+        ];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            3,
+            1
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!double(
+            descriptors[],
+            Region2D(0, 0, 3, 1)
+        );
+
+    const pair =
+        source.minMax(0);
+
+    assert(pair.ok);
+    assert(pair.minimum == -double.infinity);
+    assert(pair.maximum == double.infinity);
+}
+
+
+/*
+ * Public sample constraints.
+ *
+ * Legal public instantiations are exercised by ordinary unittests above.
+ * The constraint predicate itself is asserted here for the boundary types so
+ * compiler-specific address-of/template-probe syntax does not become part of
+ * the test contract.
+ */
+static assert(isSupportedExtremaSample!ubyte);
+static assert(isSupportedExtremaSample!long);
+static assert(isSupportedExtremaSample!float);
+static assert(isSupportedExtremaSample!double);
+
+static assert(!isSupportedExtremaSample!real);
+
+private
+struct ExtremaPairSample
+{
+    int x;
+    int y;
+}
+
+static assert(
+    !isSupportedExtremaSample!ExtremaPairSample
 );
 
 
