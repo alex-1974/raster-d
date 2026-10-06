@@ -75,7 +75,7 @@ for compiler in dmd ldc2; do
 
         taskset -c "$CPU" "$tmp/$label"             > "$dir/run-$process.txt"
 
-        test "$(grep -c '^prepared_convolution ' "$dir/run-$process.txt")" -eq 3
+        test "$(grep -c '^prepared_convolution ' "$dir/run-$process.txt")" -eq 4
         test "$(grep -c '^prepared_convolution_ratio ' "$dir/run-$process.txt")" -eq 1
 
         snapshot_freq "$label-post-$process"
@@ -90,11 +90,17 @@ import sys
 root = Path(sys.argv[1])
 
 one_shot = []
+direct_fixed = []
 prepared = []
 prep = []
-ratios = []
-break_even = []
-checksums = {"one_shot": set(), "prepared": set()}
+preflight_ratios = []
+prepared_ratios = []
+prepared_break_even = []
+checksums = {
+    "one_shot": set(),
+    "direct_fixed": set(),
+    "prepared": set(),
+}
 
 for path in sorted(root.glob("run-*.txt")):
     for line in path.read_text().splitlines():
@@ -102,12 +108,16 @@ for path in sorted(root.glob("run-*.txt")):
             fields = dict(item.split("=", 1) for item in line.split()[1:])
             mode = fields["mode"]
 
-            if mode in ("one_shot", "prepared"):
+            if mode in ("one_shot", "direct_fixed", "prepared"):
                 value = float(fields["ns_per_pixel"])
+
                 if mode == "one_shot":
                     one_shot.append(value)
+                elif mode == "direct_fixed":
+                    direct_fixed.append(value)
                 else:
                     prepared.append(value)
+
                 checksums[mode].add(fields["checksum"])
 
             elif mode == "prepare":
@@ -115,56 +125,102 @@ for path in sorted(root.glob("run-*.txt")):
 
         elif line.startswith("prepared_convolution_ratio "):
             fields = dict(item.split("=", 1) for item in line.split()[1:])
-            ratios.append(float(fields["one_shot_over_prepared"]))
 
-            value = float(fields["break_even_reuse"])
-            break_even.append(value)
+            preflight_ratios.append(
+                float(fields["one_shot_over_direct_fixed"])
+            )
 
-if not all(len(v) == 6 for v in (one_shot, prepared, prep, ratios, break_even)):
+            prepared_ratios.append(
+                float(fields["direct_fixed_over_prepared"])
+            )
+
+            prepared_break_even.append(
+                float(fields["prepared_break_even_reuse"])
+            )
+
+series = (
+    one_shot,
+    direct_fixed,
+    prepared,
+    prep,
+    preflight_ratios,
+    prepared_ratios,
+    prepared_break_even,
+)
+
+if not all(len(v) == 6 for v in series):
     raise SystemExit(
         "expected six process values: "
-        f"one_shot={len(one_shot)} prepared={len(prepared)} "
-        f"prep={len(prep)} ratios={len(ratios)} break_even={len(break_even)}"
+        f"one_shot={len(one_shot)} "
+        f"direct_fixed={len(direct_fixed)} "
+        f"prepared={len(prepared)} "
+        f"prep={len(prep)} "
+        f"preflight_ratios={len(preflight_ratios)} "
+        f"prepared_ratios={len(prepared_ratios)} "
+        f"prepared_break_even={len(prepared_break_even)}"
     )
 
-if len(checksums["one_shot"]) != 1 or checksums["one_shot"] != checksums["prepared"]:
+if any(len(values) != 1 for values in checksums.values()):
+    raise SystemExit(f"unstable checksums: {checksums}")
+
+if not (
+    checksums["one_shot"]
+    == checksums["direct_fixed"]
+    == checksums["prepared"]
+):
     raise SystemExit(f"checksum mismatch: {checksums}")
 
-finite_break_even = [v for v in break_even if math.isfinite(v)]
+finite_break_even = [
+    value
+    for value in prepared_break_even
+    if math.isfinite(value)
+]
 
 with (root / "summary.txt").open("w") as out:
     out.write(
         f"one_shot_n=6 median_ns_per_pixel={statistics.median(one_shot):.6f} "
         f"min={min(one_shot):.6f} max={max(one_shot):.6f}\n"
     )
+
+    out.write(
+        f"direct_fixed_n=6 median_ns_per_pixel={statistics.median(direct_fixed):.6f} "
+        f"min={min(direct_fixed):.6f} max={max(direct_fixed):.6f}\n"
+    )
+
     out.write(
         f"prepared_n=6 median_ns_per_pixel={statistics.median(prepared):.6f} "
         f"min={min(prepared):.6f} max={max(prepared):.6f}\n"
     )
+
     out.write(
         f"prepare_n=6 median_ns_per_prepare={statistics.median(prep):.6f} "
         f"min={min(prep):.6f} max={max(prep):.6f}\n"
     )
+
     out.write(
-        f"one_shot_over_prepared_n=6 median={statistics.median(ratios):.6f} "
-        f"min={min(ratios):.6f} max={max(ratios):.6f}\n"
+        f"one_shot_over_direct_fixed_n=6 median={statistics.median(preflight_ratios):.6f} "
+        f"min={min(preflight_ratios):.6f} max={max(preflight_ratios):.6f}\n"
+    )
+
+    out.write(
+        f"direct_fixed_over_prepared_n=6 median={statistics.median(prepared_ratios):.6f} "
+        f"min={min(prepared_ratios):.6f} max={max(prepared_ratios):.6f}\n"
     )
 
     if finite_break_even:
         out.write(
-            f"break_even_reuse_finite_n={len(finite_break_even)} "
+            f"prepared_break_even_reuse_finite_n={len(finite_break_even)} "
             f"median={statistics.median(finite_break_even):.9f} "
             f"min={min(finite_break_even):.9f} "
             f"max={max(finite_break_even):.9f}\n"
         )
     else:
-        out.write("break_even_reuse_finite_n=0\n")
+        out.write("prepared_break_even_reuse_finite_n=0\n")
 
     out.write(
         f"checksum={next(iter(checksums['one_shot']))}\n"
     )
-PY
-done
+PYdone
 
 snapshot_freq after
 
