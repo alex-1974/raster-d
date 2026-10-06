@@ -65,7 +65,7 @@ Current families are:
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
 | fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
-| conversion | `convertRasterInto`, allocated conversion wrapper | historical exact-conversion evidence; generic v0.2 gap |
+| conversion | `convertRasterInto`, `tryConvertAllocated` | partial — retained generic-policy/allocated harness; reference-XPS evidence pending |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
 
 Trivial metadata accessors, enums, result carriers and compile-time traits do not
@@ -281,6 +281,38 @@ public-v0.2 or public-error-bridge penalty is observed on either compiler.
 
 Combined with the retained M3.3/M3.5 executor evidence, the fill/copy family is
 therefore `qualified` for M5.1.
+
+### Conversion
+
+`benchmark/v0_2_conversion` covers the generic v0.2 exact-policy surface
+without exposing private numeric executors.
+
+It separates three comparisons:
+
+~~~text
+ubyte -> float:
+    public generic convertRasterInto
+    public specialized tryConvertUbyteToFloatPlane
+    package exact semantic engine
+
+ushort -> float:
+    public generic convertRasterInto
+    package exact semantic engine
+
+allocated ushort -> float:
+    public tryConvertAllocated
+    explicit allocateCompactRaster + writable view + convertRasterInto
+~~~
+
+The ubyte comparison isolates the generic policy/API spelling from the
+already-qualified compiler-specialized M3.5 production path. The ushort pair
+exercises the generic exact-policy engine instead of the historical special
+case. The allocating pair measures the convenience wrapper against the same
+explicit allocation/conversion sequence.
+
+Private execution helpers remain private. ADR 0013 / ADR 0014 and retained M3.5
+evidence remain the executor/preflight/code-generation evidence. The family is
+`partial` until stable reference-XPS evidence is retained.
 
 ### Fill / copy / conversion
 
