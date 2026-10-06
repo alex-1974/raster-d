@@ -49,6 +49,9 @@ public import raster.transform :
     RasterTransformError,
     tryTransformRasterPlane;
 
+public import raster.transform_into :
+    transformInto;
+
 public import raster.neighbourhood :
     RasterNeighbourhood3x3Error,
     tryApplyRasterNeighbourhood3x3;
