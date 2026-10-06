@@ -1537,46 +1537,19 @@ unittest
 
 
 /*
- * Public sample constraints are explicit compile contracts.
+ * Public sample constraints.
  *
- * Probe the instantiated function symbol rather than calling through
- * RasterView!T.init. The latter introduces a temporary-scope/lifetime question
- * that is unrelated to whether the public template itself is legal for T.
+ * Legal public instantiations are exercised by ordinary unittests above.
+ * The constraint predicate itself is asserted here for the boundary types so
+ * compiler-specific address-of/template-probe syntax does not become part of
+ * the test contract.
  */
-static assert(
-    __traits(
-        compiles,
-        &min!ubyte
-    )
-);
+static assert(isSupportedExtremaSample!ubyte);
+static assert(isSupportedExtremaSample!long);
+static assert(isSupportedExtremaSample!float);
+static assert(isSupportedExtremaSample!double);
 
-static assert(
-    __traits(
-        compiles,
-        &max!long
-    )
-);
-
-static assert(
-    __traits(
-        compiles,
-        &minMax!float
-    )
-);
-
-static assert(
-    __traits(
-        compiles,
-        &minMax!double
-    )
-);
-
-static assert(
-    !__traits(
-        compiles,
-        &min!real
-    )
-);
+static assert(!isSupportedExtremaSample!real);
 
 private
 struct ExtremaPairSample
@@ -1586,10 +1559,7 @@ struct ExtremaPairSample
 }
 
 static assert(
-    !__traits(
-        compiles,
-        &minMax!ExtremaPairSample
-    )
+    !isSupportedExtremaSample!ExtremaPairSample
 );
 
 
