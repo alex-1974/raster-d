@@ -603,7 +603,8 @@ nothrow
                 const transformed =
                     invokeNeighbourhoodKernel!(
                         Shape,
-                        kernel
+                        kernel,
+                        T
                     )(
                         neighbourhood
                     );
