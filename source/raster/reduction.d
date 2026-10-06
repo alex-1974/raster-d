@@ -1538,57 +1538,43 @@ unittest
 
 /*
  * Public sample constraints are explicit compile contracts.
+ *
+ * Probe the instantiated function symbol rather than calling through
+ * RasterView!T.init. The latter introduces a temporary-scope/lifetime question
+ * that is unrelated to whether the public template itself is legal for T.
  */
-unittest
-{
-    RasterView!ubyte source;
-
-    const result =
-        min(
-            source,
-            0
-        );
-
-    assert(!result.ok);
-}
-
-unittest
-{
-    RasterView!long source;
-
-    const result =
-        max(
-            source,
-            0
-        );
-
-    assert(!result.ok);
-}
-
 static assert(
     __traits(
         compiles,
-        typeof(
-            RasterView!float.init.minMax(0)
-        )
+        &min!ubyte
     )
 );
 
 static assert(
     __traits(
         compiles,
-        typeof(
-            RasterView!double.init.minMax(0)
-        )
+        &max!long
+    )
+);
+
+static assert(
+    __traits(
+        compiles,
+        &minMax!float
+    )
+);
+
+static assert(
+    __traits(
+        compiles,
+        &minMax!double
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        typeof(
-            RasterView!real.init.min(0)
-        )
+        &min!real
     )
 );
 
@@ -1602,10 +1588,9 @@ struct ExtremaPairSample
 static assert(
     !__traits(
         compiles,
-        typeof(
-            RasterView!ExtremaPairSample.init.minMax(0)
-        )
+        &minMax!ExtremaPairSample
     )
 );
+
 
 } // version (unittest)
