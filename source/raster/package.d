@@ -52,6 +52,10 @@ public import raster.transform :
 public import raster.transform_into :
     transformInto;
 
+public import raster.zip_transform_into :
+    RasterZipTransformError,
+    zipTransformInto;
+
 public import raster.transform_allocated :
     RasterAllocatedTransformError,
     RasterAllocatedTransformResult,
