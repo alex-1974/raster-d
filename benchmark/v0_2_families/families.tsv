@@ -1,0 +1,7 @@
+family	public_surface	current_harness	evidence_scope	status
+reduction	sum|min|max|minMax|mean	benchmark/v0_2_sum	public sum + strict C++ reference; extrema/mean not yet covered	partial
+unary-transform	transformInto|tryTransformAllocated	benchmark/v0_2_transform_into	public wrapper comparison; historical M3.2b executor evidence	partial
+fill-copy	fill|copyInto	-	historical M3.3/M3.5 executor evidence; current v0.2 family benchmark missing	gap
+binary-transform-arithmetic	zipTransformInto|addInto|subtractInto|multiplyInto|divideInto	-	no retained v0.2 family benchmark yet	gap
+conversion	convertRasterInto|tryConvertAllocated	-	historical M3.5 exact ubyte->float evidence; generic v0.2 policy family missing	gap
+neighbourhood	applyNeighbourhoodInto|convolveInto	benchmark/v0_2_prepared_convolution	convolve public semantic + direct-fixed executor isolation; generic neighbourhood family incomplete	partial
