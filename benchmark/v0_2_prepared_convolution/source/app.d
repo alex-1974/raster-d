@@ -10,8 +10,8 @@ import std.stdio : writefln;
 import raster;
 
 
-private enum size_t warmups = 4;
-private enum size_t samples = 16;
+private enum size_t warmups = 6;
+private enum size_t samples = 18;
 private enum size_t prepIterations = 200_000;
 
 
@@ -189,6 +189,60 @@ nothrow
 
 
 pragma(inline, false)
+private void executeDirectFixedCanonical(
+    scope const(float)* sourceBase,
+    size_t sourceRowElements,
+    size_t width,
+    size_t height,
+    scope float* destinationBase,
+    size_t destinationRowElements
+)
+@trusted
+nothrow
+@nogc
+{
+    foreach (y; 0 .. height)
+    {
+        const sourceRow0 =
+            sourceBase
+            + y * sourceRowElements;
+
+        const sourceRow1 =
+            sourceRow0
+            + sourceRowElements;
+
+        const sourceRow2 =
+            sourceRow1
+            + sourceRowElements;
+
+        auto destinationRow =
+            destinationBase
+            + y * destinationRowElements;
+
+        foreach (x; 0 .. width)
+        {
+            double total = 0.0;
+
+            total += cast(double) sourceRow0[x + 0] * cast(double)  0.125f;
+            total += cast(double) sourceRow0[x + 1] * cast(double) -0.250f;
+            total += cast(double) sourceRow0[x + 2] * cast(double)  0.375f;
+
+            total += cast(double) sourceRow1[x + 0] * cast(double) -0.500f;
+            total += cast(double) sourceRow1[x + 1] * cast(double)  1.250f;
+            total += cast(double) sourceRow1[x + 2] * cast(double) -0.625f;
+
+            total += cast(double) sourceRow2[x + 0] * cast(double)  0.750f;
+            total += cast(double) sourceRow2[x + 1] * cast(double) -0.875f;
+            total += cast(double) sourceRow2[x + 2] * cast(double)  0.500f;
+
+            destinationRow[x] =
+                cast(float) total;
+        }
+    }
+}
+
+
+pragma(inline, false)
 private void executePreparedCanonical(
     scope const(float)* sourceBase,
     size_t sourceRowElements,
@@ -288,10 +342,7 @@ private long median(long[samples] values)
 {
     sort(values[]);
 
-    return (
-        values[samples / 2 - 1]
-        + values[samples / 2]
-    ) / 2;
+    return values[samples / 2];
 }
 
 
@@ -328,6 +379,39 @@ private long timeOneShot(
                 error
             ),
             "one-shot convolution failed"
+        );
+    }
+
+    return (
+        MonoTime.currTime
+        - start
+    ).total!"nsecs";
+}
+
+
+private long timeDirectFixed(
+    scope const(float)* sourceBase,
+    size_t sourceRowElements,
+    size_t width,
+    size_t height,
+    scope float* destinationBase,
+    size_t destinationRowElements,
+    size_t iterations
+)
+@safe
+{
+    const start =
+        MonoTime.currTime;
+
+    foreach (iteration; 0 .. iterations)
+    {
+        executeDirectFixedCanonical(
+            sourceBase,
+            sourceRowElements,
+            width,
+            height,
+            destinationBase,
+            destinationRowElements
         );
     }
 
@@ -444,10 +528,12 @@ void main(string[] args)
 
     RasterLease!float sourceLease;
     RasterLease!float oneShotLease;
+    RasterLease!float directFixedLease;
     RasterLease!float preparedLease;
 
     float* sourceBase;
     float* oneShotBase;
+    float* directFixedBase;
     float* preparedBase;
 
     size_t sourceRowElements;
@@ -472,6 +558,16 @@ void main(string[] args)
             oneShotBase
         ),
         "one-shot destination construction failed"
+    );
+
+    require(
+        makeDestinationLease(
+            width,
+            height,
+            directFixedLease,
+            directFixedBase
+        ),
+        "direct-fixed destination construction failed"
     );
 
     require(
@@ -532,6 +628,15 @@ void main(string[] args)
         "one-shot qualification failed"
     );
 
+    executeDirectFixedCanonical(
+        sourceBase,
+        sourceRowElements,
+        width,
+        height,
+        directFixedBase,
+        width
+    );
+
     executePreparedCanonical(
         sourceBase,
         sourceRowElements,
@@ -550,6 +655,14 @@ void main(string[] args)
             width
         );
 
+    const directFixedChecksum =
+        checksum(
+            directFixedBase,
+            width,
+            height,
+            width
+        );
+
     const preparedChecksum =
         checksum(
             preparedBase,
@@ -560,57 +673,116 @@ void main(string[] args)
 
     require(
         oneShotChecksum
-        == preparedChecksum,
-        "prepared/one-shot checksum mismatch"
+            == directFixedChecksum
+        && directFixedChecksum
+            == preparedChecksum,
+        "one-shot/direct-fixed/prepared checksum mismatch"
     );
 
     foreach (warmup; 0 .. warmups)
     {
-        if ((warmup & 1) == 0)
+        final switch (warmup % 3)
         {
-            timeOneShot(
-                source,
-                oneShotDestination,
-                width,
-                height,
-                1
-            );
+            case 0:
+                timeOneShot(
+                    source,
+                    oneShotDestination,
+                    width,
+                    height,
+                    1
+                );
 
-            timePrepared(
-                sourceBase,
-                sourceRowElements,
-                width,
-                height,
-                preparedBase,
-                width,
-                prepared,
-                1
-            );
-        }
-        else
-        {
-            timePrepared(
-                sourceBase,
-                sourceRowElements,
-                width,
-                height,
-                preparedBase,
-                width,
-                prepared,
-                1
-            );
+                timeDirectFixed(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    directFixedBase,
+                    width,
+                    1
+                );
 
-            timeOneShot(
-                source,
-                oneShotDestination,
-                width,
-                height,
-                1
-            );
+                timePrepared(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    preparedBase,
+                    width,
+                    prepared,
+                    1
+                );
+
+                break;
+
+            case 1:
+                timePrepared(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    preparedBase,
+                    width,
+                    prepared,
+                    1
+                );
+
+                timeOneShot(
+                    source,
+                    oneShotDestination,
+                    width,
+                    height,
+                    1
+                );
+
+                timeDirectFixed(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    directFixedBase,
+                    width,
+                    1
+                );
+
+                break;
+
+            case 2:
+                timeDirectFixed(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    directFixedBase,
+                    width,
+                    1
+                );
+
+                timePrepared(
+                    sourceBase,
+                    sourceRowElements,
+                    width,
+                    height,
+                    preparedBase,
+                    width,
+                    prepared,
+                    1
+                );
+
+                timeOneShot(
+                    source,
+                    oneShotDestination,
+                    width,
+                    height,
+                    1
+                );
+
+                break;
         }
     }
 
     long[samples] oneShotTimes;
+    long[samples] directFixedTimes;
     long[samples] preparedTimes;
     long[samples] preparationTimes;
 
@@ -629,56 +801,120 @@ void main(string[] args)
         preparationGuard ^=
             guard;
 
-        if ((sample & 1) == 0)
+        final switch (sample % 3)
         {
-            oneShotTimes[sample] =
-                timeOneShot(
-                    source,
-                    oneShotDestination,
-                    width,
-                    height,
-                    iterations
-                );
+            case 0:
+                oneShotTimes[sample] =
+                    timeOneShot(
+                        source,
+                        oneShotDestination,
+                        width,
+                        height,
+                        iterations
+                    );
 
-            preparedTimes[sample] =
-                timePrepared(
-                    sourceBase,
-                    sourceRowElements,
-                    width,
-                    height,
-                    preparedBase,
-                    width,
-                    prepared,
-                    iterations
-                );
-        }
-        else
-        {
-            preparedTimes[sample] =
-                timePrepared(
-                    sourceBase,
-                    sourceRowElements,
-                    width,
-                    height,
-                    preparedBase,
-                    width,
-                    prepared,
-                    iterations
-                );
+                directFixedTimes[sample] =
+                    timeDirectFixed(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        directFixedBase,
+                        width,
+                        iterations
+                    );
 
-            oneShotTimes[sample] =
-                timeOneShot(
-                    source,
-                    oneShotDestination,
-                    width,
-                    height,
-                    iterations
-                );
+                preparedTimes[sample] =
+                    timePrepared(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        preparedBase,
+                        width,
+                        prepared,
+                        iterations
+                    );
+
+                break;
+
+            case 1:
+                preparedTimes[sample] =
+                    timePrepared(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        preparedBase,
+                        width,
+                        prepared,
+                        iterations
+                    );
+
+                oneShotTimes[sample] =
+                    timeOneShot(
+                        source,
+                        oneShotDestination,
+                        width,
+                        height,
+                        iterations
+                    );
+
+                directFixedTimes[sample] =
+                    timeDirectFixed(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        directFixedBase,
+                        width,
+                        iterations
+                    );
+
+                break;
+
+            case 2:
+                directFixedTimes[sample] =
+                    timeDirectFixed(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        directFixedBase,
+                        width,
+                        iterations
+                    );
+
+                preparedTimes[sample] =
+                    timePrepared(
+                        sourceBase,
+                        sourceRowElements,
+                        width,
+                        height,
+                        preparedBase,
+                        width,
+                        prepared,
+                        iterations
+                    );
+
+                oneShotTimes[sample] =
+                    timeOneShot(
+                        source,
+                        oneShotDestination,
+                        width,
+                        height,
+                        iterations
+                    );
+
+                break;
         }
     }
 
     const oneShotMedian =
         median(oneShotTimes);
+
+    const directFixedMedian =
+        median(directFixedTimes);
 
     const preparedMedian =
         median(preparedTimes);
@@ -701,22 +937,34 @@ void main(string[] args)
         cast(double) oneShotMedian
         / logicalPixels;
 
+    const directFixedNsPerPixel =
+        cast(double) directFixedMedian
+        / logicalPixels;
+
     const preparedNsPerPixel =
         cast(double) preparedMedian
         / logicalPixels;
 
-    const perCallSavingsNs =
+    const preflightBatchSavingsNs =
         cast(double) oneShotMedian
+        - cast(double) directFixedMedian;
+
+    const preparedBatchSavingsNs =
+        cast(double) directFixedMedian
         - cast(double) preparedMedian;
 
-    double breakEvenReuse =
+    const preparedPerInvocationSavingsNs =
+        preparedBatchSavingsNs
+        / cast(double) iterations;
+
+    double preparedBreakEvenReuse =
         double.infinity;
 
-    if (perCallSavingsNs > 0.0)
+    if (preparedPerInvocationSavingsNs > 0.0)
     {
-        breakEvenReuse =
+        preparedBreakEvenReuse =
             preparationNs
-            / perCallSavingsNs;
+            / preparedPerInvocationSavingsNs;
     }
 
     writefln(
@@ -729,6 +977,18 @@ void main(string[] args)
         oneShotMedian,
         oneShotNsPerPixel,
         oneShotChecksum
+    );
+
+    writefln(
+        "prepared_convolution compiler=%s mode=direct_fixed width=%s height=%s iterations=%s samples=%s median_ns=%s ns_per_pixel=%.6f checksum=%016x",
+        compilerName(),
+        width,
+        height,
+        iterations,
+        samples,
+        directFixedMedian,
+        directFixedNsPerPixel,
+        directFixedChecksum
     );
 
     writefln(
@@ -753,11 +1013,14 @@ void main(string[] args)
     );
 
     writefln(
-        "prepared_convolution_ratio compiler=%s one_shot_over_prepared=%.6f per_call_savings_ns=%.3f break_even_reuse=%.9f",
+        "prepared_convolution_ratio compiler=%s one_shot_over_direct_fixed=%.6f direct_fixed_over_prepared=%.6f preflight_batch_savings_ns=%.3f prepared_per_invocation_savings_ns=%.3f prepared_break_even_reuse=%.9f",
         compilerName(),
         cast(double) oneShotMedian
+            / cast(double) directFixedMedian,
+        cast(double) directFixedMedian
             / cast(double) preparedMedian,
-        perCallSavingsNs,
-        breakEvenReuse
+        preflightBatchSavingsNs,
+        preparedPerInvocationSavingsNs,
+        preparedBreakEvenReuse
     );
 }
