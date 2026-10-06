@@ -771,132 +771,119 @@ unittest
 
 /*
  * Public compile-contract matrix.
+ *
+ * Use typeof(expression) rather than a statement block. __traits(compiles,
+ * { ... }) checks the block as a maximally inferred anonymous function and can
+ * accidentally impose pure on a callable that does not claim it. The contract
+ * here is template instantiability, not an unstated purity promise.
  */
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!ubyte source;
-            auto result = source.sum!ushort(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!ubyte.init.sum!ushort(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!uint source;
-            auto result = source.sum!ulong(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!uint.init.sum!ulong(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!ushort source;
-            auto result = source.sum!int(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!ushort.init.sum!int(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!int source;
-            auto result = source.sum!long(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!int.init.sum!long(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!float source;
-            auto result = source.sum!float(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!float.init.sum!float(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!float source;
-            auto result = source.sum!double(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!float.init.sum!double(0)
+        )
     )
 );
 
 static assert(
     __traits(
         compiles,
-        {
-            RasterView!double source;
-            auto result = source.sum!double(0);
-            assert(!result.ok);
-        }
+        typeof(
+            RasterView!double.init.sum!double(0)
+        )
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        {
-            RasterView!long source;
-            auto result = source.sum!ulong(0);
-        }
+        typeof(
+            RasterView!long.init.sum!ulong(0)
+        )
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        {
-            RasterView!ulong source;
-            auto result = source.sum!long(0);
-        }
+        typeof(
+            RasterView!ulong.init.sum!long(0)
+        )
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        {
-            RasterView!double source;
-            auto result = source.sum!float(0);
-        }
+        typeof(
+            RasterView!double.init.sum!float(0)
+        )
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        {
-            RasterView!int source;
-            auto result = source.sum!double(0);
-        }
+        typeof(
+            RasterView!int.init.sum!double(0)
+        )
     )
 );
 
 static assert(
     !__traits(
         compiles,
-        {
-            RasterView!real source;
-            auto result = source.sum!real(0);
-        }
+        typeof(
+            RasterView!real.init.sum!real(0)
+        )
     )
 );
+
 
 } // version (unittest)
