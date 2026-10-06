@@ -12,7 +12,9 @@
 module raster;
 
 public import raster.sample :
-    isRasterSampleType;
+    isRasterSampleType,
+    isNumericRasterSample,
+    isExactConvertible;
 
 public import raster.owned_resource :
     OwnedByteResource,
