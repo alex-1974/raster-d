@@ -24,6 +24,9 @@ import raster.internal.extrema :
     ExtremaStatus,
     executeExtrema;
 
+import raster.sample :
+    isNumericRasterSample;
+
 import raster.view :
     RasterView;
 
@@ -132,8 +135,7 @@ private
 template isSupportedSumAccumulator(T)
 {
     enum isSupportedSumAccumulator =
-        isSupportedSumInteger!T
-        || isSupportedSumFloating!T;
+        isNumericRasterSample!T;
 }
 
 
@@ -908,16 +910,7 @@ private
 template isSupportedExtremaSample(T)
 {
     enum isSupportedExtremaSample =
-        is(T == byte)
-        || is(T == ubyte)
-        || is(T == short)
-        || is(T == ushort)
-        || is(T == int)
-        || is(T == uint)
-        || is(T == long)
-        || is(T == ulong)
-        || is(T == float)
-        || is(T == double);
+        isNumericRasterSample!T;
 }
 
 
