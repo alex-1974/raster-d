@@ -1505,7 +1505,7 @@ unittest
 
 private
 void exercisePositiveSampleStride(size_t SampleStride)()
-@safe
+@system
 nothrow
 @nogc
 {
