@@ -1369,3 +1369,45 @@ it does not define a second production operation or public API.
 The XPS runner also retains full objdump disassembly for both compilers.
 Reference timing and generated-code inspection are required before any
 production source-form change is proposed.
+
+
+## M5.3 neighbourhood post-fix qualification
+
+PR #168 fixed a release-only side-effect-in-assert bug in fixed and generic
+neighbourhood execution. The required-source stride query previously existed
+only inside `assert(...)`, so release builds skipped the query and left the
+stride outputs at zero.
+
+Post-fix diagnostic archive:
+
+    raster-v0.2-neighbourhood-codegen-20261007-123630.tar.gz
+
+SHA256:
+
+    7bab061aeda2c54a936c9cac9b4e35787e4d8bca38b29a8e7c0fde9f53f7a1f6
+
+Head:
+
+    b186b2ea2cd57e7dda20835c1156adbf5e08c15d
+
+The recursive manifest verifies all 23 retained files besides SHA256SUMS.
+
+Post-fix medians:
+
+| Compiler | public ns/pixel | hot direct | preflight + hot | public/hot |
+| --- | ---: | ---: | ---: | ---: |
+| DMD 2.111 | 9.555155 | 9.659016 | 9.541207 | 0.999172 |
+| LDC 1.41 | 1.617783 | 1.638633 | 1.603442 | 0.968592 |
+
+The pre-fix 16-22x public/hot cliff is eliminated.
+
+Evidence correction:
+
+- the pre-fix generic 5x3 Canonical-vs-strided timing is no longer valid as
+  layout-specialization evidence because the nominal Canonical path could not
+  select its Canonical executor in release builds;
+- the pre-fix M4.6 public-convolution/direct-fixed timing is no longer a current
+  production-performance baseline for the same reason.
+
+Both measurements must be repeated on post-#168 develop before their
+performance conclusions are reused.
