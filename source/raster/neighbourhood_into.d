@@ -303,6 +303,284 @@ nothrow
 }
 
 
+version (LDC)
+{
+    /++
+        Executes one already-approved signed-affine operation with compile-time
+        fixed sample strides.
+
+        LDC 1.41 / LLVM 19.1.7 generates materially better code for the fixed
+        sample-stride form than for otherwise equivalent runtime-variable
+        sample strides. Row strides remain runtime values.
+
+        This helper is compiler-specific implementation detail. It does not
+        change supported layouts or public semantics.
+    +/
+    private
+    void executeStaticSampleStrideNeighbourhood(
+        ptrdiff_t SourceSampleStride,
+        ptrdiff_t DestinationSampleStride,
+        alias Shape,
+        alias kernel,
+        T
+    )(
+        scope const(T)* sourceBase,
+        ptrdiff_t sourceRowStride,
+
+        size_t width,
+        size_t height,
+
+        scope T* destinationBase,
+        ptrdiff_t destinationRowStride
+    )
+    @trusted
+    pure
+    nothrow
+    @nogc
+    {
+        static assert(SourceSampleStride > 0);
+        static assert(DestinationSampleStride > 0);
+
+        auto sourceOutputRow = sourceBase;
+        auto destinationRow = destinationBase;
+
+        foreach (y; 0 .. height)
+        {
+            auto sourceWindow = sourceOutputRow;
+            auto destinationSample = destinationRow;
+
+            foreach (x; 0 .. width)
+            {
+                T[Shape.sampleCount] neighbourhood;
+                size_t index;
+
+                auto sourceWindowRow = sourceWindow;
+
+                foreach (dy; 0 .. Shape.height)
+                {
+                    auto sourceSample = sourceWindowRow;
+
+                    foreach (dx; 0 .. Shape.width)
+                    {
+                        neighbourhood[index++] = *sourceSample;
+                        sourceSample += SourceSampleStride;
+                    }
+
+                    sourceWindowRow += sourceRowStride;
+                }
+
+                *destinationSample =
+                    invokeNeighbourhoodKernel!(
+                        Shape,
+                        kernel,
+                        T
+                    )(
+                        neighbourhood
+                    );
+
+                sourceWindow += SourceSampleStride;
+                destinationSample += DestinationSampleStride;
+            }
+
+            sourceOutputRow += sourceRowStride;
+            destinationRow += destinationRowStride;
+        }
+    }
+
+
+    private
+    bool tryExecuteStaticDestinationSampleStride(
+        ptrdiff_t SourceSampleStride,
+        alias Shape,
+        alias kernel,
+        T
+    )(
+        scope const(T)* sourceBase,
+        ptrdiff_t sourceRowStride,
+
+        size_t width,
+        size_t height,
+
+        scope T* destinationBase,
+        ptrdiff_t destinationRowStride,
+        ptrdiff_t destinationSampleStride
+    )
+    @trusted
+    pure
+    nothrow
+    @nogc
+    {
+        switch (destinationSampleStride)
+        {
+            case 1:
+                executeStaticSampleStrideNeighbourhood!(
+                    SourceSampleStride,
+                    1,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride
+                );
+                return true;
+
+            case 2:
+                executeStaticSampleStrideNeighbourhood!(
+                    SourceSampleStride,
+                    2,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride
+                );
+                return true;
+
+            case 3:
+                executeStaticSampleStrideNeighbourhood!(
+                    SourceSampleStride,
+                    3,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride
+                );
+                return true;
+
+            case 4:
+                executeStaticSampleStrideNeighbourhood!(
+                    SourceSampleStride,
+                    4,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride
+                );
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+
+    private
+    bool tryExecuteStaticSampleStrideNeighbourhood(
+        alias Shape,
+        alias kernel,
+        T
+    )(
+        scope const(T)* sourceBase,
+        ptrdiff_t sourceRowStride,
+        ptrdiff_t sourceSampleStride,
+
+        size_t width,
+        size_t height,
+
+        scope T* destinationBase,
+        ptrdiff_t destinationRowStride,
+        ptrdiff_t destinationSampleStride
+    )
+    @trusted
+    pure
+    nothrow
+    @nogc
+    {
+        switch (sourceSampleStride)
+        {
+            case 1:
+                return tryExecuteStaticDestinationSampleStride!(
+                    1,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride,
+                    destinationSampleStride
+                );
+
+            case 2:
+                return tryExecuteStaticDestinationSampleStride!(
+                    2,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride,
+                    destinationSampleStride
+                );
+
+            case 3:
+                return tryExecuteStaticDestinationSampleStride!(
+                    3,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride,
+                    destinationSampleStride
+                );
+
+            case 4:
+                return tryExecuteStaticDestinationSampleStride!(
+                    4,
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    sourceRowStride,
+                    width,
+                    height,
+                    destinationBase,
+                    destinationRowStride,
+                    destinationSampleStride
+                );
+
+            default:
+                return false;
+        }
+    }
+}
+
+
 /++
     Applies one compile-time fixed neighbourhood shape and kernel into a
     caller-owned destination.
@@ -662,9 +940,37 @@ nothrow
          *
          * The semantic layer has already proved the complete required source
          * rectangle reachable, the destination injective and both sample-byte
-         * sets disjoint. Carry those facts into one pointer/stride executor
-         * rather than re-running view sampling and bounds checks per tap.
+         * sets disjoint.
+         *
+         * LDC 1.41 / LLVM 19.1.7 has a measured code-generation cliff when
+         * sample strides remain runtime variables in this loop family. Common
+         * small positive sample strides are therefore multiversioned into
+         * template-static executors under LDC only. Arbitrary signed-affine
+         * layouts retain the general runtime executor below.
          */
+        version (LDC)
+        {
+            if (
+                tryExecuteStaticSampleStrideNeighbourhood!(
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    sourceBase,
+                    requiredSourceRowStrideElements,
+                    requiredSourceSampleStrideElements,
+
+                    destination.width,
+                    destination.height,
+
+                    destinationBase,
+                    destinationRowStrideElements,
+                    destinationSampleStrideElements
+                )
+            )
+                return true;
+        }
+
         executeAffineNeighbourhood!(
             Shape,
             kernel,
