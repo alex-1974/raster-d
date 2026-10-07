@@ -66,7 +66,7 @@ Current families are:
 | fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
 | conversion | `convertRasterInto`, `tryConvertAllocated` | qualified |
-| neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
+| neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | qualified |
 
 Trivial metadata accessors, enums, result carriers and compile-time traits do not
 receive standalone microbenchmarks.
@@ -590,8 +590,99 @@ The 5x3 private Canonical helper remains private; M5.1 does not weaken
 production visibility solely for benchmarking. The layout comparison therefore
 measures the real public Canonical versus signed-affine execution forms.
 
-The family remains `partial` until stable reference-XPS evidence for this generic
-neighbourhood harness is retained.
+Reference-XPS evidence recorded on 2026-10-07:
+
+~~~text
+archive:
+    raster-v0.2-neighbourhood-family-20261007-113929.tar.gz
+
+SHA256:
+    ff9ca09cefdbe3e39d22e13e4cc1a0ff02279660f2dc0014b501b03838aa62c0
+
+benchmark head:
+    a4923a71e5c2df88caefe16e89e43deba27aa829
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    float
+    1024 x 512 output samples
+    source row padding 32 physical floats
+    3x3 halo 1 sample per side
+    5x3 halo 2 horizontal / 1 vertical
+    strided sample stride 2
+    6 warmups
+    18 timed samples per process
+    8 iterations per timed sample
+    6 independent processes per compiler
+~~~
+
+The archive contains 48 files total; its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself.
+
+Stable semantic checksums:
+
+~~~text
+3x3:
+    846327cf63eba383
+
+5x3:
+    876633b3b2afab83
+~~~
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | 3x3 public generic | 76.209098 | generic/legacy 0.996564 |
+| DMD 2.111 | 3x3 public legacy | 76.949913 | legacy/hot 16.745190 |
+| DMD 2.111 | 3x3 hot executor | 4.590744 | generic/hot 16.575960 |
+| DMD 2.111 | 5x3 public Canonical | 120.070195 | — |
+| DMD 2.111 | 5x3 public strided | 120.873677 | strided/Canonical 1.007901 |
+| LDC 1.41 | 3x3 public generic | 18.295198 | generic/legacy 0.987694 |
+| LDC 1.41 | 3x3 public legacy | 18.436974 | legacy/hot 22.287455 |
+| LDC 1.41 | 3x3 hot executor | 0.838107 | generic/hot 22.032183 |
+| LDC 1.41 | 5x3 public Canonical | 30.057437 | — |
+| LDC 1.41 | 5x3 public strided | 30.099535 | strided/Canonical 1.001187 |
+
+Paired process ranges:
+
+~~~text
+DMD generic3/legacy3:      0.976221 .. 1.004598
+DMD generic3/hot3:        16.384370 .. 16.860886
+DMD strided5/Canonical5:  0.997348 .. 1.019196
+
+LDC generic3/legacy3:      0.968464 .. 1.014166
+LDC generic3/hot3:        21.399375 .. 22.501127
+LDC strided5/Canonical5:  0.992973 .. 1.027238
+~~~
+
+Interpretation:
+
+- the generic centered-3x3 public spelling is at parity with the preserved
+  legacy public spelling on both compilers;
+- the 5x3 sample-strided signed-affine fallback is at parity with the public
+  Canonical 5x3 path for this workload;
+- the large public-vs-approved-hot-executor gap is reproducible and materially
+  larger than the M4.6 convolution public/direct-fixed signal;
+- this gap is retained for M5.2/M5.3 investigation and does not indicate a
+  generic-wrapper regression, because generic and legacy public paths move
+  together;
+- no private 5x3 executor visibility was widened for qualification.
+
+Combined with the retained M4.6 convolution isolation evidence, the complete
+neighbourhood/convolution family is therefore `qualified` for M5.1.
 
 `benchmark/v0_2_prepared_convolution` provides the convolution-side explicit
 M5-style layer separation:
