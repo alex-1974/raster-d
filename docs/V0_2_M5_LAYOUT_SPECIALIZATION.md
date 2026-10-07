@@ -290,8 +290,43 @@ of storage facts from operation-local qualification facts remain valid.
 
 However, the following acceptance item is reopened:
 
-- [ ] re-run generic 5x3 Canonical versus sample-strided execution post-#168 and
-  confirm whether a separate specialization is still unjustified.
+The corrected post-#168 evidence showed that the old Universal fallback was
+materially too expensive because it performed public view sampling for every
+tap and output.
 
-Until that measurement is retained, do not cite the pre-fix ~1.0
-strided/Canonical ratio as current evidence.
+M5.2 therefore added a private operation-specific signed-affine neighbourhood
+executor that consumes already-validated base pointers and runtime signed
+row/sample strides.
+
+Post-change reference archive:
+
+~~~text
+raster-v0.2-neighbourhood-family-20261007-133903.tar.gz
+SHA256:
+f465624fcd886dfef79b5eb968dd77770ddf80cf1a13115ab2b9550cf495a7c6
+head:
+b43b46dcac74b8b36bdc6b7b5c37ee570abfcc62
+~~~
+
+Post-change 5x3 sample-strided/Canonical ratios:
+
+- DMD 2.111.0: 0.875674, range 0.858948-0.900531;
+- LDC 1.41.0: 6.217490, range 6.160787-6.380904.
+
+This closes the M5.2 structural question:
+
+- the shared capability lattice remains Universal -> Canonical -> Contiguous;
+- sample-strided/general-affine storage does not need a new shared enum value;
+- profitable operation-specific executors may consume Universal runtime
+  row/sample strides directly after validation;
+- the remaining LDC-only gap is a code-generation/compiler question and belongs
+  to M5.3.
+
+Acceptance:
+
+- [x] corrected 5x3 evidence retained;
+- [x] signed-affine neighbourhood executor implemented without semantic weakening;
+- [x] DMD/LDC Fast CI and semantic tests pass;
+- [x] post-change reference-XPS evidence retained;
+- [x] remaining compiler-specific gap handed to M5.3;
+- [x] public API unchanged.
