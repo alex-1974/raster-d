@@ -273,11 +273,14 @@ nothrow
     ptrdiff_t requiredSourceRowStrideElements;
     ptrdiff_t requiredSourceSampleStrideElements;
 
-    assert(requiredSource.tryExecutionPlaneStrides(
-        sourcePlaneIndex,
-        requiredSourceRowStrideElements,
-        requiredSourceSampleStrideElements
-    ));
+    const requiredSourceStridesOk =
+        requiredSource.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            requiredSourceRowStrideElements,
+            requiredSourceSampleStrideElements
+        );
+
+    assert(requiredSourceStridesOk);
 
     const sourceBase =
         requiredSource.executionRegionBase(sourcePlaneIndex);
