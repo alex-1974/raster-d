@@ -579,8 +579,22 @@ where their cost can differ.
 
 ### Neighbourhood / convolution
 
-`benchmark/v0_2_prepared_convolution` now provides the first explicit M5-style
-layer separation:
+`benchmark/v0_2_neighbourhood_family` covers the missing generic neighbourhood
+surface without widening private production visibility. It measures the centered
+3x3 generic spelling against the preserved legacy public path and the already-
+approved package hot executor. It also measures a non-3x3 5x3 shape on both
+Canonical unit-sample-stride storage and an equivalent valid sample-strided
+signed-affine layout, requiring bit-identical outputs.
+
+The 5x3 private Canonical helper remains private; M5.1 does not weaken
+production visibility solely for benchmarking. The layout comparison therefore
+measures the real public Canonical versus signed-affine execution forms.
+
+The family remains `partial` until stable reference-XPS evidence for this generic
+neighbourhood harness is retained.
+
+`benchmark/v0_2_prepared_convolution` provides the convolution-side explicit
+M5-style layer separation:
 
 ~~~text
 one_shot
