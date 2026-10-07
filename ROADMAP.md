@@ -939,7 +939,7 @@ benefit.
 
 ### M5.2 — Internal layout specialization framework
 
-Status: complete.
+Status: evidence requalification active.
 
 Issue #116 evaluated whether the internal execution-layout model should grow
 from the existing Universal/Canonical/Contiguous capability lattice into a
@@ -960,27 +960,33 @@ Decision:
   alias/non-overlap proof, numeric semantics, compiler capability, kernel/shape,
   type pair and measured thresholds.
 
-The decisive new M5.1 neighbourhood evidence showed generic 5x3 sample-strided
-execution at parity with public Canonical execution on both baseline compilers,
-so no speculative interleaved/strided specialization is promoted.
+The original M5.1 generic 5x3 sample-strided/Canonical timing was later found
+to have been collected under the release-only neighbourhood stride-
+initialization bug fixed by PR #168. The nominal Canonical path had therefore
+fallen through to Universal execution.
+
+The capability-model decision remains in force, but that specific timing
+evidence must be repeated post-fix before it is used to justify the no-additional-
+specialization conclusion.
 
 The full decision and evidence mapping are recorded in
 docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.
 
 ### M5.3 — DMD/LDC code-generation audit
 
-Status: active.
+Status: active; neighbourhood root cause fixed and post-fix qualified.
 
 Issue #117 owns compiler/code-generation investigation for the retained M5.1
-signals. The highest-priority current signal is the centered 3x3 neighbourhood
-public-semantic versus approved hot-executor gap:
+signals. The centered 3x3 neighbourhood public/hot signal has been root-caused and
+fixed. A release-only stride query had been placed inside assert(...), so the
+query vanished from optimized builds and Canonical dispatch was disabled.
 
-- DMD 2.111.0: about 16.58x;
-- LDC 1.41.0: about 22.03x.
+Post-fix public/hot reference-XPS ratios:
 
-Generic and legacy public spellings remain at parity, so M5.3 must first
-separate structural preflight, dispatch/inlining and generated execution code
-before changing API or semantics.
+- DMD 2.111.0: 0.999172x;
+- LDC 1.41.0: 0.968592x.
+
+M5.3 should now proceed to the remaining compiler/code-generation signals.
 
 The first M5.3 diagnostic is retained at
 `benchmark/v0_2_neighbourhood_codegen`. It compares the production public path,
