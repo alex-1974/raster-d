@@ -62,7 +62,7 @@ Current families are:
 | Family | Representative public surface | Current state |
 | --- | --- | --- |
 | reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
-| unary-transform | `transformInto`, allocated transform wrapper | partial |
+| unary-transform | `transformInto`, allocated transform wrapper | qualified |
 | fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
 | conversion | `convertRasterInto`, `tryConvertAllocated` | qualified |
@@ -97,8 +97,72 @@ the approved Canonical executor.
 comparing `tryTransformAllocated!transform` with the equivalent explicit
 `allocateCompactRaster -> writable view -> transformInto!transform` sequence.
 Both paths intentionally include allocation and retained-owner construction.
-The family remains `partial` until reference-XPS evidence for this allocating
-comparison is retained.
+Reference-XPS evidence recorded on 2026-10-07:
+
+~~~text
+archive:
+    raster-v0.2-transform-allocated-20261007-085810.tar.gz
+
+SHA256:
+    e2b92d48b716dab5dcd655f7c915944392cdf641a818d9d9ae0590c4ce11cc89
+
+benchmark head:
+    7e5a2c4452851e1378586d4f23eab644f3f21cbe
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    float
+    2048 x 512
+    source row padding 32 elements
+    Canonical source sample stride 1
+    6 warmups
+    18 rotating timed samples per process
+    4 allocations/transforms per timed sample
+    6 independent processes per compiler
+~~~
+
+The recursive manifest verifies all 47 retained files besides SHA256SUMS.
+Both paths retain the same stable checksum:
+
+~~~text
+4de576fb40f77507
+~~~
+
+Retained medians:
+
+| Compiler | Path | ns/sample | public/explicit |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | public allocated | 0.959474 | 1.000372 |
+| DMD 2.111 | explicit allocate+transform | 0.967597 | — |
+| LDC 1.41 | public allocated | 0.200731 | 1.002074 |
+| LDC 1.41 | explicit allocate+transform | 0.199360 | — |
+
+Paired ratio ranges are:
+
+~~~text
+DMD: 0.997263 .. 1.006638
+LDC: 0.992010 .. 1.016866
+~~~
+
+Absolute process times vary with machine state, especially one LDC process, but
+both paths move together and paired ratios remain centered near 1.0. No material
+systematic convenience-wrapper penalty is observed.
+
+Combined with the retained transformInto bridge evidence and M3.2b / ADR 0011
+executor evidence, the unary-transform family is therefore `qualified` for
+M5.1.
 
 ### Binary transform / arithmetic
 

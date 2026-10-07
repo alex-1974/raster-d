@@ -1014,6 +1014,67 @@ warmups, eighteen rotating timed samples, four allocations/transforms per timed
 sample and six independent CPU-pinned processes per compiler. A semantic
 preflight requires identical output checksums.
 
-Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
-unary-transform family remains `partial` until reference-XPS evidence is
-retained.
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 allocated transform qualification
+
+Reference archive:
+
+    raster-v0.2-transform-allocated-20261007-085810.tar.gz
+
+SHA256:
+
+    e2b92d48b716dab5dcd655f7c915944392cdf641a818d9d9ae0590c4ce11cc89
+
+Benchmark head:
+
+    7e5a2c4452851e1378586d4f23eab644f3f21cbe
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- source rows padded by 32 elements;
+- Canonical source sample stride 1;
+- 6 warmups;
+- 18 rotating timed samples per process;
+- four allocations/transforms per timed sample;
+- six independent processes per compiler.
+
+The archive contains 51 tar members. Its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself. Both materialization surfaces
+produce the same stable checksum:
+
+    4de576fb40f77507
+
+Retained medians:
+
+| Compiler | Path | ns/sample | paired public/explicit ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | public allocated | 0.959474 | 1.000372 |
+| DMD 2.111 | explicit allocate+transform | 0.967597 | — |
+| LDC 1.41 | public allocated | 0.200731 | 1.002074 |
+| LDC 1.41 | explicit allocate+transform | 0.199360 | — |
+
+Paired ratio ranges:
+
+- DMD: 0.997263-1.006638;
+- LDC: 0.992010-1.016866.
+
+One LDC process has materially higher absolute times for both compared paths,
+but its paired ratio remains near parity. This supports a machine-state effect
+rather than allocating-wrapper overhead.
+
+Conclusion: `tryTransformAllocated` adds no measured material systematic cost
+above the equivalent explicit compact-allocation + writable-view +
+`transformInto` sequence. Together with retained transformInto bridge evidence
+and M3.2b / ADR 0011 executor evidence, unary-transform is qualified for M5.1.
