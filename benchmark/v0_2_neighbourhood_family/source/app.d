@@ -169,22 +169,6 @@ private bool makeFloatLease(
 }
 
 
-private WritableRasterView!float writableView(
-    ref RasterLease!float lease
-)
-@safe
-{
-    bool ok;
-
-    auto result =
-        lease.tryWritableView(ok);
-
-    require(ok, "writable view unavailable");
-
-    return result;
-}
-
-
 private ulong checksum(
     scope RasterView!float view
 )
@@ -502,9 +486,26 @@ void main(string[] args)
     );
 
     scope auto source3 = source3Lease.view();
-    scope auto generic3 = writableView(generic3Lease);
-    scope auto legacy3 = writableView(legacy3Lease);
-    scope auto hot3 = writableView(hot3Lease);
+
+    bool generic3Writable;
+    bool legacy3Writable;
+    bool hot3Writable;
+
+    scope auto generic3 =
+        generic3Lease.tryWritableView(generic3Writable);
+
+    scope auto legacy3 =
+        legacy3Lease.tryWritableView(legacy3Writable);
+
+    scope auto hot3 =
+        hot3Lease.tryWritableView(hot3Writable);
+
+    require(
+        generic3Writable
+        && legacy3Writable
+        && hot3Writable,
+        "3x3 writable destination unavailable"
+    );
 
     // Semantic preflight.
     require(
@@ -574,9 +575,26 @@ void main(string[] args)
     );
 
     scope auto source5Canonical = source5CanonicalLease.view();
-    scope auto destination5Canonical = writableView(destination5CanonicalLease);
     scope auto source5Strided = source5StridedLease.view();
-    scope auto destination5Strided = writableView(destination5StridedLease);
+
+    bool canonical5Writable;
+    bool strided5Writable;
+
+    scope auto destination5Canonical =
+        destination5CanonicalLease.tryWritableView(
+            canonical5Writable
+        );
+
+    scope auto destination5Strided =
+        destination5StridedLease.tryWritableView(
+            strided5Writable
+        );
+
+    require(
+        canonical5Writable
+        && strided5Writable,
+        "5x3 writable destination unavailable"
+    );
 
     require(
         timeGeneric5x3(
@@ -611,7 +629,6 @@ void main(string[] args)
         "5x3 Canonical/strided output mismatch"
     );
 
-    ulong ignoredChecksum;
 
     foreach (warmup; 0 .. warmups)
     {
