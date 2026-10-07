@@ -173,21 +173,20 @@ if (
     Accumulator total =
         cast(Accumulator) 0;
 
-    foreach (index; 0 .. Kernel.shape.sampleCount)
+    /*
+     * Kernel.shape.sampleCount and all coefficients are compile-time data.
+     *
+     * static foreach preserves the fixed row-major term order while expanding
+     * the arithmetic graph at compile time. This avoids the measured DMD
+     * runtime-loop code-generation cliff without changing public semantics.
+     */
+    static foreach (index; 0 .. Kernel.shape.sampleCount)
     {
-        const sample =
-            cast(Accumulator)
-                values[index];
-
-        const coefficient =
-            cast(Accumulator)
-                Kernel.coefficients[index];
-
-        const product =
-            sample * coefficient;
-
         total =
-            total + product;
+            total
+            + cast(Accumulator) values[index]
+                * cast(Accumulator)
+                    Kernel.coefficients[index];
     }
 
     return cast(T) total;
