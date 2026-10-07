@@ -939,7 +939,7 @@ benefit.
 
 ### M5.2 — Internal layout specialization framework
 
-Status: evidence requalification active.
+Status: complete.
 
 Issue #116 evaluated whether the internal execution-layout model should grow
 from the existing Universal/Canonical/Contiguous capability lattice into a
@@ -965,9 +965,20 @@ to have been collected under the release-only neighbourhood stride-
 initialization bug fixed by PR #168. The nominal Canonical path had therefore
 fallen through to Universal execution.
 
-The capability-model decision remains in force, but that specific timing
-evidence must be repeated post-fix before it is used to justify the no-additional-
-specialization conclusion.
+Post-#168 evidence initially showed a material generic-neighbourhood
+sample-strided penalty. M5.2 therefore added one private operation-specific
+signed-affine pointer/stride executor without expanding the shared layout enum.
+
+Post-change reference-XPS evidence shows:
+
+- DMD sample-strided/Canonical: 0.875674x;
+- LDC sample-strided/Canonical: 6.217490x.
+
+This is sufficient to close the structural/layout part of M5.2: the shared
+Universal -> Canonical -> Contiguous capability model remains appropriate and
+the expensive public-view sampling fallback has been removed. The remaining
+LDC-only gap is retained for M5.3 code-generation analysis rather than encoded
+as another global layout class.
 
 The full decision and evidence mapping are recorded in
 docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.

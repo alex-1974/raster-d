@@ -1411,3 +1411,76 @@ Evidence correction:
 
 Both measurements must be repeated on post-#168 develop before their
 performance conclusions are reused.
+
+
+## M5.2 signed-affine neighbourhood qualification
+
+Post-executor reference archive:
+
+    raster-v0.2-neighbourhood-family-20261007-133903.tar.gz
+
+SHA256:
+
+    f465624fcd886dfef79b5eb968dd77770ddf80cf1a13115ab2b9550cf495a7c6
+
+Benchmark head:
+
+    b43b46dcac74b8b36bdc6b7b5c37ee570abfcc62
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+The archive contains 51 tar members. Its recursive SHA256 manifest verifies all
+47 retained files besides SHA256SUMS.
+
+Stable checksums:
+
+    3x3 846327cf63eba383
+    5x3 876633b3b2afab83
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | 3x3 public generic | 4.794806 | generic/hot 1.008706 |
+| DMD 2.111 | 3x3 public legacy | 4.753190 | legacy/hot 0.997288 |
+| DMD 2.111 | 3x3 hot executor | 4.763806 | — |
+| DMD 2.111 | 5x3 public Canonical | 23.412985 | — |
+| DMD 2.111 | 5x3 public sample-strided | 20.560056 | strided/Canonical 0.875674 |
+| LDC 1.41 | 3x3 public generic | 0.835597 | generic/hot 1.022256 |
+| LDC 1.41 | 3x3 public legacy | 0.836623 | legacy/hot 1.019805 |
+| LDC 1.41 | 3x3 hot executor | 0.825864 | — |
+| LDC 1.41 | 5x3 public Canonical | 1.565992 | — |
+| LDC 1.41 | 5x3 public sample-strided | 9.885067 | strided/Canonical 6.217490 |
+
+Paired 5x3 ratio ranges:
+
+- DMD: 0.858948-0.900531;
+- LDC: 6.160787-6.380904.
+
+Relative to the corrected pre-executor post-#168 run, the sample-strided
+absolute path improved from approximately 129.56 to 20.56 ns/sample on DMD and
+from approximately 60.52 to 9.89 ns/sample on LDC.
+
+Interpretation:
+
+- the operation-specific signed-affine pointer/stride executor removes the
+  repeated public-view sampling overhead that caused the 6.5x/19.3x gap;
+- DMD now shows no penalty for the representative sample-strided layout;
+- LDC still shows a stable ~6.22x sample-strided/Canonical gap;
+- because both paths now use direct validated pointer/stride executors and the
+  shared storage-capability model already distinguishes Canonical from
+  Universal correctly, the remaining LDC gap is a compiler/code-generation
+  question rather than evidence that raster-d needs a larger shared physical
+  layout taxonomy.
+
+M5.2 is therefore qualified with the existing
+Universal -> Canonical -> Contiguous capability model plus operation-local
+executor selection. The remaining LDC signed-affine neighbourhood signal moves
+to M5.3 / Issue #117.
