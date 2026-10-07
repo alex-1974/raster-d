@@ -82,7 +82,16 @@ consumer profile makes it material.
 `benchmark/v0_2_sum` measures the public generic strict sum against the frozen
 legacy sum and a strict scalar C++ reference.
 
-This covers the sum member of the reduction family, not extrema or mean.
+`benchmark/v0_2_reduction_family` covers the remaining extrema/mean members.
+For min/max/minMax it compares public result-carrier wrappers against the shared
+package `executeExtrema!(mode)` semantic engine. It also records separate
+public min + max as an informational two-pass control for one-pass minMax.
+For mean it compares public `mean!(double,double)` with the exact explicit
+`sum!double + one division` composition that defines the implementation
+contract.
+
+The family remains `partial` until stable reference-XPS evidence for this new
+harness is retained.
 
 ### Unary transform
 
