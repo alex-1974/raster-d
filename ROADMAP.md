@@ -999,6 +999,11 @@ Post-fix public/hot reference-XPS ratios:
 
 M5.3 should now proceed to the remaining compiler/code-generation signals.
 
+The second M5.3 diagnostic is retained at `benchmark/v0_2_affine_codegen`.
+It targets the LDC-only signed-affine 5x3 gap by separating runtime versus
+compile-time sample strides and source-side versus destination-side stride
+effects while retaining DMD/LDC disassembly.
+
 The first M5.3 diagnostic is retained at
 `benchmark/v0_2_neighbourhood_codegen`. It compares the production public path,
 the approved hot executor, a benchmark-local noinline executor boundary, a
