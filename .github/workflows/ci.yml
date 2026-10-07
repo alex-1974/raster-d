@@ -151,6 +151,15 @@ jobs:
             --build=release \
             --force
 
+      - name: Affine multiversion diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_affine_multiversion \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Affine codegen diagnostic compile smoke
         shell: bash
         run: |

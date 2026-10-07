@@ -1521,3 +1521,39 @@ This isolates:
 The XPS runner retains six independent CPU-pinned process measurements and
 complete DMD/LDC objdump disassembly. No production optimization is promoted
 until those results are retained and inspected.
+
+
+## M5.3 affine multiversion diagnostic
+
+Diagnostic 2 established that LDC 1.41.0 loses most 5x3 neighbourhood
+performance when either source or destination sample stride remains runtime
+variable, while DMD 2.111.0 does not.
+
+The next retained diagnostic is:
+
+    benchmark/v0_2_affine_multiversion
+
+It evaluates a D-native internal multiversioning shape for common positive
+sample strides 2, 3 and 4:
+
+~~~text
+runtime
+    direct runtime-stride loop
+
+dispatch
+    one runtime stride dispatch
+    -> template-instantiated static-stride loop
+
+static
+    direct template-instantiated static-stride loop
+~~~
+
+The general runtime signed-affine executor remains the fallback for all
+unmatched strides.
+
+The purpose is to determine whether small positive stride multiversioning
+recovers the LDC code-generation loss without materially penalizing DMD or
+requiring a new public API/layout type.
+
+The XPS runner retains six independent CPU-pinned process measurements and
+complete DMD/LDC objdump disassembly.
