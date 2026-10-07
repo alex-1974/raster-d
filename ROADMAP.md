@@ -1015,6 +1015,15 @@ the approved hot executor, a benchmark-local noinline executor boundary, a
 diagnostic preflight-plus-noinline path and preflight-only cost, while retaining
 DMD/LDC disassembly.
 
+
+#### Fixed-convolution static expansion
+
+PR #176 is integrated at `f4df7e4cc436e9e061962e125c20fdba2c337173`. It replaces the ordinary runtime loop in the compile-time-fixed convolution evaluator with `static foreach` while preserving arithmetic order, accumulator/final-cast semantics and the public contract.
+
+Reported reference-XPS evidence reduces DMD 2.111.0 public convolution from 32.906413 ns/pixel in the retained pre-change diagnostic to 6.438273 ns/pixel after the change, with the same-run hot unrolled neighbourhood path at 6.520485 ns/pixel. LDC 1.41.0 remains at parity at about 1.69 ns/pixel.
+
+The dominant DMD fixed-convolution codegen cliff is therefore considered structurally solved. The post-change archive still requires retained-evidence verification before release qualification. M5.3 remains active; the next larger compiler-split candidate is reduction codegen decomposition, ahead of the smaller binary-multiply signal.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.

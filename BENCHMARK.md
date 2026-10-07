@@ -1592,3 +1592,38 @@ The decomposition separates:
 The XPS runner retains six CPU-pinned process measurements and complete DMD/LDC
 objdump disassembly. No production source-form change is accepted until the
 reference run is retained and inspected.
+
+
+## M5.3 fixed-convolution static-expansion qualification
+
+Production PR #176 replaces the ordinary runtime `foreach` in the compile-time-fixed convolution evaluator with `static foreach`, preserving row-major term order, accumulator type, coefficient values, the final cast, public API and failure semantics.
+
+Integrated production commit:
+
+`f4df7e4cc436e9e061962e125c20fdba2c337173`
+
+PR-head Fast CI run #250 completed successfully under both required compilers. The merge commit is GitHub-verified with `verified: true` and `reason: valid`.
+
+The pre-change retained diagnostic archive is `raster-v0.2-convolution-codegen-20261007-161914.tar.gz` (SHA256 `b031c18428301278c96843c3ac5ce6f4ec0f54540b6111e44c20c19e0cf4c39f`). Its DMD 2.111.0 public-convolution median was 32.906413 ns/pixel and hot-neighbourhood-unrolled median was 6.913483 ns/pixel.
+
+A post-change reference-XPS run was reported as:
+
+- archive: `raster-v0.2-convolution-codegen-20261007-180319.tar.gz`;
+- reported SHA256: `f65ca244b2b8c17683af8fe85ccf3eac33ccf40bfb43e79e35c507ac553dc9cb`;
+- stable workload checksum: `7596c236fe0ac383`.
+
+Reported medians:
+
+| Path | DMD 2.111.0 ns/pixel | LDC 1.41.0 ns/pixel |
+| --- | ---: | ---: |
+| public_convolution | 6.438273 | 1.688785 |
+| public_neighbourhood_loop | 24.855328 | 1.661647 |
+| hot_neighbourhood_loop | 25.025904 | 1.680178 |
+| hot_neighbourhood_unrolled | 6.520485 | 1.713860 |
+| direct_unrolled | 10.971236 | 1.698989 |
+
+The same-run DMD public-convolution / hot-neighbourhood-unrolled ratio is about 0.987x. Relative to the retained pre-change public-convolution median, the reported improvement is about 5.1x. LDC remains in the same performance class across all five paths.
+
+This supports the production conclusion that the material DMD convolution cliff was a source-form/code-generation problem in the runtime loop over a compile-time-fixed kernel. The D-native compile-time expansion closes that gap without a second traversal engine, runtime prepared state, weaker validation or changed public semantics.
+
+**Evidence status:** the post-change timing is reported reference-XPS evidence. The archive itself has not yet been inspected here, so its tar membership, internal `SHA256SUMS`, environment/head metadata, expected run count and disassembly remain to be verified before release-evidence promotion.
