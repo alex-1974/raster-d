@@ -152,6 +152,15 @@ jobs:
             --build=release \
             --force
 
+      - name: Allocated transform benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_transform_allocated \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Binary transform/arithmetic benchmark compile smoke
         shell: bash
         run: |

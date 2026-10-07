@@ -87,10 +87,18 @@ This covers the sum member of the reduction family, not extrema or mean.
 ### Unary transform
 
 `benchmark/v0_2_transform_into` compares the v0.2 public wrapper with the
-already-qualified legacy public path. It establishes wrapper overhead evidence.
+already-qualified legacy public path. Its retained 2026-10-06 XPS evidence
+establishes no material wrapper overhead.
 
 Historical M3.2b evidence separately characterizes the public transform path and
 the approved Canonical executor.
+
+`benchmark/v0_2_transform_allocated` covers the remaining convenience layer by
+comparing `tryTransformAllocated!transform` with the equivalent explicit
+`allocateCompactRaster -> writable view -> transformInto!transform` sequence.
+Both paths intentionally include allocation and retained-owner construction.
+The family remains `partial` until reference-XPS evidence for this allocating
+comparison is retained.
 
 ### Binary transform / arithmetic
 
