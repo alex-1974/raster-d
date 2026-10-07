@@ -1324,3 +1324,48 @@ Conclusion:
 
 Together with the existing M4.6 convolution isolation evidence, the complete
 neighbourhood/convolution family is qualified for M5.1.
+
+
+## M5.3 neighbourhood public/hot codegen diagnostic
+
+The M5.1 reference-XPS evidence established that centered 3x3 generic and legacy
+public paths are at parity, while both are roughly 16.6x (DMD) and 22.0x (LDC)
+slower than the approved hot executor.
+
+Because the representative output contains more than 500,000 pixels, fixed
+once-per-call structural validation alone is unlikely to explain that per-pixel
+ratio. M5.3 therefore starts with a code-generation/inlining diagnostic rather
+than immediately weakening validation.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_neighbourhood_codegen
+
+It compares:
+
+~~~text
+public
+    production tryApplyRasterNeighbourhood3x3
+
+hot_direct
+    approved hot executor directly
+
+hot_noinline
+    approved hot executor behind one benchmark-local noinline boundary
+
+preflight_noinline_hot
+    benchmark-local structural preflight
+    + benchmark-local noinline hot executor
+
+preflight_only
+    same structural preflight without pixel execution
+~~~
+
+The benchmark-local preflight replica is restricted to the fixed independent
+Canonical 3x3 workload and uses production stride queries, ROI construction,
+injectivity and validated affine overlap classification. It is diagnostic only;
+it does not define a second production operation or public API.
+
+The XPS runner also retains full objdump disassembly for both compilers.
+Reference timing and generated-code inspection are required before any
+production source-form change is proposed.
