@@ -61,7 +61,7 @@ Current families are:
 
 | Family | Representative public surface | Current state |
 | --- | --- | --- |
-| reduction | `sum`, `min`, `max`, `minMax`, `mean` | partial |
+| reduction | `sum`, `min`, `max`, `minMax`, `mean` | qualified |
 | unary-transform | `transformInto`, allocated transform wrapper | qualified |
 | fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
@@ -90,8 +90,104 @@ For mean it compares public `mean!(double,double)` with the exact explicit
 `sum!double + one division` composition that defines the implementation
 contract.
 
-The family remains `partial` until stable reference-XPS evidence for this new
-harness is retained.
+Reference-XPS evidence recorded on 2026-10-07:
+
+~~~text
+archive:
+    raster-v0.2-reduction-family-20261007-110540.tar.gz
+
+SHA256:
+    9dcb6116d4143434210182c053a443d613392f859d8ce9c7448b4887639d0f3b
+
+benchmark head:
+    732119f87d222a45625e759c602ec99786e93523
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    float
+    2048 x 512
+    source row padding 32 elements
+    Canonical sample stride 1
+    6 warmups
+    18 timed samples per process
+    16 iterations per timed sample
+    6 independent processes per compiler
+~~~
+
+The archive contains 51 tar members. Its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself. Each public/semantic pair is
+bit-equal during semantic preflight. The timed checksum accumulator resolves to
+zero for every path because the per-sample checksum is XOR-folded over an even
+number of timed samples; semantic equivalence therefore rests on the explicit
+preflight plus the retained per-process timing records rather than on the final
+zero aggregate alone.
+
+Retained medians and paired ratios:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | min public | 2.459261 | public/semantic 0.988719 |
+| DMD 2.111 | min semantic | 2.484605 | — |
+| DMD 2.111 | max public | 4.772054 | public/semantic 0.997702 |
+| DMD 2.111 | max semantic | 4.778953 | — |
+| DMD 2.111 | minMax public | 5.972995 | public/semantic 1.005181 |
+| DMD 2.111 | minMax semantic | 5.994698 | — |
+| DMD 2.111 | min + max public | 7.305133 | two-pass/minMax 1.219937 |
+| DMD 2.111 | mean public | 0.984770 | public/explicit 1.006190 |
+| DMD 2.111 | mean explicit sum+divide | 0.968109 | — |
+| LDC 1.41 | min public | 2.340852 | public/semantic 0.997985 |
+| LDC 1.41 | min semantic | 2.358105 | — |
+| LDC 1.41 | max public | 2.797366 | public/semantic 1.012728 |
+| LDC 1.41 | max semantic | 2.789799 | — |
+| LDC 1.41 | minMax public | 2.102938 | public/semantic 0.999220 |
+| LDC 1.41 | minMax semantic | 2.109309 | — |
+| LDC 1.41 | min + max public | 5.212049 | two-pass/minMax 2.438111 |
+| LDC 1.41 | mean public | 3.457505 | public/explicit 0.995094 |
+| LDC 1.41 | mean explicit sum+divide | 3.472351 | — |
+
+Paired ratio ranges remain close to parity for public versus semantic/explicit
+comparisons:
+
+~~~text
+DMD min:     0.972579 .. 1.003809
+DMD max:     0.983869 .. 1.010848
+DMD minMax:  0.988635 .. 1.015648
+DMD mean:    0.991698 .. 1.029518
+
+LDC min:     0.991549 .. 1.045356
+LDC max:     0.996276 .. 1.055612
+LDC minMax:  0.975930 .. 1.063586
+LDC mean:    0.963784 .. 1.016852
+~~~
+
+The one-pass minMax contract is also materially cheaper than two separate
+public passes on this reference machine:
+
+~~~text
+DMD two-pass/minMax median: 1.219937
+LDC two-pass/minMax median: 2.438111
+~~~
+
+Absolute compiler behavior is intentionally not collapsed into one language
+claim. In particular, DMD is much faster than LDC for the strict-sum-derived
+mean workload, while LDC is materially faster for max and minMax. Those
+differences are retained as M5.3 compiler/code-generation signals, not as public
+wrapper regressions.
+
+Combined with the already-qualified strict-sum evidence, the reduction family is
+therefore `qualified` for M5.1.
 
 ### Unary transform
 
