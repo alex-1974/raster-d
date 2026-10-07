@@ -1117,5 +1117,84 @@ The min + max control is informational evidence for the one-pass minMax design;
 family qualification depends on semantic/public coverage, not on claiming a
 portable speedup ratio.
 
-Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
-reduction family remains `partial` until reference-XPS evidence is retained.
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 reduction family qualification
+
+Reference archive:
+
+    raster-v0.2-reduction-family-20261007-110540.tar.gz
+
+SHA256:
+
+    9dcb6116d4143434210182c053a443d613392f859d8ce9c7448b4887639d0f3b
+
+Benchmark head:
+
+    732119f87d222a45625e759c602ec99786e93523
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- 32 elements source-row padding;
+- Canonical sample stride 1;
+- six warmups;
+- eighteen timed samples per process;
+- sixteen iterations per timed sample;
+- six independent processes per compiler.
+
+The archive contains 51 tar members and its recursive SHA256 manifest verifies
+all 47 retained files besides SHA256SUMS. Public/semantic or public/explicit
+pairs are bit-equal during semantic preflight.
+
+The timed XOR checksum folds to zero because the harness combines an even
+number of identical per-sample checksum contributions. This is retained as a
+known harness characteristic; the semantic preflight is the correctness proof
+for the compared result values.
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | min public | 2.459261 | public/semantic 0.988719 |
+| DMD 2.111 | min semantic | 2.484605 | — |
+| DMD 2.111 | max public | 4.772054 | public/semantic 0.997702 |
+| DMD 2.111 | max semantic | 4.778953 | — |
+| DMD 2.111 | minMax public | 5.972995 | public/semantic 1.005181 |
+| DMD 2.111 | minMax semantic | 5.994698 | — |
+| DMD 2.111 | min + max public | 7.305133 | two-pass/minMax 1.219937 |
+| DMD 2.111 | mean public | 0.984770 | public/explicit 1.006190 |
+| DMD 2.111 | mean explicit sum+divide | 0.968109 | — |
+| LDC 1.41 | min public | 2.340852 | public/semantic 0.997985 |
+| LDC 1.41 | min semantic | 2.358105 | — |
+| LDC 1.41 | max public | 2.797366 | public/semantic 1.012728 |
+| LDC 1.41 | max semantic | 2.789799 | — |
+| LDC 1.41 | minMax public | 2.102938 | public/semantic 0.999220 |
+| LDC 1.41 | minMax semantic | 2.109309 | — |
+| LDC 1.41 | min + max public | 5.212049 | two-pass/minMax 2.438111 |
+| LDC 1.41 | mean public | 3.457505 | public/explicit 0.995094 |
+| LDC 1.41 | mean explicit sum+divide | 3.472351 | — |
+
+Conclusion:
+
+- public extrema wrappers add no material systematic cost over the shared
+  `executeExtrema!(mode)` engine;
+- public mean adds no material systematic cost over the exact explicit
+  `sum!double + divide` composition;
+- one-pass minMax is materially cheaper than two public passes on both baseline
+  compilers;
+- absolute DMD/LDC differences remain compiler-specific optimization evidence
+  for M5.3, not an API-bridge issue.
+
+Together with the already-qualified strict-sum benchmark, the complete reduction
+family is qualified for M5.1.
