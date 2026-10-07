@@ -138,6 +138,15 @@ jobs:
         run: |
           bash tools/compile-negative/raster_convolution_api.sh "$DC"
 
+      - name: Neighbourhood codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_neighbourhood_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Neighbourhood family benchmark compile smoke
         shell: bash
         run: |
