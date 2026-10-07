@@ -182,19 +182,11 @@ if (
      */
     static foreach (index; 0 .. Kernel.shape.sampleCount)
     {
-        const sample =
-            cast(Accumulator)
-                values[index];
-
-        const coefficient =
-            cast(Accumulator)
-                Kernel.coefficients[index];
-
-        const product =
-            sample * coefficient;
-
         total =
-            total + product;
+            total
+            + cast(Accumulator) values[index]
+                * cast(Accumulator)
+                    Kernel.coefficients[index];
     }
 
     return cast(T) total;
