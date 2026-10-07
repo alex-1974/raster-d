@@ -983,3 +983,37 @@ ubyte->float is retained as an execution-family/codegen signal only. Because the
 type pair and implementation path differ, it is not interpreted here as wrapper
 overhead or as a comparable C++ ratio. Cross-language qualification remains
 M5.7 / Issue #121.
+
+
+## M5.1 allocated transform harness
+
+The retained `benchmark/v0_2_transform_into` evidence already qualifies the
+v0.2 destination-oriented wrapper against the legacy public transform surface,
+while M3.2b / ADR 0011 retains executor-level qualification.
+
+The remaining unary-transform gap is the allocating convenience layer.
+`benchmark/v0_2_transform_allocated` compares:
+
+~~~text
+public_allocated
+    tryTransformAllocated!pointTransform
+
+explicit_allocate_transform
+    allocateCompactRaster!float
+    -> writable view
+    -> transformInto!pointTransform
+~~~
+
+Both paths include compact allocation, retained backing construction,
+writable-view acquisition, identical transform semantics and output-owner
+destruction. The benchmark therefore isolates convenience-wrapper cost rather
+than comparing an allocating API with a destination-reuse API.
+
+The representative workload is padded Canonical `float`, 2048 x 512, with six
+warmups, eighteen rotating timed samples, four allocations/transforms per timed
+sample and six independent CPU-pinned processes per compiler. A semantic
+preflight requires identical output checksums.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
+unary-transform family remains `partial` until reference-XPS evidence is
+retained.
