@@ -1004,6 +1004,11 @@ It targets the LDC-only signed-affine 5x3 gap by separating runtime versus
 compile-time sample strides and source-side versus destination-side stride
 effects while retaining DMD/LDC disassembly.
 
+The third M5.3 diagnostic is retained at
+`benchmark/v0_2_affine_multiversion`. It tests whether a small runtime
+dispatcher into template-static stride 2/3/4 executors recovers LDC codegen
+while leaving the general signed-affine runtime executor as fallback.
+
 The first M5.3 diagnostic is retained at
 `benchmark/v0_2_neighbourhood_codegen`. It compares the production public path,
 the approved hot executor, a benchmark-local noinline executor boundary, a
