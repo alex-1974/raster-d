@@ -84,6 +84,15 @@ jobs:
             benchmark/v0_2_sum/cpp/reference.cpp \
             -o /tmp/raster-v0-2-sum-cpp-reference
 
+      - name: Reduction family benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_reduction_family \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster lifetime compile probes
         shell: bash
         run: |
