@@ -138,6 +138,10 @@ jobs:
         run: |
           bash tools/compile-negative/raster_convolution_api.sh "$DC"
 
+      - name: Neighbourhood release stride regression
+        shell: bash
+        run: bash tools/check_neighbourhood_release_strides.sh
+
       - name: Neighbourhood codegen diagnostic compile smoke
         shell: bash
         run: |
