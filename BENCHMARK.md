@@ -1078,3 +1078,44 @@ Conclusion: `tryTransformAllocated` adds no measured material systematic cost
 above the equivalent explicit compact-allocation + writable-view +
 `transformInto` sequence. Together with retained transformInto bridge evidence
 and M3.2b / ADR 0011 executor evidence, unary-transform is qualified for M5.1.
+
+
+## M5.1 reduction family harness
+
+The existing `benchmark/v0_2_sum` evidence remains the accepted qualification
+for generic strict sum. The retained
+`benchmark/v0_2_reduction_family` harness covers the remaining public reduction
+members without introducing alternate algorithms.
+
+Measured layers:
+
+~~~text
+min:
+    public
+    semantic executeExtrema!(minimum)
+
+max:
+    public
+    semantic executeExtrema!(maximum)
+
+minMax:
+    public
+    semantic executeExtrema!(minMax)
+    public min + max two-pass control
+
+mean:
+    public mean!(double, double)
+    explicit sum!double + one division
+~~~
+
+The workload is padded Canonical `float`, 2048 x 512, deterministic finite
+values, 32 elements row padding, six warmups, eighteen timed samples, sixteen
+iterations per sample and six independent CPU-pinned processes per compiler.
+Each compared semantic pair must produce exact bit-equivalent checksums.
+
+The min + max control is informational evidence for the one-pass minMax design;
+family qualification depends on semantic/public coverage, not on claiming a
+portable speedup ratio.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
+reduction family remains `partial` until reference-XPS evidence is retained.
