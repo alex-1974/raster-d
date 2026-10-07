@@ -144,7 +144,7 @@ nothrow
 
 
 /++
-    DMD x86-64 strict Canonical float-to-double reduction.
+    Strict Canonical float-to-double reduction.
 
     The caller has already established a validated non-empty Canonical plane.
     Sample stride is one. The signed row stride and region base therefore
@@ -154,7 +154,7 @@ nothrow
     validated retained backing. One double accumulator is carried across all
     rows, preserving the exact strict semantic graph.
 +/
-private double strictCanonicalDmdPointer(
+private double strictCanonicalPointer(
     scope const(float)* base,
     ptrdiff_t rowStride,
     size_t width,
@@ -209,45 +209,29 @@ nothrow
             );
 
         case PlaneExecutionLayout2D.canonical:
-            version (DigitalMars)
-            {
-                version (X86_64)
-                {
-                    ptrdiff_t rowStride;
-                    ptrdiff_t sampleStride;
+        {
+            ptrdiff_t rowStride;
+            ptrdiff_t sampleStride;
 
-                    const stridesOk =
-                        view.tryExecutionPlaneStrides(
-                            planeIndex,
-                            rowStride,
-                            sampleStride
-                        );
-
-                    assert(stridesOk);
-                    assert(sampleStride == 1);
-
-                    return strictCanonicalDmdPointer(
-                        view.executionRegionBase(
-                            planeIndex
-                        ),
-                        rowStride,
-                        view.width,
-                        view.height
-                    );
-                }
-                else
-                {
-                    return scalarSumCanonical2D!double(
-                        asMirCanonical(view, planeIndex)
-                    );
-                }
-            }
-            else
-            {
-                return scalarSumCanonical2D!double(
-                    asMirCanonical(view, planeIndex)
+            const stridesOk =
+                view.tryExecutionPlaneStrides(
+                    planeIndex,
+                    rowStride,
+                    sampleStride
                 );
-            }
+
+            assert(stridesOk);
+            assert(sampleStride == 1);
+
+            return strictCanonicalPointer(
+                view.executionRegionBase(
+                    planeIndex
+                ),
+                rowStride,
+                view.width,
+                view.height
+            );
+        }
 
         case PlaneExecutionLayout2D.contiguous:
             if (traits.linearContiguous1D)
@@ -477,6 +461,55 @@ unittest
         fixed.error
         == FloatToDoubleSumDispatchError.unsupportedExecution
     );
+}
+
+
+/*
+ * Canonical padded rows preserve one strict accumulator across row boundaries.
+ * The cancellation pattern is order-sensitive and the padding values must not
+ * participate in the logical reduction.
+ */
+unittest
+{
+    float[6] storage =
+    [
+        1.0e20f,
+        1.0f,
+        999.0f,
+        -1.0e20f,
+        1.0f,
+        999.0f
+    ];
+
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(
+            storage.ptr,
+            3,
+            1
+        )
+    ];
+
+    auto view =
+        makeRasterViewAssumeValidated!float(
+            descriptors[],
+            Region2D(
+                0,
+                0,
+                2,
+                2
+            )
+        );
+
+    const strict =
+        dispatchFloatToDoubleSum(
+            view,
+            0,
+            SumReductionSemantics.strict
+        );
+
+    assert(strict.ok);
+    assert(strict.value == 1.0);
 }
 
 
