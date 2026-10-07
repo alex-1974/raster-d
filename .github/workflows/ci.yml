@@ -178,6 +178,15 @@ jobs:
             --build=release \
             --force
 
+      - name: Convolution codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_convolution_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Prepared convolution benchmark compile smoke
         shell: bash
         run: |
