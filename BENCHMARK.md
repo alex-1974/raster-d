@@ -1484,3 +1484,40 @@ M5.2 is therefore qualified with the existing
 Universal -> Canonical -> Contiguous capability model plus operation-local
 executor selection. The remaining LDC signed-affine neighbourhood signal moves
 to M5.3 / Issue #117.
+
+
+## M5.3 signed-affine codegen diagnostic
+
+After M5.2 introduced a direct validated signed-affine neighbourhood executor,
+reference-XPS evidence showed:
+
+- DMD 2.111.0 sample-strided/Canonical: 0.875674x;
+- LDC 1.41.0 sample-strided/Canonical: 6.217490x.
+
+Because DMD reaches parity with the same semantic executor design, the remaining
+signal is treated as compiler/code-generation behavior rather than as evidence
+for another public API or shared storage-layout class.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_affine_codegen
+
+It compares semantically equivalent weighted 5x3 direct pointer loops:
+
+~~~text
+canonical_static1
+affine_runtime_s2_d2
+affine_static_s2_d2
+affine_runtime_s2_d1
+affine_runtime_s1_d2
+~~~
+
+This isolates:
+
+- runtime versus compile-time sample stride;
+- source-side versus destination-side sample stride;
+- compiler behavior on identical logical arithmetic.
+
+The XPS runner retains six independent CPU-pinned process measurements and
+complete DMD/LDC objdump disassembly. No production optimization is promoted
+until those results are retained and inspected.
