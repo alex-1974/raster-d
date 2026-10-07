@@ -426,7 +426,7 @@ private long timePreflightNoInlineHot(
 
     foreach (_; 0 .. iterations)
     {
-        const approved =
+        auto approved =
             diagnosticPreflight(source, destination, width, height);
 
         executeHotNoInline(approved, width, height);
@@ -452,7 +452,7 @@ private long timePreflightOnly(
 
     foreach (i; 0 .. iterations)
     {
-        const approved =
+        auto approved =
             diagnosticPreflight(source, destination, width, height);
 
         sink ^=
@@ -539,7 +539,7 @@ void main(string[] args)
 
     require(writableOk, "destination writable view failed");
 
-    const approved =
+    auto approved =
         diagnosticPreflight(source, destination, width, height);
 
     // Semantic preflight for all executing paths.
