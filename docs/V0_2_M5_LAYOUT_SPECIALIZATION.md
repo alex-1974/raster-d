@@ -272,3 +272,26 @@ M5.2 is complete when:
 - [x] no unnecessary new execution-layout enum/API is introduced;
 - [x] the architecture records when a future specialization is justified;
 - [x] the public API remains unchanged.
+
+
+## Post-#168 evidence correction
+
+PR #168 fixed a release-only side-effect-in-assert bug in both fixed and generic
+neighbourhood execution.
+
+This invalidates the earlier generic 5x3 sample-strided/Canonical timing as
+proof of layout parity. In the affected release build, the required-source
+stride query was skipped, so the nominal Canonical path did not reach its
+Canonical executor.
+
+The architectural decision in this document is not automatically reversed:
+the shared Universal -> Canonical -> Contiguous capability model and separation
+of storage facts from operation-local qualification facts remain valid.
+
+However, the following acceptance item is reopened:
+
+- [ ] re-run generic 5x3 Canonical versus sample-strided execution post-#168 and
+  confirm whether a separate specialization is still unjustified.
+
+Until that measurement is retained, do not cite the pre-fix ~1.0
+strided/Canonical ratio as current evidence.
