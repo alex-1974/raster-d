@@ -1024,6 +1024,14 @@ Reported reference-XPS evidence reduces DMD 2.111.0 public convolution from 32.9
 
 The dominant DMD fixed-convolution codegen cliff is therefore considered structurally solved. The post-change archive still requires retained-evidence verification before release qualification. M5.3 remains active; the next larger compiler-split candidate is reduction codegen decomposition, ahead of the smaller binary-multiply signal.
 
+
+The fifth M5.3 diagnostic is retained at
+`benchmark/v0_2_reduction_codegen`. It decomposes the remaining mean/max/minMax
+compiler split into public/semantic cost, runtime sample-stride induction and
+Canonical static-stride execution while retaining exact reduction semantics and
+DMD/LDC disassembly. No production optimization is selected until reference-XPS
+evidence is retained and inspected.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.

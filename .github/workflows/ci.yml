@@ -93,6 +93,15 @@ jobs:
             --build=release \
             --force
 
+      - name: Reduction codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_reduction_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster lifetime compile probes
         shell: bash
         run: |

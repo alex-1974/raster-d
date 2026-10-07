@@ -1627,3 +1627,20 @@ The same-run DMD public-convolution / hot-neighbourhood-unrolled ratio is about 
 This supports the production conclusion that the material DMD convolution cliff was a source-form/code-generation problem in the runtime loop over a compile-time-fixed kernel. The D-native compile-time expansion closes that gap without a second traversal engine, runtime prepared state, weaker validation or changed public semantics.
 
 **Evidence status:** the post-change timing is reported reference-XPS evidence. The archive itself has not yet been inspected here, so its tar membership, internal `SHA256SUMS`, environment/head metadata, expected run count and disassembly remain to be verified before release-evidence promotion.
+
+
+## M5.3 reduction codegen diagnostic
+
+The retained harness at `benchmark/v0_2_reduction_codegen` decomposes the compiler split observed by the qualified v0.2 reduction-family benchmark.
+
+Input signal:
+
+- mean: DMD about 0.985 ns/sample versus LDC about 3.458;
+- max: DMD about 4.772 versus LDC about 2.797;
+- minMax: DMD about 5.973 versus LDC about 2.103.
+
+For mean, max and minMax the diagnostic separates the production public path, package-internal semantic execution, a benchmark-local exact pointer loop with runtime sample stride, and an otherwise equivalent Canonical sample-stride-one loop. minMax additionally measures two static-stride passes.
+
+The benchmark-local extrema controls preserve NaN propagation and signed-zero selection. Mean preserves one double accumulator, row-major encounter order and one final division. The diagnostic does not introduce fast-math, reassociation, alternate reduction semantics, SIMD or threading.
+
+The XPS collector retains six CPU-pinned processes per compiler and complete objdump disassembly. Production source-form changes require the retained reference run and generated-code inspection.
