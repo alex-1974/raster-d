@@ -275,7 +275,7 @@ private void dispatchDestination(
 )
 @trusted pure nothrow @nogc
 {
-    final switch (destinationSampleStride)
+    switch (destinationSampleStride)
     {
         case 1:
             affineStatic!(SourceSampleStride, 1)(
@@ -350,7 +350,7 @@ private void affineDispatch(
 )
 @trusted pure nothrow @nogc
 {
-    final switch (sourceSampleStride)
+    switch (sourceSampleStride)
     {
         case 1:
             dispatchDestination!1(
