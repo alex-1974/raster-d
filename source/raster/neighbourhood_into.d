@@ -1072,6 +1072,132 @@ unittest
 
 
 /*
+ * Signed-affine executor preserves sample-strided source and destination
+ * mappings without touching physical padding elements.
+ */
+unittest
+{
+    enum size_t logicalSourceWidth = 6;
+    enum size_t logicalSourceHeight = 3;
+    enum size_t sourcePitch = 12;
+
+    ubyte[sourcePitch * logicalSourceHeight] sourceStorage;
+
+    foreach (i; 0 .. sourceStorage.length)
+        sourceStorage[i] = 0xEE;
+
+    foreach (y; 0 .. logicalSourceHeight)
+    {
+        foreach (x; 0 .. logicalSourceWidth)
+        {
+            sourceStorage[
+                y * sourcePitch
+                + x * 2
+            ] =
+                cast(ubyte)(1 + y * 20 + x);
+        }
+    }
+
+    ubyte[4] destinationStorage = [0xAA, 0xDD, 0xAA, 0xDD];
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            sourcePitch,
+            2
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            4,
+            2
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                logicalSourceWidth,
+                logicalSourceHeight
+            )
+        );
+
+    scope auto destination =
+        makeWritableGenericNeighbourhoodTestView!ubyte(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(0, 0, 2, 1)
+        );
+
+    RasterNeighbourhoodError error;
+
+    assert(
+        source.applyNeighbourhoodInto!(
+            Shape5x3,
+            weighted5x3
+        )(
+            0,
+            Region2D(
+                Shape5x3.left,
+                Shape5x3.top,
+                2,
+                1
+            ),
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterNeighbourhoodError.none);
+
+    foreach (x; 0 .. 2)
+    {
+        ubyte[15] values;
+        size_t index;
+
+        foreach (dy; 0 .. 3)
+        {
+            foreach (dx; 0 .. 5)
+            {
+                values[index++] =
+                    sourceStorage[
+                        dy * sourcePitch
+                        + (x + dx) * 2
+                    ];
+            }
+        }
+
+        assert(
+            destinationStorage[x * 2]
+            == weighted5x3(values)
+        );
+    }
+
+    assert(destinationStorage[1] == 0xDD);
+    assert(destinationStorage[3] == 0xDD);
+}
+
+
+/*
  * Structural halo failure occurs before destination write.
  */
 unittest
