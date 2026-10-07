@@ -1503,6 +1503,166 @@ unittest
 }
 
 
+private
+void exercisePositiveSampleStride(size_t SampleStride)()
+@safe
+nothrow
+@nogc
+{
+    static assert(SampleStride >= 2 && SampleStride <= 4);
+
+    enum size_t logicalSourceWidth = 6;
+    enum size_t logicalSourceHeight = 3;
+    enum size_t outputWidth = 2;
+
+    enum size_t sourcePitch =
+        logicalSourceWidth * SampleStride;
+
+    enum size_t destinationPitch =
+        outputWidth * SampleStride;
+
+    ubyte[sourcePitch * logicalSourceHeight] sourceStorage;
+    ubyte[destinationPitch] destinationStorage;
+
+    foreach (i; 0 .. sourceStorage.length)
+        sourceStorage[i] = 0xEE;
+
+    foreach (i; 0 .. destinationStorage.length)
+        destinationStorage[i] = 0xDD;
+
+    foreach (y; 0 .. logicalSourceHeight)
+    {
+        foreach (x; 0 .. logicalSourceWidth)
+        {
+            sourceStorage[
+                y * sourcePitch
+                + x * SampleStride
+            ] =
+                cast(ubyte)(1 + y * 20 + x);
+        }
+    }
+
+    const PlaneDescriptor[1] sourceDescriptors =
+    [
+        PlaneDescriptor(
+            sourceStorage.ptr,
+            sourcePitch,
+            SampleStride
+        )
+    ];
+
+    const PlaneDescriptor[1] destinationDescriptors =
+    [
+        PlaneDescriptor(
+            destinationStorage.ptr,
+            destinationPitch,
+            SampleStride
+        )
+    ];
+
+    const ResourceEntry[1] destinationResources =
+    [
+        ResourceEntry(
+            destinationStorage.ptr,
+            destinationStorage.sizeof,
+            null,
+            null,
+            ResourceAccess.readWrite
+        )
+    ];
+
+    scope auto source =
+        makeRasterViewAssumeValidated!ubyte(
+            sourceDescriptors[],
+            Region2D(
+                0,
+                0,
+                logicalSourceWidth,
+                logicalSourceHeight
+            )
+        );
+
+    scope auto destination =
+        makeWritableGenericNeighbourhoodTestView!ubyte(
+            destinationResources[],
+            destinationDescriptors[],
+            Region2D(
+                0,
+                0,
+                outputWidth,
+                1
+            )
+        );
+
+    RasterNeighbourhoodError error;
+
+    assert(
+        source.applyNeighbourhoodInto!(
+            Shape5x3,
+            weighted5x3
+        )(
+            0,
+            Region2D(
+                Shape5x3.left,
+                Shape5x3.top,
+                outputWidth,
+                1
+            ),
+            destination,
+            0,
+            error
+        )
+    );
+
+    assert(error == RasterNeighbourhoodError.none);
+
+    foreach (x; 0 .. outputWidth)
+    {
+        ubyte[15] values;
+        size_t index;
+
+        foreach (dy; 0 .. Shape5x3.height)
+        {
+            foreach (dx; 0 .. Shape5x3.width)
+            {
+                values[index++] =
+                    sourceStorage[
+                        dy * sourcePitch
+                        + (x + dx) * SampleStride
+                    ];
+            }
+        }
+
+        assert(
+            destinationStorage[x * SampleStride]
+            == weighted5x3(values)
+        );
+
+        foreach (padding; 1 .. SampleStride)
+        {
+            assert(
+                destinationStorage[
+                    x * SampleStride + padding
+                ]
+                == 0xDD
+            );
+        }
+    }
+}
+
+
+/*
+ * LDC multiversioning covers the remaining common positive sample strides.
+ *
+ * DMD executes the same semantic tests through the general runtime executor.
+ */
+unittest
+{
+    exercisePositiveSampleStride!3();
+    exercisePositiveSampleStride!4();
+}
+
+
 /*
  * Structural halo failure occurs before destination write.
  */
