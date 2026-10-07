@@ -1,5 +1,5 @@
 family	public_surface	current_harness	evidence_scope	status
-reduction	sum|min|max|minMax|mean	benchmark/v0_2_sum	public sum + strict C++ reference; extrema/mean not yet covered	partial
+reduction	sum|min|max|minMax|mean	benchmark/v0_2_sum + benchmark/v0_2_reduction_family	qualified sum evidence; retained extrema/mean harness added, reference-XPS evidence pending	partial
 unary-transform	transformInto|tryTransformAllocated	benchmark/v0_2_transform_into + benchmark/v0_2_transform_allocated	qualified destination-oriented wrapper + M3.2b executor + allocated-wrapper reference-XPS evidence	qualified
 fill-copy	fill|copyInto	benchmark/v0_2_fill_copy	qualified v0.2 public/legacy/semantic bridge evidence + retained M3 executor evidence	qualified
 binary-transform-arithmetic	zipTransformInto|addInto|subtractInto|multiplyInto|divideInto	benchmark/v0_2_binary_transform_arithmetic	qualified reference-XPS evidence for public generic zip + arithmetic wrappers + approved Canonical executor	qualified
