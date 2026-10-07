@@ -1015,6 +1015,14 @@ the approved hot executor, a benchmark-local noinline executor boundary, a
 diagnostic preflight-plus-noinline path and preflight-only cost, while retaining
 DMD/LDC disassembly.
 
+
+The fifth M5.3 diagnostic is retained at
+`benchmark/v0_2_reduction_codegen`. It decomposes the remaining mean/max/minMax
+compiler split into public/semantic cost, runtime sample-stride induction and
+Canonical static-stride execution while retaining exact reduction semantics and
+DMD/LDC disassembly. No production optimization is selected until reference-XPS
+evidence is retained and inspected.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
