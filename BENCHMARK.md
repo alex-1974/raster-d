@@ -923,5 +923,63 @@ samples. Destination-oriented paths require identical per-pair checksums and
 unchanged row padding; allocating paths receive a semantic preflight before
 timing.
 
-Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
-conversion family remains `partial` until reference-XPS evidence is retained.
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 conversion qualification
+
+Reference archive:
+
+    raster-v0.2-conversion-20261007-082153.tar.gz
+
+SHA256:
+
+    bda1844b8f4f9da2d58a15f26938469c8648c48b3ed06c635549bc9bc94dbbbe
+
+Benchmark head:
+
+    ce69499c99b9eedc300297f1622a6ed314de04f5
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+The archive contains 48 files total; its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself. Destination-oriented paths keep
+row padding intact and retain stable checksums:
+
+    ubyte -> float  8fd9fae9d49d0383
+    ushort -> float ecfb68c3e2e5a583
+
+Retained medians:
+
+| Compiler | Pair/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | ubyte->float public generic | 0.335947 | generic/specialized 0.998153 |
+| DMD 2.111 | ubyte->float public specialized | 0.342338 | specialized/semantic 1.004943 |
+| DMD 2.111 | ubyte->float semantic engine | 0.337945 | generic/semantic 1.003086 |
+| DMD 2.111 | ushort->float public generic | 3.800347 | generic/semantic 1.017085 |
+| DMD 2.111 | ushort->float semantic engine | 3.790440 | — |
+| DMD 2.111 | allocated public | 3.759492 | public/explicit 1.009449 |
+| DMD 2.111 | allocated explicit | 3.692126 | — |
+| LDC 1.41 | ubyte->float public generic | 0.159982 | generic/specialized 0.976328 |
+| LDC 1.41 | ubyte->float public specialized | 0.162438 | specialized/semantic 1.013020 |
+| LDC 1.41 | ubyte->float semantic engine | 0.159167 | generic/semantic 0.991100 |
+| LDC 1.41 | ushort->float public generic | 3.156083 | generic/semantic 0.996644 |
+| LDC 1.41 | ushort->float semantic engine | 3.148349 | — |
+| LDC 1.41 | allocated public | 3.093498 | public/explicit 1.009841 |
+| LDC 1.41 | allocated explicit | 3.062337 | — |
+
+Conclusion: neither the generic v0.2 exact-policy API bridge nor the allocating
+convenience wrapper introduces a material systematic penalty on the qualified
+reference machine. The conversion family is qualified for M5.1.
+
+The much larger absolute ushort->float time compared with specialized
+ubyte->float is retained as an execution-family/codegen signal only. Because the
+type pair and implementation path differ, it is not interpreted here as wrapper
+overhead or as a comparable C++ ratio. Cross-language qualification remains
+M5.7 / Issue #121.

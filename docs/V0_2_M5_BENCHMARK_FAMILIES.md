@@ -65,7 +65,7 @@ Current families are:
 | unary-transform | `transformInto`, allocated transform wrapper | partial |
 | fill-copy | `fill`, `copyInto` | qualified |
 | binary-transform/arithmetic | `zipTransformInto`, `addInto`, `subtractInto`, `multiplyInto`, `divideInto` | qualified |
-| conversion | `convertRasterInto`, `tryConvertAllocated` | partial — retained generic-policy/allocated harness; reference-XPS evidence pending |
+| conversion | `convertRasterInto`, `tryConvertAllocated` | qualified |
 | neighbourhood | `applyNeighbourhoodInto`, `convolveInto` | partial |
 
 Trivial metadata accessors, enums, result carriers and compile-time traits do not
@@ -311,8 +311,84 @@ case. The allocating pair measures the convenience wrapper against the same
 explicit allocation/conversion sequence.
 
 Private execution helpers remain private. ADR 0013 / ADR 0014 and retained M3.5
-evidence remain the executor/preflight/code-generation evidence. The family is
-`partial` until stable reference-XPS evidence is retained.
+evidence remain the executor/preflight/code-generation evidence.
+
+Reference-XPS evidence recorded on 2026-10-07:
+
+~~~text
+archive:
+    raster-v0.2-conversion-20261007-082153.tar.gz
+
+SHA256:
+    bda1844b8f4f9da2d58a15f26938469c8648c48b3ed06c635549bc9bc94dbbbe
+
+benchmark head:
+    ce69499c99b9eedc300297f1622a6ed314de04f5
+
+reference machine:
+    Dell XPS 15
+    Intel Core i7-9750H
+    Linux x86-64
+    CPU affinity 0
+
+toolchain:
+    DUB 1.40.0
+    DMD 2.111.0
+    LDC 1.41.0
+    D frontend 2.111.0
+    LLVM 19.1.7
+
+workload:
+    2048 x 512
+    32 elements row padding for destination-oriented paths
+    Canonical sample stride 1
+    6 warmups
+    18 timed samples per process
+    6 independent processes per compiler
+    16 iterations per destination-oriented timed sample
+    4 iterations per allocating timed sample
+~~~
+
+The recursive manifest verifies all 47 retained files besides SHA256SUMS.
+Destination-oriented paths preserve row padding. Stable per-pair checksums are:
+
+~~~text
+ubyte -> float:  8fd9fae9d49d0383
+ushort -> float: ecfb68c3e2e5a583
+~~~
+
+Retained medians and paired ratios:
+
+| Compiler | Pair/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | ubyte->float public generic | 0.335947 | generic/specialized 0.998153 |
+| DMD 2.111 | ubyte->float public specialized | 0.342338 | specialized/semantic 1.004943 |
+| DMD 2.111 | ubyte->float semantic engine | 0.337945 | generic/semantic 1.003086 |
+| DMD 2.111 | ushort->float public generic | 3.800347 | generic/semantic 1.017085 |
+| DMD 2.111 | ushort->float semantic engine | 3.790440 | — |
+| DMD 2.111 | allocated public | 3.759492 | public/explicit 1.009449 |
+| DMD 2.111 | allocated explicit | 3.692126 | — |
+| LDC 1.41 | ubyte->float public generic | 0.159982 | generic/specialized 0.976328 |
+| LDC 1.41 | ubyte->float public specialized | 0.162438 | specialized/semantic 1.013020 |
+| LDC 1.41 | ubyte->float semantic engine | 0.159167 | generic/semantic 0.991100 |
+| LDC 1.41 | ushort->float public generic | 3.156083 | generic/semantic 0.996644 |
+| LDC 1.41 | ushort->float semantic engine | 3.148349 | — |
+| LDC 1.41 | allocated public | 3.093498 | public/explicit 1.009841 |
+| LDC 1.41 | allocated explicit | 3.062337 | — |
+
+The generic public exact-policy API therefore adds no material systematic cost
+above the relevant semantic engine on either compiler. The allocating wrapper is
+likewise within about one percent of the equivalent explicit allocation and
+conversion sequence.
+
+Absolute generic ushort->float throughput is much slower than the specialized
+ubyte->float path, but this benchmark does not establish an apples-to-apples
+language or algorithm ratio: the type pair and internal execution path differ.
+That throughput question remains appropriate for M5.3/M5.4 codegen/layout work
+and the comparable C++ gate in M5.7 rather than being attributed to the v0.2
+policy or wrapper layer.
+
+The conversion family is therefore `qualified` for M5.1.
 
 ### Fill / copy / conversion
 

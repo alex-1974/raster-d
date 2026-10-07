@@ -3,5 +3,5 @@ reduction	sum|min|max|minMax|mean	benchmark/v0_2_sum	public sum + strict C++ ref
 unary-transform	transformInto|tryTransformAllocated	benchmark/v0_2_transform_into	public wrapper comparison; historical M3.2b executor evidence	partial
 fill-copy	fill|copyInto	benchmark/v0_2_fill_copy	qualified v0.2 public/legacy/semantic bridge evidence + retained M3 executor evidence	qualified
 binary-transform-arithmetic	zipTransformInto|addInto|subtractInto|multiplyInto|divideInto	benchmark/v0_2_binary_transform_arithmetic	qualified reference-XPS evidence for public generic zip + arithmetic wrappers + approved Canonical executor	qualified
-conversion	convertRasterInto|tryConvertAllocated	benchmark/v0_2_conversion	generic exact-policy API + allocated-wrapper harness; reference-XPS evidence pending	partial
+conversion	convertRasterInto|tryConvertAllocated	benchmark/v0_2_conversion	qualified generic exact-policy API + allocated-wrapper reference-XPS evidence	qualified
 neighbourhood	applyNeighbourhoodInto|convolveInto	benchmark/v0_2_prepared_convolution	convolve public semantic + direct-fixed executor isolation; generic neighbourhood family incomplete	partial
