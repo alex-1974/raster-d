@@ -1240,6 +1240,87 @@ compiler. Source and destination allocations occur before timing. Semantic
 preflight and post-timing checks require identical output checksums across
 equivalent paths.
 
-Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
-neighbourhood/convolution family remains `partial` until reference-XPS evidence
-for the generic neighbourhood harness is retained.
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 neighbourhood family qualification
+
+Reference archive:
+
+    raster-v0.2-neighbourhood-family-20261007-113929.tar.gz
+
+SHA256:
+
+    ff9ca09cefdbe3e39d22e13e4cc1a0ff02279660f2dc0014b501b03838aa62c0
+
+Benchmark head:
+
+    a4923a71e5c2df88caefe16e89e43deba27aa829
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 1024 x 512 output samples;
+- 32 physical-float source-row padding;
+- centered 3x3 halo one sample per side;
+- generic 5x3 halo two samples horizontally and one vertically;
+- strided case sample stride 2;
+- six warmups;
+- eighteen timed samples per process;
+- eight iterations per timed sample;
+- six independent CPU-pinned processes per compiler.
+
+The archive contains 48 files total and its recursive SHA256 manifest verifies
+all 47 retained files besides SHA256SUMS.
+
+Stable output checksums:
+
+    3x3 846327cf63eba383
+    5x3 876633b3b2afab83
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | 3x3 public generic | 76.209098 | generic/legacy 0.996564 |
+| DMD 2.111 | 3x3 public legacy | 76.949913 | legacy/hot 16.745190 |
+| DMD 2.111 | 3x3 hot executor | 4.590744 | generic/hot 16.575960 |
+| DMD 2.111 | 5x3 public Canonical | 120.070195 | — |
+| DMD 2.111 | 5x3 public strided | 120.873677 | strided/Canonical 1.007901 |
+| LDC 1.41 | 3x3 public generic | 18.295198 | generic/legacy 0.987694 |
+| LDC 1.41 | 3x3 public legacy | 18.436974 | legacy/hot 22.287455 |
+| LDC 1.41 | 3x3 hot executor | 0.838107 | generic/hot 22.032183 |
+| LDC 1.41 | 5x3 public Canonical | 30.057437 | — |
+| LDC 1.41 | 5x3 public strided | 30.099535 | strided/Canonical 1.001187 |
+
+Paired process ranges:
+
+- DMD generic3/legacy3: 0.976221-1.004598;
+- DMD generic3/hot3: 16.384370-16.860886;
+- DMD strided5/Canonical5: 0.997348-1.019196;
+- LDC generic3/legacy3: 0.968464-1.014166;
+- LDC generic3/hot3: 21.399375-22.501127;
+- LDC strided5/Canonical5: 0.992973-1.027238.
+
+Conclusion:
+
+- generic and legacy centered-3x3 public surfaces are effectively equivalent;
+- the representative generic 5x3 signed-affine fallback is effectively at
+  parity with the public Canonical path;
+- the public semantic/preflight boundary is extremely material: about 16.6x
+  versus the approved hot executor on DMD and about 22.0x on LDC;
+- because generic and legacy public paths remain at parity, this is not a new
+  generic-wrapper regression;
+- the public/hot gap is retained for M5.2/M5.3 investigation rather than hidden
+  by widening private executor visibility.
+
+Together with the existing M4.6 convolution isolation evidence, the complete
+neighbourhood/convolution family is qualified for M5.1.
