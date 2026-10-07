@@ -969,7 +969,7 @@ docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.
 
 ### M5.3 — DMD/LDC code-generation audit
 
-Status: next.
+Status: active.
 
 Issue #117 owns compiler/code-generation investigation for the retained M5.1
 signals. The highest-priority current signal is the centered 3x3 neighbourhood
@@ -981,6 +981,12 @@ public-semantic versus approved hot-executor gap:
 Generic and legacy public spellings remain at parity, so M5.3 must first
 separate structural preflight, dispatch/inlining and generated execution code
 before changing API or semantics.
+
+The first M5.3 diagnostic is retained at
+`benchmark/v0_2_neighbourhood_codegen`. It compares the production public path,
+the approved hot executor, a benchmark-local noinline executor boundary, a
+diagnostic preflight-plus-noinline path and preflight-only cost, while retaining
+DMD/LDC disassembly.
 
 ## Higher-level consumer — imagery-d
 
