@@ -253,6 +253,10 @@ void main()
 }
 EOF
 
-for compiler in dmd ldc2; do
-    dub run         --root="$TMP"         --compiler="$compiler"         --build=release         --force
-done
+compiler="${1:-${DC:-dmd}}"
+
+dub run \
+    --root="$TMP" \
+    --compiler="$compiler" \
+    --build=release \
+    --force
