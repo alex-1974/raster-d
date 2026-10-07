@@ -1198,3 +1198,48 @@ Conclusion:
 
 Together with the already-qualified strict-sum benchmark, the complete reduction
 family is qualified for M5.1.
+
+
+## M5.1 neighbourhood family harness
+
+The retained M4.6 prepared-convolution isolation benchmark already qualifies the
+convolution side of the family and rejects runtime prepared coefficient state.
+Its public/direct-fixed gap remains a separate M5 performance signal.
+
+The missing generic neighbourhood coverage is retained at
+`benchmark/v0_2_neighbourhood_family`.
+
+Representative measurements:
+
+~~~text
+centered 3x3:
+    public_generic
+    public_legacy
+    approved hot_executor
+
+generic 5x3:
+    public_canonical
+    public_strided
+~~~
+
+The 3x3 comparison separates the new generic public spelling from the preserved
+qualified public path and from the approved package execution entry.
+
+The 5x3 pair exercises the actual non-3x3 generic implementation on two
+semantically equivalent layouts:
+
+- Canonical source/destination sample stride 1;
+- valid source/destination sample stride 2, forcing the signed-affine fallback.
+
+No private 5x3 executor is exposed for benchmark convenience.
+
+The default workload is float, 1024 x 512 output samples, source row padding of
+32 physical floats, six warmups, eighteen rotating timed samples, eight
+iterations per timed sample and six independent CPU-pinned processes per
+compiler. Source and destination allocations occur before timing. Semantic
+preflight and post-timing checks require identical output checksums across
+equivalent paths.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0. The
+neighbourhood/convolution family remains `partial` until reference-XPS evidence
+for the generic neighbourhood harness is retained.
