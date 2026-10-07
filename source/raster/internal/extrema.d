@@ -87,6 +87,7 @@ template isExtremaFloating(T)
 
 
 private
+pragma(inline, true)
 bool isNegativeZero(T)(
     T value
 )
@@ -109,6 +110,7 @@ if (isExtremaFloating!T)
     Equal signed zero values use -0 for minimum independent of encounter order.
 +/
 private
+pragma(inline, true)
 void updateMinimum(T)(
     ref T current,
     T value
@@ -149,6 +151,7 @@ nothrow
     Equal signed zero values use +0 for maximum independent of encounter order.
 +/
 private
+pragma(inline, true)
 void updateMaximum(T)(
     ref T current,
     T value
