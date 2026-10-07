@@ -167,7 +167,7 @@ private string compilerName()
 
 private struct Approved3x3
 {
-    scope const(float)* sourceBase;
+    const(float)* sourceBase;
     ptrdiff_t sourceRowStride;
     float* destinationBase;
     ptrdiff_t destinationRowStride;
@@ -181,7 +181,7 @@ private Approved3x3 diagnosticPreflight(
     size_t width,
     size_t height
 )
-@safe
+@trusted
 {
     ptrdiff_t sourceRowStride;
     ptrdiff_t sourceSampleStride;
