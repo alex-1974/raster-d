@@ -1557,3 +1557,38 @@ requiring a new public API/layout type.
 
 The XPS runner retains six independent CPU-pinned process measurements and
 complete DMD/LDC objdump disassembly.
+
+
+## M5.3 convolution codegen diagnostic
+
+Corrected post-release-stride evidence retained a DMD-only fixed-convolution
+signal:
+
+- DMD 2.111.0 public one-shot/direct-fixed: about 2.90x;
+- LDC 1.41.0 public one-shot/direct-fixed: about 0.96x.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_convolution_codegen
+
+It compares five semantically identical weighted 3x3 float convolution paths
+with double accumulation:
+
+~~~text
+public_convolution
+public_neighbourhood_loop
+hot_neighbourhood_loop
+hot_neighbourhood_unrolled
+direct_unrolled
+~~~
+
+The decomposition separates:
+
+- convolution wrapper/alias effects;
+- public neighbourhood preflight/dispatch;
+- loop-based versus explicitly unrolled kernel source form;
+- approved neighbourhood materialization versus fully direct pointer arithmetic.
+
+The XPS runner retains six CPU-pinned process measurements and complete DMD/LDC
+objdump disassembly. No production source-form change is accepted until the
+reference run is retained and inspected.

@@ -1062,3 +1062,9 @@ they reveal a coherent, reusable raster-domain need.
 
 They must not cause image semantics, provider policy or application-specific
 behaviour to leak into the generic raster API.
+
+
+The fourth M5.3 diagnostic is retained at
+`benchmark/v0_2_convolution_codegen`. It decomposes the remaining DMD-only
+fixed-convolution one-shot/direct-fixed gap into wrapper, neighbourhood
+preflight, kernel source-form and executor/materialization components.
