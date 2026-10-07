@@ -1371,3 +1371,48 @@ requirements rather than introducing further speculative specialization.
 
 Further SIMD, aliasing, numeric, parallel, or GPU specializations should be
 added only when another concrete operation and measurement justify them.
+
+
+## M5.2 layout-specialization decision
+
+The M5.2 evaluation keeps the existing internal execution capability model:
+
+~~~text
+Universal -> Canonical -> Contiguous
+~~~
+
+This is intentionally a capability lattice, not a complete catalog of physical
+storage descriptions.
+
+The classifier remains responsible only for reusable storage facts:
+
+- arbitrary signed-affine traversal;
+- forward unit sample stride;
+- no-gap contiguous row-major storage;
+- optional flat contiguous 1D capability.
+
+Operation-specific facts remain outside that classifier. Examples include:
+
+- checked source/target non-overlap for copy;
+- strict versus fixed-lane numeric semantics for reduction;
+- compiler/frontend-specific row-boundary policy for neighbourhood/conversion;
+- kernel shape and coefficient semantics;
+- type-pair and width-dependent code-generation choices.
+
+Consequently:
+
+- padded unit-stride rows remain Canonical;
+- negative row stride with unit sample stride remains Canonical;
+- negative sample stride remains Universal;
+- interleaved/sample-strided storage remains Universal;
+- general signed affine storage remains Universal.
+
+A new shared layout class is added only when a concrete operation demonstrates
+that the stronger capability removes real work or produces a material measured
+code-generation/performance benefit.
+
+Reference-XPS evidence from the generic 5x3 neighbourhood family showed
+sample-strided versus Canonical public execution at parity on DMD 2.111.0 and
+LDC 1.41.0. That evidence argues against speculative layout proliferation.
+
+See docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.

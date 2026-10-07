@@ -902,7 +902,7 @@ public API.
 
 ### M5.1 — Establish v0.2 benchmark families
 
-Status: in progress.
+Status: complete.
 
 Issue #115 owns the benchmark coverage matrix.
 
@@ -918,24 +918,69 @@ The first M5.1 slice establishes:
   workload, warm-up, samples/distribution, semantic preflight and baseline
   commit.
 
-Current coverage remains intentionally truthful:
+Final qualified family coverage:
 
-- reduction: partial;
-- unary transform: partial;
-- fill/copy: gap;
-- binary transform/arithmetic: gap;
-- conversion: gap;
-- neighbourhood/convolution: partial.
+- reduction: qualified;
+- unary transform: qualified;
+- fill/copy: qualified;
+- binary transform/arithmetic: qualified;
+- conversion: qualified;
+- neighbourhood/convolution: qualified.
 
-M5.1 closes only when every family is qualified or has an explicit justified
-not-applicable decision. Historical M3 executor evidence remains valid
-provenance but is not silently treated as complete v0.2 public-family evidence.
+Issue #115 is closed. Retained reference-XPS evidence, DMD/LDC separation,
+semantic preflight, public/hot layering and Fast-CI compile smoke are recorded
+in BENCHMARK.md and docs/V0_2_M5_BENCHMARK_FAMILIES.md.
 
 The M4.6 prepared-convolution isolation also creates an explicit M5 signal:
 public `convolveInto` and the validation-free direct-fixed execution shape are
 roughly an order of magnitude apart on both baseline compilers. M5 investigates
 that as public/preflight/dispatch/execution cost, not as a prepared-state
 benefit.
+
+### M5.2 — Internal layout specialization framework
+
+Status: complete.
+
+Issue #116 evaluated whether the internal execution-layout model should grow
+from the existing Universal/Canonical/Contiguous capability lattice into a
+larger physical-layout taxonomy.
+
+Decision:
+
+- retain PlaneExecutionLayout2D and PlaneExecutionTraits as the shared storage
+  capability classifier;
+- do not introduce separate generic classes for padded rows, negative row
+  stride, interleaved storage or general affine storage merely because those
+  physical descriptions differ;
+- keep signed row stride as a Canonical parameter whenever sample stride is one;
+- keep arbitrary sample-strided/interleaved/general affine traversal under
+  Universal until a concrete operation demonstrates a material benefit from a
+  stronger capability;
+- combine shared storage capabilities with operation-local facts such as
+  alias/non-overlap proof, numeric semantics, compiler capability, kernel/shape,
+  type pair and measured thresholds.
+
+The decisive new M5.1 neighbourhood evidence showed generic 5x3 sample-strided
+execution at parity with public Canonical execution on both baseline compilers,
+so no speculative interleaved/strided specialization is promoted.
+
+The full decision and evidence mapping are recorded in
+docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.
+
+### M5.3 — DMD/LDC code-generation audit
+
+Status: next.
+
+Issue #117 owns compiler/code-generation investigation for the retained M5.1
+signals. The highest-priority current signal is the centered 3x3 neighbourhood
+public-semantic versus approved hot-executor gap:
+
+- DMD 2.111.0: about 16.58x;
+- LDC 1.41.0: about 22.03x.
+
+Generic and legacy public spellings remain at parity, so M5.3 must first
+separate structural preflight, dispatch/inlining and generated execution code
+before changing API or semantics.
 
 ## Higher-level consumer — imagery-d
 
