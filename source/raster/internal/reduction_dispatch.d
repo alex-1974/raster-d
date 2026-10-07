@@ -22,13 +22,11 @@ import raster.internal.fixed_lane_kernels :
     fixedLane4SumFloatToDoubleContiguous1D;
 
 import raster.internal.mir_adapter :
-    asMirCanonical,
     asMirContiguous,
     asMirContiguousFlat,
     asMirUniversal;
 
 import raster.internal.scalar_kernels :
-    scalarSumCanonical2D,
     scalarSumContiguous1D,
     scalarSumContiguous2D,
     scalarSumUniversal2D;
