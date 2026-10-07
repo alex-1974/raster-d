@@ -218,6 +218,92 @@ nothrow
 
 
 /++
+    Executes one already-approved signed-affine fixed-shape operation.
+
+    Source and destination base pointers, row strides and sample strides have
+    already passed the public structural validation and overlap checks.
+
+    This executor preserves arbitrary validated signed-affine layouts while
+    removing repeated RasterView/WritableRasterView sampling and bounds logic
+    from the per-pixel hot loop.
++/
+private
+void executeAffineNeighbourhood(
+    alias Shape,
+    alias kernel,
+    T
+)(
+    scope const(T)* sourceBase,
+    ptrdiff_t sourceRowStride,
+    ptrdiff_t sourceSampleStride,
+
+    size_t width,
+    size_t height,
+
+    scope T* destinationBase,
+    ptrdiff_t destinationRowStride,
+    ptrdiff_t destinationSampleStride
+)
+@trusted
+pure
+nothrow
+@nogc
+{
+    assert(sourceBase !is null);
+    assert(destinationBase !is null);
+    assert(width != 0);
+    assert(height != 0);
+    assert(sourceSampleStride != 0);
+    assert(destinationSampleStride != 0);
+
+    auto sourceOutputRow = sourceBase;
+    auto destinationRow = destinationBase;
+
+    foreach (y; 0 .. height)
+    {
+        auto sourceWindow = sourceOutputRow;
+        auto destinationSample = destinationRow;
+
+        foreach (x; 0 .. width)
+        {
+            T[Shape.sampleCount] neighbourhood;
+            size_t index;
+
+            auto sourceWindowRow = sourceWindow;
+
+            foreach (dy; 0 .. Shape.height)
+            {
+                auto sourceSample = sourceWindowRow;
+
+                foreach (dx; 0 .. Shape.width)
+                {
+                    neighbourhood[index++] = *sourceSample;
+                    sourceSample += sourceSampleStride;
+                }
+
+                sourceWindowRow += sourceRowStride;
+            }
+
+            *destinationSample =
+                invokeNeighbourhoodKernel!(
+                    Shape,
+                    kernel,
+                    T
+                )(
+                    neighbourhood
+                );
+
+            sourceWindow += sourceSampleStride;
+            destinationSample += destinationSampleStride;
+        }
+
+        sourceOutputRow += sourceRowStride;
+        destinationRow += destinationRowStride;
+    }
+}
+
+
+/++
     Applies one compile-time fixed neighbourhood shape and kernel into a
     caller-owned destination.
 
@@ -572,55 +658,29 @@ nothrow
         }
 
         /*
-         * Generic validated signed-affine fallback.
+         * Validated signed-affine fallback.
          *
-         * Reading through requiredSource keeps all coordinates non-negative:
-         * output (x,y) consumes requiredSource(x+dx,y+dy).
+         * The semantic layer has already proved the complete required source
+         * rectangle reachable, the destination injective and both sample-byte
+         * sets disjoint. Carry those facts into one pointer/stride executor
+         * rather than re-running view sampling and bounds checks per tap.
          */
-        foreach (y; 0 .. destination.height)
-        {
-            foreach (x; 0 .. destination.width)
-            {
-                T[Shape.sampleCount] neighbourhood;
-                size_t index;
+        executeAffineNeighbourhood!(
+            Shape,
+            kernel,
+            T
+        )(
+            sourceBase,
+            requiredSourceRowStrideElements,
+            requiredSourceSampleStrideElements,
 
-                foreach (dy; 0 .. Shape.height)
-                {
-                    foreach (dx; 0 .. Shape.width)
-                    {
-                        const readOk =
-                            requiredSource.trySample(
-                                sourcePlaneIndex,
-                                x + dx,
-                                y + dy,
-                                neighbourhood[index]
-                            );
+            destination.width,
+            destination.height,
 
-                        assert(readOk);
-                        ++index;
-                    }
-                }
-
-                const transformed =
-                    invokeNeighbourhoodKernel!(
-                        Shape,
-                        kernel,
-                        T
-                    )(
-                        neighbourhood
-                    );
-
-                const writeOk =
-                    destination.trySetSample(
-                        destinationPlaneIndex,
-                        x,
-                        y,
-                        transformed
-                    );
-
-                assert(writeOk);
-            }
-        }
+            destinationBase,
+            destinationRowStrideElements,
+            destinationSampleStrideElements
+        );
 
         return true;
     }
