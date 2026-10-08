@@ -516,7 +516,7 @@ nothrow
     Lifetime of the returned view remains tied to `backing`.
 
     The backing entered retained ownership only after ordinary validation.
-    E5.4d.1c nevertheless deliberately reuses the existing complete writable
+    Writable view derivation deliberately reuses the complete writable
     factory instead of introducing a second assume-validated construction
     boundary.
 
