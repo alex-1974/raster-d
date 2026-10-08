@@ -22,6 +22,14 @@ trap cleanup EXIT
 
 failures=0
 
+# Ordinary-mode observation keeps positive probes mandatory, while reporting
+# negative outcomes without assuming DIP1000 rejection semantics.
+observe_ordinary="${RASTER_LIFETIME_OBSERVE_ORDINARY:-0}"
+compile_flags=()
+if [ "$observe_ordinary" != "1" ]; then
+    compile_flags+=(-preview=dip1000)
+fi
+
 
 if ! command -v jq >/dev/null 2>&1; then
     echo "ERROR: jq is required"
@@ -78,7 +86,7 @@ compile_probe()
     stderr="$tmp_dir/$name.stderr"
 
     if "$compiler" \
-        -preview=dip1000 \
+        "${compile_flags[@]}" \
         "${import_args[@]}" \
         -c "$source" \
         -of="$object" \
@@ -89,7 +97,12 @@ compile_probe()
         actual="reject"
     fi
 
-    if [ "$actual" = "$expectation" ]; then
+    if [ "$observe_ordinary" = "1" ] && [ "$expectation" = "reject" ]; then
+        echo "OBSERVE ordinary-mode $name: $actual"
+        if [ "$actual" = "reject" ] && [ -s "$stderr" ]; then
+            sed 's/^/    /' "$stderr" | head -12
+        fi
+    elif [ "$actual" = "$expectation" ]; then
         echo "PASS expected-$expectation: $name"
 
         # Expected rejections are diagnostic evidence too.
