@@ -1,0 +1,18 @@
+# Consumer archive boundary.
+#
+# The Git repository keeps tests, benchmarks, engineering documentation and
+# release tooling. They are not part of the source package consumed by DUB or
+# by a git-archive consumer.
+.github/ export-ignore
+benchmark/ export-ignore
+tests/ export-ignore
+tools/ export-ignore
+docs/ export-ignore
+
+AGENTS.md export-ignore
+BENCHMARK.md export-ignore
+DESIGN.md export-ignore
+RESEARCH.md export-ignore
+ROADMAP.md export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
