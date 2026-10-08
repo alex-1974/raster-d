@@ -43,6 +43,15 @@ enum RasterSumError : ubyte
     accumulatorOverflow
 }
 
+/// Example recognizing strict-sum failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterSumError.init == RasterSumError.none);
+    assert(RasterSumError.accumulatorOverflow != RasterSumError.none);
+}
+
+
 
 /++
     Result carrier for one generic strict raster sum.
@@ -97,6 +106,17 @@ public:
             == RasterSumError.none;
     }
 }
+
+/// Example inspecting the deliberately failing default sum result.
+@safe unittest
+{
+    import raster;
+    RasterSumResult!double result;
+    assert(!result.ok);
+    assert(result.error == RasterSumError.invalidPlane);
+    assert(result.value == 0.0);
+}
+
 
 
 /++
@@ -509,6 +529,15 @@ enum RasterMeanError : ubyte
     accumulatorOverflow
 }
 
+/// Example recognizing mean failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterMeanError.init == RasterMeanError.none);
+    assert(RasterMeanError.emptyInput != RasterMeanError.none);
+}
+
+
 
 /++
     Result carrier for one generic mean reduction.
@@ -563,6 +592,17 @@ public:
             == RasterMeanError.none;
     }
 }
+
+/// Example inspecting the deliberately failing default mean result.
+@safe unittest
+{
+    import raster;
+    RasterMeanResult!double result;
+    assert(!result.ok);
+    assert(result.error == RasterMeanError.invalidPlane);
+    assert(result.value == 0.0);
+}
+
 
 
 /++
@@ -797,6 +837,15 @@ enum RasterExtremaError : ubyte
     emptyInput
 }
 
+/// Example recognizing extrema failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterExtremaError.init == RasterExtremaError.none);
+    assert(RasterExtremaError.emptyInput != RasterExtremaError.none);
+}
+
+
 
 /++
     Result carrier for one min or max reduction.
@@ -850,6 +899,16 @@ public:
             == RasterExtremaError.none;
     }
 }
+
+/// Example inspecting the default extrema result.
+@safe unittest
+{
+    import raster;
+    RasterExtremaResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
 
 
 /++
@@ -916,6 +975,16 @@ public:
             == RasterExtremaError.none;
     }
 }
+
+/// Example inspecting the default one-pass min/max result.
+@safe unittest
+{
+    import raster;
+    RasterMinMaxResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
 
 
 private
@@ -1060,6 +1129,17 @@ if (isSupportedExtremaSample!T)
     );
 }
 
+/// Example reporting an invalid plane to min.
+@safe unittest
+{
+    import raster;
+    RasterView!float source;
+    const result = source.min(0);
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
+
 
 /++
     Returns the maximum sample of one selected logical raster plane.
@@ -1099,6 +1179,17 @@ if (isSupportedExtremaSample!T)
         execution.maximum
     );
 }
+
+/// Example reporting an invalid plane to max.
+@safe unittest
+{
+    import raster;
+    RasterView!float source;
+    const result = source.max(0);
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
 
 
 /++
