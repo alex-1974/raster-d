@@ -105,6 +105,17 @@ template isNumericRasterSample(T)
         );
 }
 
+/// Example distinguishing numeric samples from representation-only samples.
+@safe unittest
+{
+    import raster;
+    static assert(isNumericRasterSample!float);
+    static assert(isNumericRasterSample!ulong);
+    static assert(!isNumericRasterSample!real);
+    static assert(!isNumericRasterSample!(ubyte[4]));
+}
+
+
 
 /++
     Whether every possible From value is exactly representable in To under the
