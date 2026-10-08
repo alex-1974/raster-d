@@ -222,7 +222,10 @@ private:
         }
 
         assert(control_.referenceCount > 0);
-        assert(control_.referenceCount < size_t.max);
+        if (control_.referenceCount == size_t.max)
+        {
+            onOutOfMemoryError();
+        }
 
         ++control_.referenceCount;
     }
@@ -394,9 +397,9 @@ nothrow
     resident geometry only. Sample-type interpretation remains on RasterLease!T,
     RasterView!T and validation/construction boundaries.
 
-    Keeping this function non-templated also gives separate-library builds one
-    concrete code-generation anchor for SafeRefCounted!RasterBacking and its
-    destruction path.
+    Keeping this function non-templated gives separate-library builds one
+    concrete allocation/ownership anchor for the retained backing control
+    block.
 +/
 private
 RasterBackingOwner makeRasterBackingOwner(
@@ -449,8 +452,8 @@ RasterBackingOwner makeRasterBackingOwner(
 
     This is the final ownership transition used by the construction layer.
 
-    Deliberately not declared `nothrow`: creation of the SafeRefCounted store is
-    an allocation boundary.
+    Deliberately not declared `nothrow`: creation of the retained control block
+    is an allocation boundary.
 +/
 package(raster)
 RasterLease!T retainRasterBacking(T)(
@@ -1296,7 +1299,7 @@ unittest
 {
     /*
      * The fallible lease API handles RasterLease.init without entering
-     * SafeRefCounted.borrow on an uninitialized store.
+     * the private retained backing control block.
      */
     RasterLease!ubyte lease;
 
