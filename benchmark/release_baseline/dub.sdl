@@ -1,5 +1,5 @@
 name "raster-release-baseline"
-description "raster-d 0.1.0 public Production release benchmark"
+description "raster-d 0.2.0 feature-freeze public Production benchmark"
 authors "Alexander Bernardi"
 license "MIT"
 targetType "executable"
