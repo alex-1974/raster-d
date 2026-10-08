@@ -47,6 +47,34 @@ compiler investigations.
 production qualification. Consumer archives exclude those harnesses and other
 repository-only material.
 
+## Known v0.2 package-mode deviation
+
+The current package still declares:
+
+```text
+dflags "-preview=dip1000"
+```
+
+This does not match the workspace target for published package metadata.
+
+The hardening pass attempted to remove the flag. That exposed a real
+source/ABI-mode dependency in `RasterLease` / `SafeRefCounted` ownership
+code:
+
+- ordinary library build without the flag succeeds;
+- full unittests without DIP1000 fail at `@safe` destructor/assignment
+  boundaries;
+- DMD separately compiled retained benchmarks can fail to link because
+  `SafeRefCounted` special-member symbols differ across the modes.
+
+Issue #193 tracks the required correction. It is a v0.2 API-freeze/release
+blocker. The flag is retained temporarily to preserve the already-qualified
+build and benchmark behavior while that ownership/toolchain question is solved
+with dedicated tests.
+
+The consumer-archive size/boundary work in this hardening pass is independent
+of that blocker.
+
 ## Documentation
 
 User documentation follows this path:
