@@ -32,6 +32,7 @@ for excluded in \
     tools \
     docs \
     AGENTS.md \
+    CONTRIBUTING.md \
     BENCHMARK.md \
     DESIGN.md \
     RESEARCH.md \
