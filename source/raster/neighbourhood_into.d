@@ -388,6 +388,13 @@ version (LDC)
     }
 
 
+    /++
+        Dispatches one already-static source sample stride to a small
+        compile-time destination sample-stride specialization.
+
+        Returns false when the destination stride is outside the qualified
+        positive 1..4 set so the caller can use the general affine fallback.
+    +/
     private
     bool tryExecuteStaticDestinationSampleStride(
         ptrdiff_t SourceSampleStride,
@@ -486,6 +493,13 @@ version (LDC)
     }
 
 
+    /++
+        Attempts the qualified small-positive sample-stride multiversion path.
+
+        Source and destination strides 1..4 are specialized at compile time.
+        Any other signed stride returns false and leaves execution to the
+        general signed-affine path.
+    +/
     private
     bool tryExecuteStaticSampleStrideNeighbourhood(
         alias Shape,
