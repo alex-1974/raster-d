@@ -74,7 +74,7 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC"
+          dub test --compiler="$DC"
 
       - name: Raster contract probes
         shell: bash
@@ -100,7 +100,7 @@ jobs:
       - name: Raster retained-import external link probe
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test \
+          dub test \
             --root=tests/external/raster_import_link \
             --compiler="$DC"
 
@@ -188,7 +188,7 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC"
+          dub test --compiler="$DC"
 
       - name: Raster contract probes
         shell: bash
@@ -214,6 +214,6 @@ jobs:
       - name: Raster retained-import external link probe
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test \
+          dub test \
             --root=tests/external/raster_import_link \
             --compiler="$DC"
