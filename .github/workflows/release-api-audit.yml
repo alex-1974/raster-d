@@ -33,13 +33,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC" --force
+          dub test --compiler="$DC" --force
 
       - name: External positive API freeze contract
         shell: bash
         run: |
           set -euo pipefail
-          DFLAGS="-preview=dip1000 -unittest" dub test             --root=tests/external/raster_api_freeze             --compiler="$DC"             --force
+          dub test             --root=tests/external/raster_api_freeze             --compiler="$DC"             --force
 
       - name: External negative API surface
         shell: bash
@@ -65,4 +65,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DFLAGS="-preview=dip1000 -unittest" dub test             --root=tests/external/raster_import_link             --compiler="$DC"             --force
+          dub test             --root=tests/external/raster_import_link             --compiler="$DC"             --force
