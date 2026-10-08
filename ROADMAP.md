@@ -1176,26 +1176,24 @@ API or threading contract is weakened.
 
 ## v0.2 pre-release hardening
 
-M5 is complete. The repository is now preparing for the v0.2 feature-freeze
+M5 is complete. The repository is preparing for the v0.2 feature-freeze
 sequence.
 
-Current repository hardening covers:
+Repository hardening now covers:
 
 - consumer/archive boundary;
 - production versus research evidence separation;
 - GitHub workflow baseline;
 - consumer documentation path;
-- documentation prose standard.
+- documentation prose standard;
+- source-mode-neutral package metadata.
 
-One release/API-freeze blocker remains open:
+Issue #193 removes the previous package-wide DIP1000 dependency. PR #197
+qualifies ordinary and explicit DIP1000 modes separately while preserving the
+existing RasterLease ownership and lifetime contract.
 
-- #193 — qualify package behavior without global DIP1000 `dflags`.
-
-The package-wide preview flag is retained until #193 resolves the observed
-`RasterLease` / `SafeRefCounted` source- and separate-compilation behavior
-without weakening lifetime or safety contracts.
-
-Do not create the v0.2 API-freeze checkpoint while #193 remains unresolved.
+The feature-freeze checkpoint may proceed only after #197 is merged and the
+required CI gates are green.
 
 ## Higher-level consumer — imagery-d
 
