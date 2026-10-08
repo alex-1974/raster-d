@@ -89,4 +89,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dub test --compiler="$DC" --force
+          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC" --force
