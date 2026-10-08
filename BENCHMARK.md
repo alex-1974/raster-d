@@ -1644,3 +1644,61 @@ For mean, max and minMax the diagnostic separates the production public path, pa
 The benchmark-local extrema controls preserve NaN propagation and signed-zero selection. Mean preserves one double accumulator, row-major encounter order and one final division. The diagnostic does not introduce fast-math, reassociation, alternate reduction semantics, SIMD or threading.
 
 The XPS collector retains six CPU-pinned processes per compiler and complete objdump disassembly. Production source-form changes require the retained reference run and generated-code inspection.
+
+
+## M5.3 diagnostic 8: binary multiply closeout
+
+Reference archive:
+`raster-v0.2-binary-codegen-20261008-082930.tar.gz`
+
+SHA256:
+`a0bf6b80338f2ee9f0ba11821c8bb4e8430eb3e2a9a8bc19c26b849258f1b436`
+
+Head:
+`841123061378f9ec151eff61981ea81a18c80585`
+
+The recursive SHA256 manifest verifies successfully. The retained run contains
+six CPU-pinned processes per compiler, identical output checksums
+(`1d074824c4a32b83`) across all three paths, compiler/platform/frequency
+metadata and complete DMD/LDC disassembly.
+
+Reference-XPS medians (ns/sample):
+
+### DMD 2.111.0
+
+- public generic zip: 0.906497;
+- public `multiplyInto`: 0.650602;
+- approved Canonical executor: 0.881332;
+- public zip / executor: 1.003496x;
+- wrapper / executor: 0.727610x.
+
+### LDC 1.41.0
+
+- public generic zip: 0.556860;
+- public `multiplyInto`: 0.533331;
+- approved Canonical executor: 0.584779;
+- public zip / executor: 0.962322x;
+- wrapper / executor: 0.925493x.
+
+The earlier small multiply wrapper/executor signal is not reproduced as a stable
+production slowdown. The generic public zip path is at executor parity and the
+arithmetic wrapper is not slower in this focused run. No production
+source-form change is justified.
+
+CPU-frequency snapshots vary materially under the powersave governor; therefore
+cross-run absolute latency is not used for this decision. Same-run paired ratios
+are the retained decision evidence.
+
+PR #183 retains this diagnostic and its Fast-CI compile smoke. It merged as
+`ee0951a21cbafa2b000cfa31929dd737f29f55e5`.
+
+## M5.3 closeout
+
+The compiler/source-form audit is complete. Material retained signals were
+either fixed and qualified or rejected after focused decomposition. M5.3 does
+not leave an unresolved production code-generation cliff that should block the
+SIMD qualification phase.
+
+The earlier generic `ushort -> float` versus specialized `ubyte -> float`
+comparison remains non-apples-to-apples and is carried forward only as a
+comparable-type-pair/SIMD investigation input for M5.4.
