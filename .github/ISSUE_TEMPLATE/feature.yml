@@ -1,7 +1,6 @@
 name: Feature
 description: Propose a consumer-visible raster capability.
 title: ""
-labels: ["type: feature"]
 body:
   - type: textarea
     id: need
