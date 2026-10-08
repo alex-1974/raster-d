@@ -150,6 +150,18 @@ nothrow
     }
 }
 
+/// Example reporting an invalid source before any copy occurs.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!ubyte destination;
+    RasterCopyError error;
+    assert(!tryCopyRasterPlane(source, 0, destination, 0, error));
+    assert(error == RasterCopyError.invalidSourcePlane);
+}
+
+
 
 /++
     Copies one selected logical source plane into one equally shaped writable

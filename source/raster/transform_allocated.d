@@ -6,9 +6,8 @@
     convenience that materializes one selected source plane into a newly owned
     compact one-plane RasterLease.
 
-    The retained owner type is RasterLease until the designed v0.2 Raster!T
-    owner is promoted to production. No second storage/lifetime architecture
-    is introduced.
+    The retained owner type for v0.2 is RasterLease. No second
+    storage/lifetime architecture is introduced.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
@@ -109,8 +108,8 @@ enum RasterAllocatedTransformError : ubyte
     On success this object retains an independently owned one-plane RasterLease.
     Calling lease() returns another O(1) retained owner copy.
 
-    The eventual v0.2 Raster!T owner can replace this transitional payload
-    without changing transformInto(), which remains the semantic execution
+    The result deliberately reuses RasterLease rather than introducing a
+    second ownership type. transformInto() remains the semantic execution
     primitive.
 +/
 struct RasterAllocatedTransformResult(T)
@@ -144,6 +143,15 @@ public:
         return error_ == RasterAllocatedTransformError.none;
     }
 
+/// Example reading success from a default allocating-transform result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(!result.ok);
+}
+
+
 
     /++
         High-level failure category.
@@ -157,6 +165,15 @@ public:
     {
         return error_;
     }
+
+/// Example reading the high-level default failure.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(result.error == RasterAllocatedTransformError.internalFailure);
+}
+
 
 
     /++
@@ -174,6 +191,15 @@ public:
         return transformError_;
     }
 
+/// Example reading the absent nested transform failure.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(result.transformError == RasterTransformError.none);
+}
+
+
 
     /++
         Returns an O(1) retained copy of the successful output owner.
@@ -188,6 +214,16 @@ public:
 
         return lease_;
     }
+
+/// Example obtaining an inert lease from a failed result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    auto lease = result.lease();
+    assert(lease.view().empty);
+}
+
 }
 
 
@@ -251,9 +287,9 @@ public:
 
         @safe pure nothrow @nogc T -> T
 
-    Allocation and retained-owner construction are fallible. Error-level runtime
-    allocation failure inside the existing SafeRefCounted owner remains governed
-    by the backing layer's existing contract.
+    Allocation and retained-owner construction are fallible. Error-level
+    failure while creating the retained owner remains governed by the backing
+    layer's allocation contract.
 +/
 RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
     scope RasterView!T source,

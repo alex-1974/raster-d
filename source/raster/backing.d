@@ -211,6 +211,13 @@ private:
     }
 
 
+    /++
+        Retains the current backing control block when one is present.
+
+        The count is non-atomic because raster-d exposes no hidden
+        cross-thread ownership policy. Saturation is treated as an
+        Error-level allocation/lifetime failure.
+    +/
     void retain()
     @trusted
     nothrow
@@ -231,6 +238,13 @@ private:
     }
 
 
+    /++
+        Releases one retained-owner reference.
+
+        The final reference destroys RasterBacking exactly once, removes the
+        conservative GC scan range, and frees the malloc-backed control block.
+        An inert/moved-from owner is a no-op.
+    +/
     void release()
     @trusted
     nothrow

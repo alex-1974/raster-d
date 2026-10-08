@@ -43,6 +43,15 @@ enum RasterSumError : ubyte
     accumulatorOverflow
 }
 
+/// Example recognizing strict-sum failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterSumError.init == RasterSumError.none);
+    assert(RasterSumError.accumulatorOverflow != RasterSumError.none);
+}
+
+
 
 /++
     Result carrier for one generic strict raster sum.
@@ -97,6 +106,17 @@ public:
             == RasterSumError.none;
     }
 }
+
+/// Example inspecting the deliberately failing default sum result.
+@safe unittest
+{
+    import raster;
+    RasterSumResult!double result;
+    assert(!result.ok);
+    assert(result.error == RasterSumError.invalidPlane);
+    assert(result.value == 0.0);
+}
+
 
 
 /++
@@ -222,6 +242,9 @@ template isSupportedRasterSumPair(
 }
 
 
+/++
+    Builds a successful sum result from one completed accumulator value.
++/
 private
 RasterSumResult!Accumulator successfulSumResult(Accumulator)(
     Accumulator value
@@ -244,6 +267,9 @@ if (isSupportedSumAccumulator!Accumulator)
 }
 
 
+/++
+    Builds a failed sum result without exposing a partial accumulator.
++/
 private
 RasterSumResult!Accumulator failedSumResult(Accumulator)(
     RasterSumError error
@@ -503,6 +529,15 @@ enum RasterMeanError : ubyte
     accumulatorOverflow
 }
 
+/// Example recognizing mean failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterMeanError.init == RasterMeanError.none);
+    assert(RasterMeanError.emptyInput != RasterMeanError.none);
+}
+
+
 
 /++
     Result carrier for one generic mean reduction.
@@ -558,7 +593,21 @@ public:
     }
 }
 
+/// Example inspecting the deliberately failing default mean result.
+@safe unittest
+{
+    import raster;
+    RasterMeanResult!double result;
+    assert(!result.ok);
+    assert(result.error == RasterMeanError.invalidPlane);
+    assert(result.value == 0.0);
+}
 
+
+
+/++
+    Builds a failed mean result with the documented zero result value.
++/
 private
 RasterMeanResult!Result failedMeanResult(Result)(
     RasterMeanError error
@@ -578,6 +627,9 @@ if (isSupportedMeanResult!Result)
 }
 
 
+/++
+    Builds a successful mean result from the final computed value.
++/
 private
 RasterMeanResult!Result successfulMeanResult(Result)(
     Result value
@@ -785,6 +837,15 @@ enum RasterExtremaError : ubyte
     emptyInput
 }
 
+/// Example recognizing extrema failure categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterExtremaError.init == RasterExtremaError.none);
+    assert(RasterExtremaError.emptyInput != RasterExtremaError.none);
+}
+
+
 
 /++
     Result carrier for one min or max reduction.
@@ -838,6 +899,16 @@ public:
             == RasterExtremaError.none;
     }
 }
+
+/// Example inspecting the default extrema result.
+@safe unittest
+{
+    import raster;
+    RasterExtremaResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
 
 
 /++
@@ -905,6 +976,16 @@ public:
     }
 }
 
+/// Example inspecting the default one-pass min/max result.
+@safe unittest
+{
+    import raster;
+    RasterMinMaxResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
+
 
 private
 template isSupportedExtremaSample(T)
@@ -914,6 +995,9 @@ template isSupportedExtremaSample(T)
 }
 
 
+/++
+    Maps the internal extrema execution status to the public failure category.
++/
 private
 RasterExtremaError publicExtremaError(
     ExtremaStatus status
@@ -937,6 +1021,9 @@ nothrow
 }
 
 
+/++
+    Builds one public min/max result from internal extrema execution state.
++/
 private
 RasterExtremaResult!T extremaResult(T)(
     ExtremaStatus status,
@@ -963,6 +1050,9 @@ if (isSupportedExtremaSample!T)
 }
 
 
+/++
+    Builds one public one-pass min/max result from internal execution state.
++/
 private
 RasterMinMaxResult!T minMaxResult(T)(
     ExtremaStatus status,
@@ -1039,6 +1129,17 @@ if (isSupportedExtremaSample!T)
     );
 }
 
+/// Example reporting an invalid plane to min.
+@safe unittest
+{
+    import raster;
+    RasterView!float source;
+    const result = source.min(0);
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
+
 
 /++
     Returns the maximum sample of one selected logical raster plane.
@@ -1078,6 +1179,17 @@ if (isSupportedExtremaSample!T)
         execution.maximum
     );
 }
+
+/// Example reporting an invalid plane to max.
+@safe unittest
+{
+    import raster;
+    RasterView!float source;
+    const result = source.max(0);
+    assert(!result.ok);
+    assert(result.error == RasterExtremaError.invalidPlane);
+}
+
 
 
 /++

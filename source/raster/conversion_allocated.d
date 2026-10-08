@@ -6,8 +6,7 @@
     materializes one selected source plane into a newly owned compact one-plane
     RasterLease!To.
 
-    RasterLease remains the transitional retained owner until the designed v0.2
-    Raster!T owner is promoted to production.
+    RasterLease is the retained owner used by the v0.2 public contract.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
@@ -63,6 +62,15 @@ enum RasterAllocatedConversionError : ubyte
 
     internalFailure
 }
+
+/// Example inspecting the allocating-conversion error categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterAllocatedConversionError.init == RasterAllocatedConversionError.none);
+    assert(RasterAllocatedConversionError.invalidSourcePlane != RasterAllocatedConversionError.none);
+}
+
 
 
 /++
@@ -130,6 +138,18 @@ public:
         return lease_;
     }
 }
+
+/// Example inspecting the deliberately failing default conversion result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedConversionResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterAllocatedConversionError.internalFailure);
+    assert(result.conversionError == RasterConversionError.none);
+    assert(result.lease().view().empty);
+}
+
 
 
 /++

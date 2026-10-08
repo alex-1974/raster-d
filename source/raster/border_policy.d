@@ -27,6 +27,15 @@ enum RasterBorderKind : ubyte
     wrap
 }
 
+/// Example naming the stable border policy categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterBorderKind.valid != RasterBorderKind.constant);
+    assert(RasterBorderKind.clamp != RasterBorderKind.wrap);
+}
+
+
 
 /++
     Valid-only border policy.
@@ -44,6 +53,14 @@ struct RasterValidBorder
     enum RasterBorderKind kind =
         RasterBorderKind.valid;
 }
+
+/// Example selecting valid-only border semantics.
+@safe unittest
+{
+    import raster;
+    static assert(RasterValidBorder.kind == RasterBorderKind.valid);
+}
+
 
 
 /++
@@ -65,6 +82,16 @@ if (isRasterSampleType!T)
     T value;
 }
 
+/// Example carrying a constant border value.
+@safe unittest
+{
+    import raster;
+    const border = RasterConstantBorder!ubyte(17);
+    assert(border.value == 17);
+    static assert(RasterConstantBorder!ubyte.kind == RasterBorderKind.constant);
+}
+
+
 
 /++
     Clamp border policy.
@@ -85,6 +112,14 @@ struct RasterClampBorder
     enum RasterBorderKind kind =
         RasterBorderKind.clamp;
 }
+
+/// Example selecting clamp border semantics.
+@safe unittest
+{
+    import raster;
+    static assert(RasterClampBorder.kind == RasterBorderKind.clamp);
+}
+
 
 
 /++
@@ -114,6 +149,14 @@ struct RasterMirrorBorder
     enum RasterBorderKind kind =
         RasterBorderKind.mirror;
 }
+
+/// Example selecting edge-inclusive mirror border semantics.
+@safe unittest
+{
+    import raster;
+    static assert(RasterMirrorBorder.kind == RasterBorderKind.mirror);
+}
+
 
 
 /++

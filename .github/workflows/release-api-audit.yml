@@ -3,10 +3,10 @@ name: Release API Audit
 on:
   push:
     branches:
-      - validation-release-0.1-api-audit
+      - validation/release-0.2-api-audit
   pull_request:
     branches:
-      - release/0.1
+      - release/0.2
   workflow_dispatch:
 
 permissions:
@@ -48,6 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/release-api-audit.sh "$DC"
+          RASTER_API_AUDIT_DIP1000=1 bash tools/release-api-audit.sh "$DC"
 
       - name: Ownership/import source contracts
         shell: bash

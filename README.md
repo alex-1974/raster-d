@@ -25,9 +25,12 @@ checks, public-only DDox, external archive consumers, and the reference XPS
 performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
 documentation, and DUB publication were verified after release.
 
-v0.2 is under development on `develop`. Because raster-d is pre-1.0, a later
-minor release may deliberately evolve the API. Published release contracts stay
-fixed.
+v0.2 is in release stabilization on `release/0.2`. Its feature set is frozen at
+`freeze/feature-0.2.0`; the public API is being audited before
+`freeze/api-0.2.0` is created.
+
+Because raster-d is pre-1.0, a later minor release may deliberately evolve the
+API. Published release contracts stay fixed.
 
 The DUB package is `raster-d`. The public D namespace is `raster` and
 `raster.*`.
@@ -190,7 +193,8 @@ compiler-package floor.
 Start with:
 
 - [user documentation](docs/README.md);
-- [public API baseline](docs/API.md);
+- [v0.2 public API audit](docs/API_0_2.md);
+- [v0.1 public API baseline](docs/API.md);
 - [changelog](CHANGELOG.md).
 
 Maintainer context lives in `ROADMAP.md`, `DESIGN.md`, `BENCHMARK.md`,

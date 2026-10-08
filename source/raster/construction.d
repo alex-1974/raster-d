@@ -461,8 +461,8 @@ RasterConstructionResult constructRetainedRasterWithMetadataOps(T)(
 
 
     /*
-     * The local RasterBacking now protects the resources if creation of the
-     * SafeRefCounted owner fails through normal stack unwinding.
+     * The local RasterBacking protects the resources if creation of the
+     * retained control block fails through normal stack unwinding.
      *
      * On success retainRasterBacking moves it into the retained owner.
      */
@@ -484,8 +484,9 @@ RasterConstructionResult constructRetainedRasterWithMetadataOps(T)(
     Recoverable metadata-allocation failures are returned through
     RasterConstructionResult.
 
-    Allocation failure inside Phobos SafeRefCounted is not translated into a
-    RasterConstructionResult; that is an Error-level runtime condition.
+    Allocation failure while creating the retained owner control block is not
+    translated into RasterConstructionResult; that is an Error-level runtime
+    condition.
 +/
 package(raster)
 RasterConstructionResult constructRetainedRaster(T)(
@@ -774,9 +775,7 @@ unittest
     /*
      * Failure must publish no retained backing.
      *
-     * Do not call view() here: RasterLease uses SafeRefCounted with
-     * RefCountedAutoInitialize.no, so payload access on RasterLease.init is
-     * intentionally invalid.
+     * RasterLease.init is inert and has no retained backing.
      */
     assert(!lease.hasBacking);
 }
