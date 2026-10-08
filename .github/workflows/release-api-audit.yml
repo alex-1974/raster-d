@@ -48,6 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/release-api-audit.sh "$DC"
+          RASTER_API_AUDIT_DIP1000=1 bash tools/release-api-audit.sh "$DC"
 
       - name: Ownership/import source contracts
         shell: bash
