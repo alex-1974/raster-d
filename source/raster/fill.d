@@ -54,6 +54,15 @@ nothrow
         );
 }
 
+/// Example reporting an invalid destination plane.
+@safe unittest
+{
+    import raster;
+    WritableRasterView!ubyte destination;
+    assert(!tryFillRasterPlane(destination, 0, cast(ubyte) 7));
+}
+
+
 
 /++
     Fills one selected logical destination plane with one exact sample value.
