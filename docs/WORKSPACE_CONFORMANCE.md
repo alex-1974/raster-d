@@ -47,33 +47,33 @@ compiler investigations.
 production qualification. Consumer archives exclude those harnesses and other
 repository-only material.
 
-## Known v0.2 package-mode deviation
+## v0.2 package source modes
 
-The current package still declares:
+Issue #193 removes the package-wide DIP1000 dependency.
+
+The retained backing owner no longer embeds Phobos `SafeRefCounted`.
+`RasterLease` now uses a private raster-d control block whose copy,
+assignment, destruction, and payload-borrow boundaries are owned by raster-d.
+
+Package metadata is source-mode neutral:
 
 ```text
-dflags "-preview=dip1000"
+no package-wide -preview=dip1000
 ```
 
-This does not match the workspace target for published package metadata.
+CI qualifies both modes separately:
 
-The hardening pass attempted to remove the flag. That exposed a real
-source/ABI-mode dependency in `RasterLease` / `SafeRefCounted` ownership
-code:
+```text
+ordinary D source mode
+explicit -preview=dip1000 mode
+```
 
-- ordinary library build without the flag succeeds;
-- full unittests without DIP1000 fail at `@safe` destructor/assignment
-  boundaries;
-- DMD separately compiled retained benchmarks can fail to link because
-  `SafeRefCounted` special-member symbols differ across the modes.
+The archive consumer is built in both modes, and a retained benchmark is also
+linked in both modes so separately compiled package/consumer symbols cannot
+silently drift again.
 
-Issue #193 tracks the required correction. It is a v0.2 API-freeze/release
-blocker. The flag is retained temporarily to preserve the already-qualified
-build and benchmark behavior while that ownership/toolchain question is solved
-with dedicated tests.
-
-The consumer-archive size/boundary work in this hardening pass is independent
-of that blocker.
+This matches the workspace model already used by `containers-d`: preview
+language modes are validation configurations, not consumer package policy.
 
 ## Documentation
 

@@ -60,10 +60,30 @@ jobs:
         run: |
           dub build --compiler="$DC"
 
+      - name: Package policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if grep -RInE \
+            --include='dub.sdl' \
+            --include='dub.json' \
+            '(^|[[:space:]])-preview=' \
+            .; then
+            echo "Preview compiler switches must not be package-wide dflags." >&2
+            exit 1
+          fi
+
       - name: Test
         shell: bash
         run: |
           dub test --compiler="$DC"
+
+      - name: Test with DIP1000
+        shell: bash
+        run: |
+          DFLAGS="-unittest -preview=dip1000" \
+            dub test --compiler="$DC" --force
 
       - name: Consumer package boundary
         shell: bash
@@ -72,6 +92,13 @@ jobs:
 
 
           bash tools/release-archive-consumer.sh "$DC"
+
+      - name: Consumer package boundary with DIP1000
+        shell: bash
+        run: |
+          set -euo pipefail
+          DFLAGS="-preview=dip1000" \
+            bash tools/release-archive-consumer.sh "$DC"
 
       - name: Generic sum benchmark compile smoke
         shell: bash
@@ -91,6 +118,16 @@ jobs:
             -fno-tree-slp-vectorize \
             benchmark/v0_2_sum/cpp/reference.cpp \
             -o /tmp/raster-v0-2-sum-cpp-reference
+
+      - name: Generic sum benchmark DIP1000 compile smoke
+        shell: bash
+        run: |
+          DFLAGS="-preview=dip1000" \
+            dub build \
+              --root=benchmark/v0_2_sum \
+              --compiler="$DC" \
+              --build=release \
+              --force
 
       - name: Reduction family benchmark compile smoke
         shell: bash

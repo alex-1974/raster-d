@@ -97,6 +97,7 @@ jobs:
         shell: bash
         run: |
           dub test --compiler="$DC"
+          DFLAGS="-unittest -preview=dip1000" dub test --compiler="$DC" --force
 
       - name: Raster lifetime compile probes
         shell: bash

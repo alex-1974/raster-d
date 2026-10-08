@@ -13,18 +13,22 @@
 +/
 module raster.backing;
 
+import core.exception :
+    onOutOfMemoryError;
+
+import core.lifetime :
+    moveEmplace;
+
+import core.memory :
+    GC;
+
 import core.stdc.stdlib :
     free,
     malloc;
 
 import std.algorithm.mutation :
-    move;
-
-import std.typecons :
-    SafeRefCounted,
-    RefCountedAutoInitialize,
-    borrow,
-    safeRefCounted;
+    move,
+    swap;
 
 import raster.descriptor :
     PlaneDescriptor;
@@ -167,11 +171,174 @@ public:
 }
 
 
-private alias RasterBackingOwner =
-    SafeRefCounted!(
-        RasterBacking,
-        RefCountedAutoInitialize.no
-    );
+/*
+ * Private retained-owner control block.
+ *
+ * Phobos SafeRefCounted intentionally changes its safety/lifecycle code
+ * generation with -preview=dip1000. Keeping that type as a RasterLease field
+ * therefore made separately compiled package/consumer code mode-sensitive.
+ *
+ * This control block keeps the same non-atomic shared-ownership semantics
+ * behind one raster-d-owned ABI. The raw pointer and reference-count updates
+ * remain private trusted implementation details.
+ */
+private
+struct RasterBackingControl
+{
+    RasterBacking backing;
+
+    size_t referenceCount;
+}
+
+
+private
+struct RasterBackingOwner
+{
+private:
+    RasterBackingControl* control_;
+
+
+    this(
+        RasterBackingControl* control
+    )
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        control_ =
+            control;
+    }
+
+
+    void retain()
+    @trusted
+    nothrow
+    @nogc
+    {
+        if (control_ is null)
+        {
+            return;
+        }
+
+        assert(control_.referenceCount > 0);
+        if (control_.referenceCount == size_t.max)
+        {
+            onOutOfMemoryError();
+        }
+
+        ++control_.referenceCount;
+    }
+
+
+    void release()
+    @trusted
+    nothrow
+    @nogc
+    {
+        auto control =
+            control_;
+
+        /*
+         * Clear this handle before running payload destruction so repeated
+         * destruction of the same moved-from handle remains inert.
+         */
+        control_ =
+            null;
+
+        if (control is null)
+        {
+            return;
+        }
+
+        assert(control.referenceCount > 0);
+
+        --control.referenceCount;
+
+        if (control.referenceCount != 0)
+        {
+            return;
+        }
+
+        /*
+         * The backing may retain opaque pointer-valued callback state.
+         * SafeRefCounted registered its payload as a conservative GC scan
+         * range for the same reason. Preserve that behavior before freeing
+         * the malloc-backed control block.
+         */
+        GC.removeRange(
+            &control.backing
+        );
+
+        destroy(
+            control.backing
+        );
+
+        free(
+            control
+        );
+    }
+
+
+public:
+    this(this)
+    @trusted
+    nothrow
+    @nogc
+    {
+        retain();
+    }
+
+
+    ~this()
+    @trusted
+    nothrow
+    @nogc
+    {
+        release();
+    }
+
+
+    void opAssign(
+        RasterBackingOwner rhs
+    )
+    @trusted
+    nothrow
+    @nogc
+    {
+        /*
+         * The by-value rhs has already retained its control block.
+         * Swapping lets rhs destruction release the previous lhs owner.
+         */
+        swap(
+            control_,
+            rhs.control_
+        );
+    }
+
+
+    @property
+    bool isInitialized() const
+    @safe
+    pure
+    nothrow
+    @nogc
+    {
+        return control_ !is null;
+    }
+
+
+    ref RasterBacking backing()
+    return
+    @trusted
+    nothrow
+    @nogc
+    {
+        assert(control_ !is null);
+
+        return control_.backing;
+    }
+}
 
 
 private
@@ -230,9 +397,9 @@ nothrow
     resident geometry only. Sample-type interpretation remains on RasterLease!T,
     RasterView!T and validation/construction boundaries.
 
-    Keeping this function non-templated also gives separate-library builds one
-    concrete code-generation anchor for SafeRefCounted!RasterBacking and its
-    destruction path.
+    Keeping this function non-templated gives separate-library builds one
+    concrete allocation/ownership anchor for the retained backing control
+    block.
 +/
 private
 RasterBackingOwner makeRasterBackingOwner(
@@ -240,12 +407,42 @@ RasterBackingOwner makeRasterBackingOwner(
 )
 @trusted
 {
-    auto owner =
-        safeRefCounted(
-            move(backing)
+    auto control =
+        cast(RasterBackingControl*) malloc(
+            RasterBackingControl.sizeof
         );
 
-    return move(owner);
+    if (control is null)
+    {
+        onOutOfMemoryError();
+    }
+
+    /*
+     * control.backing is raw, uninitialized malloc storage here.
+     * moveEmplace is the matching construction primitive and clears the
+     * moved-from RasterBacking so its destructor cannot release twice.
+     */
+    moveEmplace(
+        backing,
+        control.backing
+    );
+
+    control.referenceCount =
+        1;
+
+    /*
+     * RasterBacking contains pointer-valued resource and callback metadata.
+     * Register the payload as a conservative scan range just as
+     * SafeRefCounted did for an indirection-bearing payload.
+     */
+    GC.addRange(
+        &control.backing,
+        RasterBacking.sizeof
+    );
+
+    return RasterBackingOwner(
+        control
+    );
 }
 
 
@@ -255,8 +452,8 @@ RasterBackingOwner makeRasterBackingOwner(
 
     This is the final ownership transition used by the construction layer.
 
-    Deliberately not declared `nothrow`: creation of the SafeRefCounted store is
-    an allocation boundary.
+    Deliberately not declared `nothrow`: creation of the retained control block
+    is an allocation boundary.
 +/
 package(raster)
 RasterLease!T retainRasterBacking(T)(
@@ -376,8 +573,8 @@ public:
 
         Package-internal construction/control-plane query.
 
-        This deliberately checks the SafeRefCounted store without accessing
-        its payload, so RasterLease.init can be inspected safely.
+        This checks only whether the private retained-owner control block
+        exists, so RasterLease.init can be inspected safely.
     +/
     package(raster)
     @property
@@ -385,7 +582,7 @@ public:
     @safe
     nothrow
     {
-        return owner_.refCountedStore.isInitialized;
+        return owner_.isInitialized;
     }
 
 
@@ -411,15 +608,13 @@ public:
     {
         byteCount = 0;
 
-        if (!owner_.refCountedStore.isInitialized)
+        if (!owner_.isInitialized)
         {
             return false;
         }
 
         const result =
-            owner_.borrow!(
-                physicalResourceByteCount
-            );
+            physicalResourceByteCount(owner_.backing);
 
         if (!result.ok)
         {
@@ -448,14 +643,12 @@ public:
     nothrow
     @nogc
     {
-        if (!owner_.refCountedStore.isInitialized)
+        if (!owner_.isInitialized)
         {
             return RasterView!T.init;
         }
 
-        return owner_.borrow!(
-            makeViewFromBacking!T
-        );
+        return makeViewFromBacking!T(owner_.backing);
     }
 
 /// Example borrowing a read-only view from a retained lease.
@@ -516,16 +709,14 @@ public:
     {
         success = false;
 
-        if (!owner_.refCountedStore.isInitialized)
+        if (!owner_.isInitialized)
         {
             return WritableRasterView!T.init;
         }
 
 
         scope auto view =
-            owner_.borrow!(
-                makeWritableViewFromBacking!T
-            );
+            makeWritableViewFromBacking!T(owner_.backing);
 
         /*
          * Ordinary backing validation requires at least one logical plane.
@@ -741,7 +932,7 @@ RasterLease!ubyte makeLifetimeTestLease(
         );
 
     auto owner =
-        safeRefCounted(
+        makeRasterBackingOwner(
             move(backing)
         );
 
@@ -775,7 +966,7 @@ RasterLease!ubyte makeWritableLifetimeTestLease(
 
 
     auto owner =
-        safeRefCounted(
+        makeRasterBackingOwner(
             move(backing)
         );
 
@@ -1108,7 +1299,7 @@ unittest
 {
     /*
      * The fallible lease API handles RasterLease.init without entering
-     * SafeRefCounted.borrow on an uninitialized store.
+     * the private retained backing control block.
      */
     RasterLease!ubyte lease;
 
