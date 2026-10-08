@@ -555,10 +555,13 @@ nothrow
 /++
     Lifetime capability for a retained raster representation.
 
-    Copying a RasterLease retains the same backing representation.
+    Copying a RasterLease retains the same backing representation. The
+    retained-owner reference count is non-atomic; the lease does not provide
+    implicit synchronization for concurrent copies, assignment or destruction.
 
     A RasterView obtained from `view()` borrows from this lease and therefore
-    must not outlive it.
+    must not outlive it. A writable borrow from `tryWritableView()` is bound
+    to the same retained lifetime and does not imply exclusive storage.
 +/
 struct RasterLease(T)
 {
