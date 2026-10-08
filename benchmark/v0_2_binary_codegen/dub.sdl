@@ -1,0 +1,8 @@
+name "raster-v0-2-binary-codegen"
+description "raster-d M5.3 binary multiply codegen diagnostic"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dflags "-preview=dip1000"
+dependency "raster-d" path="../.."
