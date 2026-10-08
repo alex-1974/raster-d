@@ -46,7 +46,7 @@ def root_exported_source_files(root):
             files.append(package)
         else:
             files.append(
-                root/"source"/Path(*module.split(".")[1:]).with_suffix(".d")
+                root/"source"/"raster"/Path(*module.split(".")[1:]).with_suffix(".d")
             )
     return files
 
