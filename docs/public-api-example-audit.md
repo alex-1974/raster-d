@@ -161,7 +161,7 @@ The v0.2 public-only DDox inventory contains **97 symbol pages**.
 | `raster.zip_transform_into.RasterZipTransformError` | existing | binary transform |
 | `raster.zip_transform_into.zipTransformInto` | existing | binary transform |
 
-All 97 pages are expected to render their own documented, compiler-checked
-`unittest` as an Example. The strict verifier requires the rendered-page
-count, audit `existing` count, and documented-unittest count to remain
-identical.
+All 97 pages must render their own Example. Every Example is backed by a
+documented, compiler-checked `unittest`. The source may contain additional
+documented tests for a page or family, so the documented-unittest count may be
+greater than the DDox page count but must never be smaller.
