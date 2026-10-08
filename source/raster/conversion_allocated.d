@@ -63,6 +63,15 @@ enum RasterAllocatedConversionError : ubyte
     internalFailure
 }
 
+/// Example inspecting the allocating-conversion error categories.
+@safe unittest
+{
+    import raster;
+    assert(RasterAllocatedConversionError.init == RasterAllocatedConversionError.none);
+    assert(RasterAllocatedConversionError.invalidSourcePlane != RasterAllocatedConversionError.none);
+}
+
+
 
 /++
     Result carrier for one allocating conversion.
@@ -129,6 +138,18 @@ public:
         return lease_;
     }
 }
+
+/// Example inspecting the deliberately failing default conversion result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedConversionResult!float result;
+    assert(!result.ok);
+    assert(result.error == RasterAllocatedConversionError.internalFailure);
+    assert(result.conversionError == RasterConversionError.none);
+    assert(result.lease().view().empty);
+}
+
 
 
 /++
