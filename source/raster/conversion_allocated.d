@@ -158,8 +158,8 @@ public:
 
     The conversion semantic is exactly convertRasterInto!(To, Policy).
 
-    Policy defaults to RasterConversionPolicy.exact, the only policy promoted
-    by M3.5.
+    Policy defaults to RasterConversionPolicy.exact, the only supported
+    conversion policy in v0.2.
 
     Successful output:
 
