@@ -3,10 +3,10 @@ name: Release API Audit
 on:
   push:
     branches:
-      - validation-release-0.1-api-audit
+      - validation/release-0.2-api-audit
   pull_request:
     branches:
-      - release/0.1
+      - release/0.2
   workflow_dispatch:
 
 permissions:
