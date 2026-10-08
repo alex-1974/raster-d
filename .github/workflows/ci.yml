@@ -205,6 +205,22 @@ jobs:
             --build=release \
             --force
 
+      - name: Comparable C++ convolution gate compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_cpp_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+          g++ \
+            -O3 \
+            -std=c++20 \
+            -fno-fast-math \
+            -ffp-contract=off \
+            benchmark/v0_2_cpp_convolution/cpp/reference.cpp \
+            -o /tmp/raster-v0-2-cpp-convolution-reference
+
       - name: Prepared convolution benchmark compile smoke
         shell: bash
         run: |
