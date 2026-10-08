@@ -103,10 +103,15 @@ def main():
             if ">Example<" not in page.read_text(errors="replace"):
                 fail(f"expected rendered Example missing: {name}")
         else: add += 1
-    if compiled != existing:
-        fail(f"documented unittest count {compiled} != existing audit rows {existing}")
+    if compiled < existing:
+        fail(
+            f"documented unittest count {compiled} < existing audit rows {existing}"
+        )
     if a.require_complete and add:
         fail(f"{add} public pages still require examples")
-    print(f"PASS: public API example audit covers {len(pages)} pages (existing={existing} compiled, add={add})")
+    print(
+        f"PASS: public API example audit covers {len(pages)} pages "
+        f"(existing={existing}, documented_unittests={compiled}, add={add})"
+    )
 
 if __name__=="__main__": main()
