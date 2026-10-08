@@ -96,7 +96,7 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          dub test --compiler="$DC"
+          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC"
 
       - name: Raster lifetime compile probes
         shell: bash
@@ -121,7 +121,7 @@ jobs:
       - name: Raster retained-import external link probe
         shell: bash
         run: |
-          dub test \
+          DFLAGS="-preview=dip1000 -unittest" dub test \
             --root=tests/external/raster_import_link \
             --compiler="$DC"
 
