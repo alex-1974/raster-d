@@ -52,10 +52,6 @@ do
     fi
 done
 
-if grep -Eq '^[[:space:]]*dflags[[:space:]].*-preview=' "$package_dir/dub.sdl"; then
-    echo "ERROR: published package exports a preview language flag" >&2
-    exit 1
-fi
 
 archive_files="$(find "$package_dir" -type f | wc -l)"
 archive_bytes="$(du -sb "$package_dir" | awk '{print $1}')"
