@@ -46,6 +46,15 @@ enum RasterNeighbourhoodError : ubyte
     sourceDestinationOverlap
 }
 
+/// Example recognizing a generic neighbourhood failure category.
+@safe unittest
+{
+    import raster;
+    assert(RasterNeighbourhoodError.init == RasterNeighbourhoodError.none);
+    assert(RasterNeighbourhoodError.unsatisfiedNeighbourhood != RasterNeighbourhoodError.none);
+}
+
+
 
 /++
     Invokes one caller-supplied fixed-shape kernel under the public attribute
