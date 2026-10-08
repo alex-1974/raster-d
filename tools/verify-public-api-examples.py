@@ -37,7 +37,7 @@ def root_exported_source_files(root):
     text = package.read_text()
     modules = {"raster"}
     modules.update(re.findall(
-        r"(?m)^public\\s+import\\s+(raster(?:\\.[A-Za-z_][A-Za-z0-9_]*)+)\\s*:",
+        r"(?m)^public\s+import\s+(raster(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\s*:",
         text,
     ))
     files = []
@@ -52,8 +52,8 @@ def root_exported_source_files(root):
 
 def documented_count(root):
     count=0
-    legacy=re.compile(r"^[ \\t]*\\*[ \\t]+Example:[ \\t]*$",re.MULTILINE)
-    docunit=re.compile(r"^[ \\t]*///[^\\n]*\\n(?:[ \\t]*@[A-Za-z_][A-Za-z0-9_]*(?:\\([^\\n]*\\))?[ \\t]+)*unittest\\b",re.MULTILINE)
+    legacy=re.compile(r"^[ \t]*\*[ \t]+Example:[ \t]*$",re.MULTILINE)
+    docunit=re.compile(r"^[ \t]*///[^\n]*\n(?:[ \t]*@[A-Za-z_][A-Za-z0-9_]*(?:\([^\n]*\))?[ \t]+)*unittest\b",re.MULTILINE)
     for p in root_exported_source_files(root):
         text=p.read_text()
         if legacy.search(text): fail(f"legacy inline Example block remains: {p}")
