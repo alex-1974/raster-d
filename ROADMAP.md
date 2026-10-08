@@ -985,7 +985,7 @@ docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.
 
 ### M5.3 — DMD/LDC code-generation audit
 
-Status: active; neighbourhood root cause fixed and post-fix qualified.
+Status: complete.
 
 Issue #117 owns compiler/code-generation investigation for the retained M5.1
 signals. The centered 3x3 neighbourhood public/hot signal has been root-caused and
@@ -1031,6 +1031,37 @@ compiler split into public/semantic cost, runtime sample-stride induction and
 Canonical static-stride execution while retaining exact reduction semantics and
 DMD/LDC disassembly. No production optimization is selected until reference-XPS
 evidence is retained and inspected.
+
+
+#### M5.3 closeout
+
+The retained code-generation audit is complete.
+
+Resolved signals:
+
+- centered 3x3 public/hot: release-only side effect inside `assert(...)`
+  fixed by PR #168 and post-fix qualified;
+- LDC signed-affine small positive sample strides: compiler-specific runtime
+  stride induction addressed by private small-stride multiversioning in PR #174,
+  while arbitrary signed-affine fallback remains intact;
+- DMD fixed convolution: ordinary runtime `foreach` inside a compile-time-fixed
+  kernel replaced with `static foreach` in PR #176;
+- LDC strict float-to-double mean: Mir Canonical indexing removed from the hot
+  Canonical path in PR #180;
+- DMD minMax: helper-call source form exposed directly in `executeExtrema` by
+  PR #182, removing the hot-loop call cliff without changing NaN/signed-zero
+  semantics;
+- binary multiply wrapper/executor: focused diagnostic 8 found no stable
+  production slowdown; public generic zip is at executor parity and
+  `multiplyInto` is not slower on the retained reference-XPS run.
+
+The earlier generic `ushort -> float` versus specialized `ubyte -> float`
+observation remains explicitly non-apples-to-apples. It is not a remaining
+M5.3 source-form blocker. Comparable type-pair/vectorization questions continue
+under M5.4 SIMD qualification.
+
+M5.3 therefore closes without introducing compiler/ISA choices into the public
+API and without adding a second generic execution engine.
 
 ## Higher-level consumer — imagery-d
 
