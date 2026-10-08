@@ -143,6 +143,15 @@ public:
         return error_ == RasterAllocatedTransformError.none;
     }
 
+/// Example reading success from a default allocating-transform result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(!result.ok);
+}
+
+
 
     /++
         High-level failure category.
@@ -156,6 +165,15 @@ public:
     {
         return error_;
     }
+
+/// Example reading the high-level default failure.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(result.error == RasterAllocatedTransformError.internalFailure);
+}
+
 
 
     /++
@@ -173,6 +191,15 @@ public:
         return transformError_;
     }
 
+/// Example reading the absent nested transform failure.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    assert(result.transformError == RasterTransformError.none);
+}
+
+
 
     /++
         Returns an O(1) retained copy of the successful output owner.
@@ -187,6 +214,16 @@ public:
 
         return lease_;
     }
+
+/// Example obtaining an inert lease from a failed result.
+@safe unittest
+{
+    import raster;
+    RasterAllocatedTransformResult!float result;
+    auto lease = result.lease();
+    assert(lease.view().empty);
+}
+
 }
 
 
