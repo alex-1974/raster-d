@@ -1090,6 +1090,31 @@ that justifies handwritten SIMD on the qualified Linux x86-64 baseline.
 Compiler/ISA choice remains internal implementation detail, and future
 architecture/compiler versions require independent evidence.
 
+### M5.5 — caller-owned scheduling reconciliation
+
+Status: complete.
+
+Issue #119 reconciles the grandfathered R0.4e persistent-worker research with
+the workspace rule that scheduling remains caller-owned by default.
+
+Qualification record:
+
+- `docs/V0_2_M5_CALLER_SCHEDULING.md`;
+- grandfathered evidence branch:
+  `research/r0_4e-persistent-workers`.
+
+R0.4e's persistent worker reuse, bounded backpressure, request-lifetime
+separation, cancellation/failure recovery and deterministic shutdown remain
+valid engineering evidence. They do not justify a raster-d-owned WorkerPool,
+Executor, queue API, worker count, affinity policy or hidden scheduler.
+
+Production retains scheduler-neutral raster-domain mechanics: dependency
+geometry, materialization planning, synchronous caller-owned materialization,
+retained block resolution, explicit regions and caller-owned destinations.
+
+Reusable worker/queue techniques belong to the application or another
+independently justified general concurrency component.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
