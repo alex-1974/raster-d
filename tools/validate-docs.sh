@@ -10,8 +10,14 @@ required=(
   BENCHMARK.md
   DESIGN.md
   docs/API.md
+  docs/API_0_2.md
   docs/ddoc-style.md
   docs/public-api-example-audit.md
+  docs/README.md
+  docs/tutorial/getting-started.md
+  docs/how-to/common-operations.md
+  docs/glossary.md
+  docs/accuracy-and-validation.md
   docs/V0_1_RELEASE_READINESS.md
   docs/V0_1_DOCUMENTATION_AUDIT.md
   docs/V0_1_DOCUMENTATION_QUALITY_AUDIT.md
@@ -37,6 +43,11 @@ grep -q '^license "MIT"' "$repo/dub.sdl" || {
     exit 1
 }
 
+if grep -Eq '^[[:space:]]*dflags[[:space:]].*-preview=' "$repo/dub.sdl"; then
+    echo "FAIL: published package exports a preview language flag" >&2
+    exit 1
+fi
+
 grep -Fxq 'MIT License' "$repo/LICENSE" || {
     echo "FAIL: LICENSE text does not match MIT package metadata" >&2
     exit 1
@@ -47,33 +58,67 @@ grep -Fxq 'Copyright (c) 2026 Alexander Bernardi' "$repo/LICENSE" || {
     exit 1
 }
 
-for symbol in     Region2D PlaneDescriptor PlaneByteLayout     OwnedByteResource tryAdoptMallocResource     OwnedRasterImportError OwnedRasterImportResult tryImportOwnedRaster     RasterLease RasterView WritableRasterView     trySumFloatToDouble tryFillRasterPlane     RasterTransformError tryTransformRasterPlane     RasterNeighbourhood3x3Error tryApplyRasterNeighbourhood3x3     RasterCopyError tryCopyRasterPlane     UbyteToFloatConversionError tryConvertUbyteToFloatPlane; do
-    grep -q "$symbol" "$repo/docs/API.md" || {
-        echo "FAIL: docs/API.md does not mention root-export family: $symbol" >&2
+v02_symbols=(
+  isRasterSampleType isNumericRasterSample isExactConvertible
+  OwnedByteResource tryAdoptMallocResource
+  PlaneByteLayout PlaneDescriptor Region2D
+  OwnedRasterImportError OwnedRasterImportResult
+  OwnedRasterResourceDisposition tryImportOwnedRaster
+  RasterLease RasterView WritableRasterView
+  RasterSumError RasterSumResult RasterExtremaError RasterExtremaResult
+  RasterMinMaxResult RasterMeanError RasterMeanResult
+  sum min max minMax mean trySumFloatToDouble
+  tryFillRasterPlane fill
+  RasterTransformError tryTransformRasterPlane transformInto
+  RasterZipTransformError zipTransformInto
+  addInto subtractInto multiplyInto divideInto
+  RasterAllocatedTransformError RasterAllocatedTransformResult
+  tryTransformAllocated
+  NeighbourhoodShape
+  RasterBorderKind RasterValidBorder RasterConstantBorder
+  RasterClampBorder RasterMirrorBorder RasterWrapBorder
+  RasterNeighbourhood3x3Error tryApplyRasterNeighbourhood3x3
+  RasterNeighbourhoodError applyNeighbourhoodInto
+  FixedConvolutionKernel convolveInto
+  RasterCopyError tryCopyRasterPlane copyInto
+  RasterConversionPolicy RasterConversionError
+  UbyteToFloatConversionError convertRasterInto
+  tryConvertUbyteToFloatPlane
+  RasterAllocatedConversionError RasterAllocatedConversionResult
+  tryConvertAllocated
+)
+
+for symbol in "${v02_symbols[@]}"; do
+    grep -q "$symbol" "$repo/docs/API_0_2.md" || {
+        echo "FAIL: docs/API_0_2.md does not mention root-export symbol: $symbol" >&2
         exit 1
     }
 done
 
-echo "PASS: release documentation structure and API-family inventory"
-
+echo "PASS: v0.2 release-candidate API inventory covers ${#v02_symbols[@]} root exports"
 
 grep -q '^## 0.1.0 — 2026-10-05$' "$repo/CHANGELOG.md" || {
-    echo "FAIL: CHANGELOG.md does not contain the finalized 0.1.0 entry" >&2
+    echo "FAIL: CHANGELOG.md does not retain the finalized 0.1.0 entry" >&2
     exit 1
 }
 
 grep -q 'freeze/api-0.1.0' "$repo/README.md" || {
-    echo "FAIL: README.md does not identify the frozen 0.1.0 API checkpoint" >&2
+    echo "FAIL: README.md does not retain the frozen 0.1.0 API checkpoint" >&2
     exit 1
 }
 
-grep -q 'v0.1.0 release candidate' "$repo/README.md" || {
-    echo "FAIL: README.md release status is not synchronized" >&2
+grep -q 'freeze/feature-0.2.0' "$repo/README.md" || {
+    echo "FAIL: README.md does not identify the v0.2 feature freeze" >&2
+    exit 1
+}
+
+grep -q 'freeze/api-0.2.0' "$repo/README.md" || {
+    echo "FAIL: README.md does not identify the pending v0.2 API checkpoint" >&2
     exit 1
 }
 
 grep -q 'freeze/api-0.1.0' "$repo/docs/V0_1_RELEASE_NOTES.md" || {
-    echo "FAIL: release notes do not identify the API freeze" >&2
+    echo "FAIL: historical v0.1 release notes do not identify the API freeze" >&2
     exit 1
 }
 
@@ -87,4 +132,4 @@ grep -q '^authors "Alexander Bernardi"$' "$repo/dub.sdl" || {
     exit 1
 }
 
-echo "PASS: v0.1.0 release-facing metadata is synchronized"
+echo "PASS: release documentation structure and metadata are synchronized"
