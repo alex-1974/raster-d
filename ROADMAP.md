@@ -1115,6 +1115,34 @@ retained block resolution, explicit regions and caller-owned destinations.
 Reusable worker/queue techniques belong to the application or another
 independently justified general concurrency component.
 
+### M5.6 — prepared-state policy
+
+Status: complete.
+
+Issue #120 generalizes the M4.6 prepared-convolution evidence into one
+qualification rule for future runtime prepared-operation proposals.
+
+Qualification record:
+
+- `docs/V0_2_M5_PREPARED_STATE_POLICY.md`;
+- `docs/V0_2_M4_PREPARED_CONVOLUTION_RESEARCH.md`;
+- `benchmark/v0_2_prepared_convolution`.
+
+Prepared operation state must justify preparation cost, repeated one-shot cost,
+prepared repeated cost, break-even reuse count and a realistic consumer reuse
+profile under equivalent semantics and execution assumptions.
+
+The only concrete current proposal, runtime prepared convolution coefficient
+state, remains rejected: DMD shows noise-level parity against the fair
+direct-fixed control, while LDC makes the prepared representation materially
+slower and has no finite break-even.
+
+`RetainedRasterStore` is explicitly outside this operator-preparation rule: it
+is bounded raster residency/cache infrastructure whose value is avoiding
+rematerialization, not amortizing operator preparation.
+
+No runtime prepared-operation API is promoted by M5.6.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
