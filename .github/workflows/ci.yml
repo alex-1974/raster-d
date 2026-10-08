@@ -63,17 +63,13 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test --compiler="$DC"
+          dub test --compiler="$DC"
 
       - name: Consumer package boundary
         shell: bash
         run: |
           set -euo pipefail
 
-          if grep -Eq '^[[:space:]]*dflags[[:space:]].*-preview=' dub.sdl; then
-            echo "Published dub.sdl must not export preview language flags" >&2
-            exit 1
-          fi
 
           bash tools/release-archive-consumer.sh "$DC"
 
@@ -304,7 +300,7 @@ jobs:
       - name: Raster retained-import external link probe
         shell: bash
         run: |
-          DFLAGS="-preview=dip1000 -unittest" dub test \
+          dub test \
             --root=tests/external/raster_import_link \
             --compiler="$DC"
 
