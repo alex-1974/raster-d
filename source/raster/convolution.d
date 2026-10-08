@@ -70,6 +70,23 @@ if (
         [Coefficients];
 }
 
+/// Example defining a fixed identity-style 3 x 3 float kernel.
+@safe unittest
+{
+    import raster;
+    alias Shape = NeighbourhoodShape!(3, 3, 1, 1);
+    alias Kernel = FixedConvolutionKernel!(
+        Shape,
+        float,
+        0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f
+    );
+    static assert(Kernel.shape.sampleCount == 9);
+    static assert(Kernel.coefficients[4] == 1.0f);
+}
+
+
 
 /++
     Whether one source/coefficient/accumulator combination is supported by the
