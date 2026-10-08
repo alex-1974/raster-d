@@ -1,13 +1,13 @@
 name "raster-d"
 description "High-performance raster engine for large and streamed raster data"
+homepage "https://github.com/alex-1974/raster-d"
 authors "Alexander Bernardi"
 copyright "Copyright © 2026, Alexander Bernardi"
 license "MIT"
 
+toolchainRequirements frontend=">=2.101.0"
+
 targetType "library"
-
 sourcePaths "source"
-
-dflags "-preview=dip1000"
 
 dependency "mir-algorithm" version="~>3.22.4"
