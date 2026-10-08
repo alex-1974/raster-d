@@ -1063,6 +1063,33 @@ under M5.4 SIMD qualification.
 M5.3 therefore closes without introducing compiler/ISA choices into the public
 API and without adding a second generic execution engine.
 
+### M5.4 — SIMD qualification
+
+Status: complete.
+
+Issue #118 reconciles the completed R0.5 CPU/SIMD study with the current v0.2
+production families after M5.3.
+
+Qualification record:
+
+- `docs/V0_2_M5_SIMD_QUALIFICATION.md`;
+- retained explicit-SIMD diagnostic:
+  `benchmark/v0_2_simd_convolution`;
+- reference archive:
+  `raster-v0.2-simd-convolution-20261008-090142.tar.gz`;
+- SHA256:
+  `ee52776194074e7ae9b28a117bde02b5e0ad3c56d6f0d9ad63c2a5c2c2787b02`.
+
+The strongest fixed-convolution candidate was tested with benchmark-local
+`core.simd.float4` and rejected: DMD explicit SIMD was materially slower than
+the direct scalar source form, while LDC already auto-vectorized the scalar
+control and gained no material benefit from handwritten SIMD.
+
+The complete family reconciliation finds no current v0.2 production operation
+that justifies handwritten SIMD on the qualified Linux x86-64 baseline.
+Compiler/ISA choice remains internal implementation detail, and future
+architecture/compiler versions require independent evidence.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
