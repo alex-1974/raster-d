@@ -222,6 +222,9 @@ template isSupportedRasterSumPair(
 }
 
 
+/++
+    Builds a successful sum result from one completed accumulator value.
++/
 private
 RasterSumResult!Accumulator successfulSumResult(Accumulator)(
     Accumulator value
@@ -244,6 +247,9 @@ if (isSupportedSumAccumulator!Accumulator)
 }
 
 
+/++
+    Builds a failed sum result without exposing a partial accumulator.
++/
 private
 RasterSumResult!Accumulator failedSumResult(Accumulator)(
     RasterSumError error
@@ -559,6 +565,9 @@ public:
 }
 
 
+/++
+    Builds a failed mean result with the documented zero result value.
++/
 private
 RasterMeanResult!Result failedMeanResult(Result)(
     RasterMeanError error
@@ -578,6 +587,9 @@ if (isSupportedMeanResult!Result)
 }
 
 
+/++
+    Builds a successful mean result from the final computed value.
++/
 private
 RasterMeanResult!Result successfulMeanResult(Result)(
     Result value
@@ -914,6 +926,9 @@ template isSupportedExtremaSample(T)
 }
 
 
+/++
+    Maps the internal extrema execution status to the public failure category.
++/
 private
 RasterExtremaError publicExtremaError(
     ExtremaStatus status
@@ -937,6 +952,9 @@ nothrow
 }
 
 
+/++
+    Builds one public min/max result from internal extrema execution state.
++/
 private
 RasterExtremaResult!T extremaResult(T)(
     ExtremaStatus status,
@@ -963,6 +981,9 @@ if (isSupportedExtremaSample!T)
 }
 
 
+/++
+    Builds one public one-pass min/max result from internal execution state.
++/
 private
 RasterMinMaxResult!T minMaxResult(T)(
     ExtremaStatus status,
