@@ -1174,6 +1174,29 @@ qualified x86-64 baseline. LDC remains the primary optimized/codegen compiler;
 DMD remains the development/correctness baseline. No semantic, safety, public
 API or threading contract is weakened.
 
+## v0.2 pre-release hardening
+
+M5 is complete. The repository is now preparing for the v0.2 feature-freeze
+sequence.
+
+Current repository hardening covers:
+
+- consumer/archive boundary;
+- production versus research evidence separation;
+- GitHub workflow baseline;
+- consumer documentation path;
+- documentation prose standard.
+
+One release/API-freeze blocker remains open:
+
+- #193 — qualify package behavior without global DIP1000 `dflags`.
+
+The package-wide preview flag is retained until #193 resolves the observed
+`RasterLease` / `SafeRefCounted` source- and separate-compilation behavior
+without weakening lifetime or safety contracts.
+
+Do not create the v0.2 API-freeze checkpoint while #193 remains unresolved.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.

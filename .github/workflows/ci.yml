@@ -65,6 +65,14 @@ jobs:
         run: |
           dub test --compiler="$DC"
 
+      - name: Consumer package boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+
+          bash tools/release-archive-consumer.sh "$DC"
+
       - name: Generic sum benchmark compile smoke
         shell: bash
         run: |

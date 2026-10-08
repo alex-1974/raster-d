@@ -1,0 +1,23 @@
+name: Performance
+description: Investigate a measured performance problem or opportunity.
+title: ""
+body:
+  - type: textarea
+    id: workload
+    attributes:
+      label: Comparable workload
+      description: Define the operation, layout, precision, validation, allocation, and threading assumptions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Current evidence
+      description: Include compiler versions, platform, build flags, samples, warm-up, affinity, and baseline commit.
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference or target
+      description: Give a comparable D/C/C++/Rust reference or explain the regression baseline.

@@ -1,162 +1,171 @@
 # raster-d
 
-`raster-d` is a high-performance generic raster library written in D.
+`raster-d` is a high-performance generic raster library for D.
 
-It provides the reusable raster foundation for large resident and streamed
-datasets without imposing image, colour, radiometric or geospatial-image
-semantics on every consumer.
-
-The intended dependency boundary is:
+It represents large resident or streamed raster data without forcing image,
+colour, radiometric, or geospatial-image semantics on every consumer.
 
 ```text
-    imagery-d
-        |
-        v
-     raster-d
+imagery-d
+    |
+    v
+ raster-d
 ```
 
-Other consumers such as scientific grids, elevation data, GDAL-backed windows
-or application-specific raster systems may use `raster-d` directly.
+Scientific grids, elevation data, GDAL-backed windows, and application-specific
+raster systems can also use `raster-d` directly.
 
 ## Status
 
-v0.1.0 is fully released and externally verified from the qualified release commit.
+v0.1.0 is released. Its public source contract is frozen at
+`freeze/api-0.1.0`.
 
-The v0.1.0 public source contract is frozen at `freeze/api-0.1.0`. Release
-qualification covers the controlled compiler-generation matrix, supported
-platform matrix, compiler floors, strict public-only DDox, external archive
-consumers and the reference-XPS M2/M3 Production benchmark. The qualified
-release candidate was promoted to `main`; the signed `v0.1.0` release tag was created; the GitHub Release,
-stable/versioned documentation and published DUB package were verified after publication.
+The release passed the supported compiler and platform matrices, compiler-floor
+checks, public-only DDox, external archive consumers, and the reference XPS
+performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
+documentation, and DUB publication were verified after release.
 
-Because raster-d is pre-1.0, later minor releases may deliberately evolve the
-API. The published v0.1.0 contract itself is treated as fixed.
+v0.2 is under development on `develop`. Because raster-d is pre-1.0, a later
+minor release may deliberately evolve the API. Published release contracts stay
+fixed.
 
-The production DUB package is `raster-d` and the public D namespace is
-`raster` / `raster.*`.
+The DUB package is `raster-d`. The public D namespace is `raster` and
+`raster.*`.
 
-The retained raster foundation includes:
+## Quick start
+
+This example adopts four bytes, describes them as a 2 x 2 `ubyte` plane, and
+reads one sample.
+
+```d
+import core.stdc.stdlib : malloc;
+import raster;
+
+void main()
+@system
+{
+    void* memory = malloc(4);
+    assert(memory !is null);
+
+    auto samples = (cast(ubyte*) memory)[0 .. 4];
+    samples[] = [1, 2, 3, 4];
+
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+
+    const PlaneByteLayout[1] layout =
+    [
+        PlaneByteLayout(0, 2, 1)
+    ];
+
+    RasterLease!ubyte lease;
+
+    assert(
+        tryImportOwnedRaster!ubyte(
+            resource,
+            layout[],
+            Region2D(0, 0, 2, 2),
+            lease
+        ).ok
+    );
+
+    scope auto view = lease.view();
+
+    ubyte value;
+    assert(view.trySample(0, 1, 1, value));
+    assert(value == 4);
+}
+```
+
+A successful import transfers the adopted resource into retained raster
+ownership. `RasterLease` keeps that storage alive. `RasterView` borrows from
+the retained lifetime and does not own storage.
+
+See [docs/README.md](docs/README.md) for the user documentation path.
+
+## What raster-d provides
+
+The current raster foundation includes:
 
 - retained ownership of one or more physical resources;
-- validated multi-plane backing and signed row/sample strides;
-- descriptor-space regions;
+- validated multi-plane backing with signed row and sample strides;
+- logical regions and zero-copy subregions;
 - lease-bound read-only `RasterView`;
-- lease-bound public `WritableRasterView`;
-- read/write provenance and writable-backing certification;
-- internal execution-layout classification and Mir adapters;
-- checked physical-range and affine-overlap analysis;
-- strict `trySumFloatToDouble()`;
-- checked `tryCopyRasterPlane()`;
-- generic exact `tryFillRasterPlane()`;
-- generic compile-time `tryTransformRasterPlane!transform()`;
-- generic fixed 3 x 3 `tryApplyRasterNeighbourhood3x3!kernel()`, with
-  measured internal Canonical fast paths;
-- exact `tryConvertUbyteToFloatPlane()`.
+- lease-bound `WritableRasterView`;
+- checked copy, fill, transform, conversion, reduction, neighbourhood, and
+  convolution families;
+- bounded request residency and retained reuse;
+- exact multi-block dependency assembly for streamed requests;
+- synchronous caller-owned materialization;
+- internal layout and compiler specialization without public ISA switches.
 
-Execution layouts, mutable raw execution pointers, `RasterTargetPlane`, Mir
-types, affine-relation machinery, checked-wide arithmetic and operation
-dispatch internals remain non-public.
+Execution layouts, raw execution pointers, Mir adapters, affine proofs,
+compiler-specific kernels, cache replacement policy, and scheduling remain
+implementation details.
 
-R0.3 research additionally demonstrated decomposition-independent streamed
-identity and neighbourhood/halo execution with bounded raster residency.
+## Design goals
 
-M1 has now promoted and qualified the smallest production contracts needed for
-requested-region dependency planning, synchronous caller-owned materialization,
-bounded request residency, bounded retained reuse, multi-block dependency
-assembly and exact whole-vs-streamed neighbourhood equivalence. Processing
-decomposition, cache-block selection/replacement and scheduling remain outside
-the public raster contract.
+raster-d aims to:
 
-Performance-sensitive implementation is developed from measured evidence and
-validated with both DMD and LDC. Compiler/ISA-specific execution remains an
-internal implementation choice rather than a public switch.
+- handle logical rasters larger than available RAM;
+- keep residency bounded and explicit;
+- support signed-stride, multi-plane, planar, and interleaved layouts;
+- make regions, windows, neighbourhoods, and halo processing efficient;
+- avoid unnecessary copies and hidden allocation;
+- preserve decomposition-independent results;
+- expose semantic raster contracts without exposing execution policy;
+- leave thread scheduling to the caller;
+- keep a path open for future CPU and GPU execution;
+- remain independent of codecs, providers, and image-domain semantics.
 
-## Primary goals
+## What raster-d does not own
 
-- support logical rasters substantially larger than available RAM;
-- bounded and configurable raster residency;
-- efficient regions, windows and neighbourhood access;
-- low-copy and zero-copy semantic views where appropriate;
-- correct signed-stride and multi-plane layouts;
-- generic planar and interleaved raster representation;
-- decomposition-independent streamed processing;
-- predictable halo/context handling;
-- SIMD-friendly CPU execution;
-- scalable future scheduling and parallel execution;
-- clear separation between semantic raster contracts and execution strategy;
-- retain a path toward future GPU-backed execution without exposing GPU
-  assumptions in the public raster model;
-- remain independent of a particular codec, file format, provider, geospatial
-  stack or image-domain interpretation.
+raster-d is not a full image-processing library.
 
-## Non-goals of the initial phase
+Image and pixel-format semantics, colour, radiometric normalization,
+image-quality analysis, mosaics, pyramids, enhancement, segmentation, and
+imagery-specific geospatial metadata belong above this layer, primarily in
+`imagery-d`.
 
-`raster-d` is not intended to become a comprehensive image-processing library.
+A higher-level need enters raster-d only when it proves a reusable raster-domain
+requirement.
 
-Image-domain responsibilities belong above the generic raster layer. The
-separate `imagery-d` project owns or researches, among other things:
+## Repository and package boundary
 
-- image and pixel-format semantics;
-- colour semantics;
-- radiometric normalization;
-- image enhancement and filters;
-- imagery mosaics and pyramids;
-- imagery-specific source/cache policy;
-- image-quality analysis;
-- shadow and illumination processing;
-- feature extraction and segmentation;
-- ML-assisted image interpretation;
-- imagery-specific geospatial metadata integration.
-
-Those higher-level requirements may inform `raster-d` abstractions when they
-produce a demonstrated generic raster need, but they do not define the raster
-API by default.
-
-## Repository layout
+The Git repository contains more than the consumer package.
 
 ```text
 source/raster/        production library
 tests/                correctness and external-consumer tests
-tools/                maintained production verification tooling
-docs/adr/             architecture decision records
-docs/architecture/    current architecture contracts
+benchmark/            maintained production qualification harnesses
+tools/                verification and release tooling
+docs/                 user, API, architecture, and decision documentation
 ```
 
-Historical research artifacts retain their original naming where changing them
-would weaken reproducibility.
+Experimental prototypes, raw benchmark runs, compiler investigations, and
+large retained evidence live in the separate
+`alex-1974/raster-d-research` repository.
 
-## Benchmark and test data
-
-`raster-d` should use deterministic synthetic fixtures and reproducible real
-raster workloads where each is appropriate.
-
-ADR 0002 records the historical policy that large benchmark imagery is not
-stored in Git. That decision remains repository history, but management of a
-full aerial/satellite imagery corpus is a responsibility of the future
-`imagery-d`, not a defining responsibility of the generic raster library.
-
-Consumer-derived imagery may still be useful as raster stress-test input when
-its provenance and reproducibility are controlled.
+The consumer archive excludes repository-only tests, benchmarks, tools,
+engineering documentation, and CI files. Release CI verifies that boundary.
 
 ## Build
 
-    dub build
-    dub test
+```bash
+dub build
+dub test
+```
 
-Performance-sensitive work will be tested with both DMD and LDC. LDC/LLVM is
-expected to become the primary performance compiler.
-
-See `docs/API.md` for the v0.1 public contract, `CHANGELOG.md` for release
-history, `docs/V0_1_RELEASE_NOTES.md` for the first release, and
-`ROADMAP.md`, `DESIGN.md` and `BENCHMARK.md` for engineering context.
+Normal integration tests DMD and LDC. LDC/LLVM is the primary optimized/codegen
+compiler; DMD is also a required correctness and development baseline.
 
 ## Compiler support
 
 The source/frontend compatibility floor is DMD/Phobos 2.101. The corresponding
 LDC generation is LDC 1.31.0.
 
-Concrete compiler-package floors vary by platform because older macOS compiler
-packages are not compatible with current macOS 15 runners:
+Concrete package floors vary by platform because older macOS compiler packages
+do not support current macOS 15 runners:
 
 | Platform | DMD | LDC |
 | --- | --- | --- |
@@ -167,30 +176,30 @@ packages are not compatible with current macOS 15 runners:
 | macOS ARM64 | — | 1.41.0 |
 | Windows ARM64 | experimental | experimental |
 
-Normal `develop` integration uses the controlled fast compiler floor:
+Normal `develop` integration uses:
 
 - DMD 2.111.0;
 - LDC 1.41.0.
 
-Release qualification additionally exercises the controlled compiler-generation
-matrix DMD 2.111.0 / 2.112.1 / 2.113.0 and LDC 1.41.0 / 1.42.0 / 1.43.0,
-plus the supported platform matrix and the minimum compiler-package floor.
+Release qualification also exercises DMD 2.111.0 / 2.112.1 / 2.113.0 and
+LDC 1.41.0 / 1.42.0 / 1.43.0, the supported platform matrix, and the minimum
+compiler-package floor.
 
-See `RESEARCH.md` and the retained `docs/research/compiler-floor-audit.md` in
-`raster-d-research` for the evidence and boundary tests.
+## Documentation
+
+Start with:
+
+- [user documentation](docs/README.md);
+- [public API baseline](docs/API.md);
+- [changelog](CHANGELOG.md).
+
+Maintainer context lives in `ROADMAP.md`, `DESIGN.md`, `BENCHMARK.md`,
+ADRs, and architecture documents.
 
 ## Workspace context
 
-When developed inside `d-geospatial-workspace`, shared architecture and
-research context is available locally under:
+Inside `d-geospatial-workspace`, shared engineering rules are available under
+`.workspace/`.
 
-```text
-.workspace/
-```
-
-That directory is local workspace context and is not part of the `raster-d`
-repository or DUB package.
-
-Repository-root documentation describes `raster-d`. Shared workspace
-documentation is migrated separately because those files are hard-linked across
-multiple workspace repositories.
+That directory is local workspace context. It is ignored by Git and is not part
+of the raster-d package.

@@ -1,11 +1,14 @@
 # raster-d 0.1 public API
 
-This document defines the supported public API baseline being qualified for
+This document records the supported public API baseline released as
 `raster-d 0.1.0`.
 
-The contract is not frozen until the 0.1 API audit is complete and the
-`freeze/api-0.1.0` checkpoint is created. Until then, this document is the
-working release contract.
+The v0.1 contract is frozen at `freeze/api-0.1.0`. Later pre-1.0 releases may
+change the API deliberately, but they do not rewrite this published baseline.
+
+Some sections below preserve the questions used during the original API audit.
+Read them as qualification criteria for the frozen v0.1 contract, not as signs
+that the release is still pending.
 
 ## Aggregate import
 

@@ -1,0 +1,23 @@
+name: Feature
+description: Propose a consumer-visible raster capability.
+title: ""
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Consumer need
+      description: What real consumer problem should raster-d solve?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed contract
+      description: Describe the smallest useful public behavior, not an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What can callers do today, and why is that insufficient?

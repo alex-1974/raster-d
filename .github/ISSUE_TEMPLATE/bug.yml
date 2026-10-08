@@ -1,0 +1,30 @@
+name: Bug
+description: Report incorrect behavior in raster-d.
+title: ""
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Minimal reproducer
+      description: Include the smallest source, input, or command that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Compiler/version, DUB version, OS/architecture, and relevant build mode.
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Contract impact
+      description: Note any ownership, lifetime, numerical, failure, allocation, or compatibility implications.
