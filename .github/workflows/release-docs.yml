@@ -90,3 +90,4 @@ jobs:
         run: |
           set -euo pipefail
           dub test --compiler="$DC" --force
+          DFLAGS="-unittest -preview=dip1000" dub test --compiler="$DC" --force
