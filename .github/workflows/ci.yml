@@ -65,6 +65,18 @@ jobs:
         run: |
           dub test --compiler="$DC"
 
+      - name: Consumer package boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if grep -Eq '^[[:space:]]*dflags[[:space:]].*-preview=' dub.sdl; then
+            echo "Published dub.sdl must not export preview language flags" >&2
+            exit 1
+          fi
+
+          bash tools/release-archive-consumer.sh "$DC"
+
       - name: Generic sum benchmark compile smoke
         shell: bash
         run: |
