@@ -1,8 +1,9 @@
 /++
     Generic raster border policy types.
 
-    Policy selection is type-level so spatial kernels can specialize without a
-    runtime per-sample mode branch.
+    These types define border semantics but do not enable border synthesis.
+    The v0.2 neighbourhood and convolution operations require resident source
+    context and do not accept a border policy argument.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
