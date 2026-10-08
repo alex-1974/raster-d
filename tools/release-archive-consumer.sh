@@ -22,13 +22,52 @@ test ! -e "$package_dir/.git"
 test -f "$package_dir/dub.sdl"
 test -f "$package_dir/source/raster/package.d"
 
+# Consumer archives contain only the package surface. Repository-only
+# engineering material must stay out of the archive even though it remains
+# versioned in Git.
+for excluded in \
+    .github \
+    benchmark \
+    tests \
+    tools \
+    docs \
+    AGENTS.md \
+    BENCHMARK.md \
+    DESIGN.md \
+    RESEARCH.md \
+    ROADMAP.md
+do
+    if [ -e "$package_dir/$excluded" ]; then
+        echo "ERROR: repository-only path leaked into consumer archive: $excluded" >&2
+        exit 1
+    fi
+done
+
+for required in README.md LICENSE CHANGELOG.md dub.sdl source
+do
+    if [ ! -e "$package_dir/$required" ]; then
+        echo "ERROR: required consumer path missing from archive: $required" >&2
+        exit 1
+    fi
+done
+
+if grep -Eq '^[[:space:]]*dflags[[:space:]].*-preview=' "$package_dir/dub.sdl"; then
+    echo "ERROR: published package exports a preview language flag" >&2
+    exit 1
+fi
+
+archive_files="$(find "$package_dir" -type f | wc -l)"
+archive_bytes="$(du -sb "$package_dir" | awk '{print $1}')"
+
+echo "consumer_archive_files=$archive_files"
+echo "consumer_archive_bytes=$archive_bytes"
+
 cat >"$consumer_dir/dub.sdl" <<DUB
 name "raster-d-release-consumer"
 description "External archive consumer smoke for raster-d"
 authors "raster-d release gate"
 license "MIT"
 targetType "executable"
-dflags "-preview=dip1000"
 dependency "raster-d" path="$package_dir"
 DUB
 
