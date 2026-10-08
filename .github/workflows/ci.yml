@@ -196,6 +196,15 @@ jobs:
             --build=release \
             --force
 
+      - name: SIMD convolution diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_simd_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Prepared convolution benchmark compile smoke
         shell: bash
         run: |
