@@ -6,7 +6,8 @@ Start here if you use the library rather than maintain it.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
-- [Public API baseline](API.md) records the released 0.1 contract.
+- [v0.2 API audit](API_0_2.md) records the current release-candidate contract.
+- [v0.1 API baseline](API.md) records the released 0.1 contract.
 
 Generated Ddoc/DDox remains the authoritative declaration-level API reference.
 
