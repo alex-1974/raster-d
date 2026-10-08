@@ -32,12 +32,29 @@ def rendered(site,source_root):
     excluded={site/"index.html",*module_pages(site,source_root)}
     return {page_name(site,p):p for p in site.rglob("*.html") if p not in excluded}
 
+def root_exported_source_files(root):
+    package = root/"source"/"raster"/"package.d"
+    text = package.read_text()
+    modules = {"raster"}
+    modules.update(re.findall(
+        r"(?m)^public\\s+import\\s+(raster(?:\\.[A-Za-z_][A-Za-z0-9_]*)+)\\s*:",
+        text,
+    ))
+    files = []
+    for module in sorted(modules):
+        if module == "raster":
+            files.append(package)
+        else:
+            files.append(
+                root/"source"/Path(*module.split(".")).with_suffix(".d")
+            )
+    return files
+
 def documented_count(root):
-    src=root/"source"/"raster"; count=0
-    legacy=re.compile(r"^[ \t]*\*[ \t]+Example:[ \t]*$",re.MULTILINE)
-    docunit=re.compile(r"^[ \t]*///[^\n]*\n(?:[ \t]*@[A-Za-z_][A-Za-z0-9_]*(?:\([^\n]*\))?[ \t]+)*unittest\b",re.MULTILINE)
-    for p in sorted(src.rglob("*.d")):
-        if "internal" in p.relative_to(src).parts: continue
+    count=0
+    legacy=re.compile(r"^[ \\t]*\\*[ \\t]+Example:[ \\t]*$",re.MULTILINE)
+    docunit=re.compile(r"^[ \\t]*///[^\\n]*\\n(?:[ \\t]*@[A-Za-z_][A-Za-z0-9_]*(?:\\([^\\n]*\\))?[ \\t]+)*unittest\\b",re.MULTILINE)
+    for p in root_exported_source_files(root):
         text=p.read_text()
         if legacy.search(text): fail(f"legacy inline Example block remains: {p}")
         count += len(docunit.findall(text))
