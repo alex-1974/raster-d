@@ -3,7 +3,7 @@ name: Release Documentation
 on:
   push:
     branches:
-      - release/0.1
+      - release/0.2
       - docs-release-0.1-documentation-gate
     paths:
       - 'source/raster/**'
@@ -21,7 +21,7 @@ on:
       - '.github/workflows/release-docs.yml'
   pull_request:
     branches:
-      - release/0.1
+      - release/0.2
     paths:
       - 'source/raster/**'
       - 'docs/**'
