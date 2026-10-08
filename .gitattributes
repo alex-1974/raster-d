@@ -10,6 +10,7 @@ tools/ export-ignore
 docs/ export-ignore
 
 AGENTS.md export-ignore
+CONTRIBUTING.md export-ignore
 BENCHMARK.md export-ignore
 DESIGN.md export-ignore
 RESEARCH.md export-ignore
