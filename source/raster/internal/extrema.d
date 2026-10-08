@@ -86,101 +86,6 @@ template isExtremaFloating(T)
 }
 
 
-private
-bool isNegativeZero(T)(
-    T value
-)
-@safe
-pure
-nothrow
-@nogc
-if (isExtremaFloating!T)
-{
-    return value == cast(T) 0
-        && signbit(value);
-}
-
-
-/++
-    Updates a minimum candidate according to M3.1 semantics.
-
-    NaN is handled by the outer execution loop before this helper.
-
-    Equal signed zero values use -0 for minimum independent of encounter order.
-+/
-private
-void updateMinimum(T)(
-    ref T current,
-    T value
-)
-@safe
-pure
-nothrow
-@nogc
-{
-    if (value < current)
-    {
-        current =
-            value;
-
-        return;
-    }
-
-    static if (isExtremaFloating!T)
-    {
-        if (
-            value == current
-            && value == cast(T) 0
-            && isNegativeZero(value)
-        )
-        {
-            current =
-                value;
-        }
-    }
-}
-
-
-/++
-    Updates a maximum candidate according to M3.1 semantics.
-
-    NaN is handled by the outer execution loop before this helper.
-
-    Equal signed zero values use +0 for maximum independent of encounter order.
-+/
-private
-void updateMaximum(T)(
-    ref T current,
-    T value
-)
-@safe
-pure
-nothrow
-@nogc
-{
-    if (value > current)
-    {
-        current =
-            value;
-
-        return;
-    }
-
-    static if (isExtremaFloating!T)
-    {
-        if (
-            value == current
-            && value == cast(T) 0
-            && !isNegativeZero(value)
-        )
-        {
-            current =
-                value;
-        }
-    }
-}
-
-
 /++
     Executes min, max or minMax in logical row-major order.
 
@@ -302,10 +207,23 @@ nothrow
                     || Mode == ExtremaMode.minMax
                 )
                 {
-                    updateMinimum(
-                        minimum,
-                        value
-                    );
+                    if (value < minimum)
+                    {
+                        minimum =
+                            value;
+                    }
+                    else static if (isExtremaFloating!T)
+                    {
+                        if (
+                            value == minimum
+                            && value == cast(T) 0
+                            && signbit(value)
+                        )
+                        {
+                            minimum =
+                                value;
+                        }
+                    }
                 }
 
                 static if (
@@ -313,10 +231,23 @@ nothrow
                     || Mode == ExtremaMode.minMax
                 )
                 {
-                    updateMaximum(
-                        maximum,
-                        value
-                    );
+                    if (value > maximum)
+                    {
+                        maximum =
+                            value;
+                    }
+                    else static if (isExtremaFloating!T)
+                    {
+                        if (
+                            value == maximum
+                            && value == cast(T) 0
+                            && !signbit(value)
+                        )
+                        {
+                            maximum =
+                                value;
+                        }
+                    }
                 }
             }
 
