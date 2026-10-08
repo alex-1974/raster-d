@@ -6,8 +6,7 @@
     materializes one selected source plane into a newly owned compact one-plane
     RasterLease!To.
 
-    RasterLease remains the transitional retained owner until the designed v0.2
-    Raster!T owner is promoted to production.
+    RasterLease is the retained owner used by the v0.2 public contract.
 
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
