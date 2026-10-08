@@ -242,6 +242,27 @@ Integer arithmetic follows the operation-specific documented D semantics.
 Floating arithmetic uses ordinary D/IEEE arithmetic. No saturation, clamping,
 image-domain policy, or hidden wider arithmetic is implied.
 
+### Same-type copy
+
+~~~text
+RasterCopyError
+tryCopyRasterPlane
+copyInto
+~~~
+
+`tryCopyRasterPlane` remains the v0.1 compatibility entry point.
+`copyInto` is the v0.2 destination-oriented spelling.
+
+Source and destination use the same sample type and must have matching logical
+shape. Matching empty shapes succeed as a no-op.
+
+The destination mapping must be injective. Source self-aliasing is permitted,
+but actual source/destination sample-byte overlap is rejected before the first
+write. The operation does not promise snapshot or memmove semantics.
+
+Both spellings allocate nothing, retain neither operand, and share
+`RasterCopyError`.
+
 ### Exact conversion
 
 ~~~text
