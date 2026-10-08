@@ -1,7 +1,7 @@
 /++
     Public generic raster point-transform operation.
 
-    M2.2 exposes only semantic point transformation.
+    This module exposes semantic point transformation.
 
     Physical affine-relation classification and the defensive exact overlap
     fallback remain implementation details of this module.
