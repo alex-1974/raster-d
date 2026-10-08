@@ -380,7 +380,7 @@ void allocatingSignatureContract()
     RasterView!float sourceFloats;
     RasterView!ubyte sourceBytes;
 
-    const transformed = tryTransformAllocated!plusOne(
+    auto transformed = tryTransformAllocated!plusOne(
         source: sourceFloats,
         sourcePlaneIndex: 0
     );
@@ -392,7 +392,7 @@ void allocatingSignatureContract()
     assert(transformed.transformError == RasterTransformError.none);
     assert(transformed.lease().view().empty);
 
-    const converted = tryConvertAllocated!float(
+    auto converted = tryConvertAllocated!float(
         source: sourceBytes,
         sourcePlaneIndex: 0
     );
