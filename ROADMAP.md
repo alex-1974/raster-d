@@ -1143,6 +1143,37 @@ rematerialization, not amortizing operator preparation.
 
 No runtime prepared-operation API is promoted by M5.6.
 
+### M5.7 — comparable C++ performance gate
+
+Status: complete.
+
+Issue #121 establishes the rule that material gaps against high-quality
+comparable C++ implementations must be closed, explained by non-equivalent
+work, or explicitly accepted as a compiler/platform/portability trade-off.
+
+Qualification record:
+
+- `docs/V0_2_M5_CPP_PERFORMANCE_GATE.md`;
+- `benchmark/v0_2_cpp_convolution`;
+- retained archive:
+  `raster-v0.2-cpp-convolution-20261008-105810.tar.gz`;
+- SHA256:
+  `4f63d7f19cb17681562e4d23ea42dc48afacd86b82ec46c14a0d5b1383315f8a`.
+
+For the strongest remaining fixed 3x3 float-convolution kernel, LDC direct
+execution reaches comparable g++ performance (0.970651x direct/C++ at the
+medians). DMD remains 4.502764x slower in the fair execution-kernel comparison.
+
+Disassembly attributes that DMD gap to code generation: g++ and LDC
+auto-vectorize the equivalent scalar graph, while DMD remains scalar. M5.4's
+independent `core.simd.float4` diagnostic was materially worse under DMD, so
+explicit SIMD does not close the gap.
+
+The DMD result is therefore explicitly accepted as a compiler trade-off on the
+qualified x86-64 baseline. LDC remains the primary optimized/codegen compiler;
+DMD remains the development/correctness baseline. No semantic, safety, public
+API or threading contract is weakened.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
