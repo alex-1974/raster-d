@@ -6,6 +6,5 @@ license "MIT"
 targetType "library"
 targetPath ".dub"
 
-dflags "-preview=dip1000"
 
 dependency "raster-d" path="../../.."
