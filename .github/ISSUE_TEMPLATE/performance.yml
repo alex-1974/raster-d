@@ -1,7 +1,6 @@
 name: Performance
 description: Investigate a measured performance problem or opportunity.
 title: ""
-labels: ["type: performance"]
 body:
   - type: textarea
     id: workload
