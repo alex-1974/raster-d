@@ -1,14 +1,14 @@
 # raster-d 0.2 public API audit
 
-**Status:** release-candidate audit  
+**Status:** public API frozen for the v0.2.0 release candidate  
 **Feature freeze:** `freeze/feature-0.2.0`  
+**API freeze:** `freeze/api-0.2.0` (`1ea67cb6ffb2c887f78d160249a293ad74ba5cda`)  
 **Release line:** `release/0.2`
 
-This document defines the public source contract being audited for
-`raster-d 0.2.0`.
-
-The v0.2 API is not frozen until the audit is complete and the immutable
-`freeze/api-0.2.0` checkpoint is created.
+This document records the audited public source contract frozen for
+`raster-d 0.2.0`. The immutable `freeze/api-0.2.0` checkpoint was created
+on 2026-10-08, after PR #203 completed the audit. This is an engineering
+checkpoint, not the published `v0.2.0` release.
 
 ## Supported import surface
 
@@ -495,7 +495,7 @@ members of this set.
 
 ## API-freeze decision
 
-The API may be frozen only when all of the following are true:
+The API freeze was accepted after the following checks:
 
 1. DMD and LDC package tests pass in ordinary and explicit DIP1000 modes;
 2. the external positive v0.2 source-contract probe passes;
