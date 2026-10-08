@@ -826,7 +826,7 @@ if (
     Common failure category for min, max and minMax reductions.
 
     NaN is not a failure. A non-empty floating input containing NaN succeeds
-    with a NaN extrema result according to the M3.1 contract.
+    with a NaN extrema result under the documented extrema semantics.
 +/
 enum RasterExtremaError : ubyte
 {
