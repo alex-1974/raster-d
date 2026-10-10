@@ -105,13 +105,19 @@ stable release at the root, provides `/dev/` and `/versions.html`, and has
 no broken relative HTML links in the checked inventory. These artifacts
 qualify the named SHA only, not any later candidate or a live deployment.
 
-The independent live site check on 2026-10-10 returned HTTP 200 for
-`/raster.html`, `/v0.1.0/raster.html` and `/versions.html`, but HTTP 404 for
-`/dev/raster.html`. The deployed `main` Pages builder predates the
-release-branch versioned-site layout; the qualified staged site has not
-been deployed. Do not mistake the live stable Pages check for complete
-versioned-site publication. Recheck the exact final candidate and live
-version navigation during the release gate.
+The initial independent live check on 2026-10-10 returned HTTP 404
+for `/dev/raster.html` because the earlier published site used the old
+`main` Pages builder. After temporarily permitting `release/0.2` in the
+`github-pages` environment (policy `62622165`), a controlled dispatch of
+[Pages run 38079665986](https://github.com/alex-1974/raster-d/actions/runs/38079665986)
+succeeded in both build and deploy jobs. Independent XPS HTTP checks returned
+200 for `/raster.html`, `/v0.1.0/raster.html`, `/dev/raster.html` and
+`/versions.html`; the live versions page labels v0.1.0 latest stable and
+`/dev/` development/unreleased. The live stable root `raster.html` was
+byte-identical to its `v0.1.0` counterpart. This qualifies the
+**prepublication** versioned Pages state, not the eventual published v0.2
+Pages state. Recheck version navigation and remove the temporary branch
+policy once it is no longer needed.
 
 ## Release blockers still open
 
@@ -121,9 +127,10 @@ including the IEEE exceptional-value correction to the identity-style
 convolution guide in PR #239. This does not independently verify browser
 rendering or all public declaration comments.
 
-Do not publish v0.2.0 until the full public Ddoc editorial audit,
-live published Pages behavior, and exact-head final release-content gate
-are complete. After publication,
+Prepublication live versioned Pages behavior has been qualified; after the
+release, public v0.2 Pages still require separate verification. Do not publish
+v0.2.0 until the full public Ddoc editorial audit and exact-head final
+release-content gate are complete. After publication,
 verify GitHub Release, stable/versioned docs and DUB, then reconcile
 release-only corrections back to `develop`.
 
