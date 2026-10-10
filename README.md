@@ -6,7 +6,7 @@
 measurements or image samples. `raster-d` helps programs work with their
 shape, storage, regions and processing without making every application
 implement that machinery itself. Start with
-[What is a raster, and what can raster-d do?](docs/understanding-rasters.md).
+[What is a raster, and what can raster-d do?](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/understanding-rasters.md).
 
 It represents large resident or streamed raster data without forcing image,
 colour, radiometric, or geospatial-image semantics on every consumer.
@@ -92,7 +92,7 @@ A successful import transfers the adopted resource into retained raster
 ownership. `RasterLease` keeps that storage alive. `RasterView` borrows from
 the retained lifetime and does not own storage.
 
-See [docs/README.md](docs/README.md) for the user documentation path.
+See [docs/README.md](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md) for the user documentation path.
 
 ## What raster-d provides
 
@@ -200,9 +200,9 @@ compiler-package floor.
 
 Start with:
 
-- [user documentation](docs/README.md);
-- [v0.2 public API audit](docs/API_0_2.md);
-- [v0.1 public API baseline](docs/API.md);
+- [user documentation](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md);
+- [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API_0_2.md);
+- [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API.md);
 - [changelog](CHANGELOG.md).
 
 Maintainer context lives in `ROADMAP.md`, `DESIGN.md`, `BENCHMARK.md`,
