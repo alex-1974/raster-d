@@ -34,6 +34,10 @@ Prefer destination-oriented operations when the caller already controls output s
 
 ## Reduce a plane
 
+For a complete example with `sum!ulong`, result checking and ownership,
+see [Sum the values of a raster plane](sum-raster.md).
+
+
 `trySumFloatToDouble` uses strict logical row-major accumulation into one `double` accumulator.
 
 That order is part of the numerical contract. An implementation may specialize layout or compiler code generation internally, but it may not reassociate the reduction.
