@@ -54,3 +54,20 @@ release-candidate head:
 A new candidate SHA invalidates earlier exact-head sign-off and requires
 requalification. Do not mark the release checklist complete from a
 historical passing PR alone.
+
+
+## Independently inspectable staged Pages artifact
+
+The Release Documentation workflow additionally uploads the complete staged
+versioned site as `raster-pages-release-candidate` alongside the public-only
+`raster-ddox-release-candidate` artifact. This makes the exact output of
+`tools/build-versioned-docs.sh` inspectable without confusing a local
+staging check with deployed GitHub Pages.
+
+On the **exact candidate SHA**, retrieve and inspect both workflow artifacts.
+Check the stable root against the latest published tagged version, the
+`dev/raster.html` candidate, `versions.html` links and published tagged
+subdirectories. Record artifact IDs, inspected SHA, counts and link results
+in issue #198. An artifact produced from a PR head does not replace
+qualification on the post-merge release-candidate commit. A staged Pages
+artifact never establishes public HTTP/deployment success.
