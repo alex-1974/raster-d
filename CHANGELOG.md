@@ -6,12 +6,16 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
-## 0.2.0 — Release candidate (unpublished)
+## 0.2.0 — 2026-10-10
 
 The v0.2.0 feature set and public API are frozen at
 `freeze/feature-0.2.0` and `freeze/api-0.2.0`, respectively.
-Release qualification is in progress; **this entry does not announce
-publication**. The latest published stable release remains v0.1.0.
+v0.2.0 is published as a signed Git tag, GitHub Release and DUB package.
+The release matrices, documentation build and external archive consumers
+passed at the release candidate; postpublication Pages and independent
+DUB consumer checks also passed. The full editorial Ddoc review and
+exact-head prepromotion content sign-off remain historically unverified
+and are tracked in issue #198.
 
 ### Added and expanded
 
@@ -37,9 +41,9 @@ publication**. The latest published stable release remains v0.1.0.
 - release-content gate requiring an exact-head README, changelog, Ddoc/DDox,
   Pages and publication-status audit immediately before promotion.
 
-A detailed unpublished release-notes draft is maintained in
-`docs/V0_2_RELEASE_NOTES.md`. The final release date, remaining gates and
-publication status will be verified at the actual v0.2.0 release.
+Detailed release notes and qualification history are in
+`docs/V0_2_RELEASE_NOTES.md`. The immutable release is
+[`v0.2.0`](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0).
 
 ## 0.1.0 — 2026-10-05
 
