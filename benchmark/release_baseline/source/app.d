@@ -12,6 +12,18 @@ import raster;
 private enum size_t warmups = 3;
 private enum size_t samples = 11;
 
+private alias ReleaseConvolutionShape =
+    NeighbourhoodShape!(3, 3, 1, 1);
+
+private alias ReleaseConvolutionKernel =
+    FixedConvolutionKernel!(
+        ReleaseConvolutionShape,
+        float,
+         0.125f, -0.250f,  0.375f,
+        -0.500f,  1.250f, -0.625f,
+         0.750f, -0.875f,  0.500f
+    );
+
 
 private void require(bool condition, string message)
 @safe
@@ -445,6 +457,170 @@ private Measurement benchTransform(
 }
 
 
+private Measurement benchBinaryMultiply(
+    size_t width,
+    size_t height,
+    size_t iterations
+)
+@system
+{
+    RasterLease!float leftLease;
+    RasterLease!float rightLease;
+    RasterLease!float targetLease;
+
+    require(
+        makeLease!float(width, height, 32, false, leftLease),
+        "left float lease construction failed"
+    );
+    require(
+        makeLease!float(width, height, 32, true, rightLease),
+        "right float lease construction failed"
+    );
+    require(
+        makeLease!float(width, height, 32, false, targetLease),
+        "binary target lease construction failed"
+    );
+
+    scope auto left = leftLease.view();
+    scope auto right = rightLease.view();
+
+    bool writableOk;
+    scope auto target = targetLease.tryWritableView(writableOk);
+    require(writableOk, "binary writable view construction failed");
+
+    RasterZipTransformError error;
+
+    foreach (_; 0 .. warmups)
+        require(
+            left.multiplyInto(
+                0,
+                right,
+                0,
+                target,
+                0,
+                error
+            ),
+            "binary multiply operation failed"
+        );
+
+    long[samples] times;
+
+    foreach (sample; 0 .. samples)
+    {
+        const start = MonoTime.currTime;
+
+        foreach (_; 0 .. iterations)
+            require(
+                left.multiplyInto(
+                    0,
+                    right,
+                    0,
+                    target,
+                    0,
+                    error
+                ),
+                "binary multiply operation failed"
+            );
+
+        times[sample] =
+            (MonoTime.currTime - start).total!"nsecs";
+    }
+
+    return Measurement(
+        median(times),
+        checksumFloat(targetLease.view())
+    );
+}
+
+
+private Measurement benchConvolution(
+    size_t width,
+    size_t height,
+    size_t iterations
+)
+@system
+{
+    RasterLease!float sourceLease;
+    RasterLease!float targetLease;
+
+    require(
+        makeLease!float(
+            width + 2,
+            height + 2,
+            32,
+            false,
+            sourceLease
+        ),
+        "convolution source lease construction failed"
+    );
+
+    require(
+        makeLease!float(width, height, 32, false, targetLease),
+        "convolution target lease construction failed"
+    );
+
+    scope auto source = sourceLease.view();
+
+    bool writableOk;
+    scope auto target = targetLease.tryWritableView(writableOk);
+    require(writableOk, "convolution writable view construction failed");
+
+    RasterNeighbourhoodError error;
+    const outputRegion = Region2D(1, 1, width, height);
+
+    foreach (_; 0 .. warmups)
+    {
+        require(
+            source.convolveInto!(ReleaseConvolutionKernel, float)(
+                0,
+                outputRegion,
+                target,
+                0,
+                error
+            ),
+            "convolution operation failed"
+        );
+        require(
+            error == RasterNeighbourhoodError.none,
+            "convolution returned an error"
+        );
+    }
+
+    long[samples] times;
+
+    foreach (sample; 0 .. samples)
+    {
+        const start = MonoTime.currTime;
+
+        foreach (_; 0 .. iterations)
+        {
+            require(
+                source.convolveInto!(ReleaseConvolutionKernel, float)(
+                    0,
+                    outputRegion,
+                    target,
+                    0,
+                    error
+                ),
+                "convolution operation failed"
+            );
+            require(
+                error == RasterNeighbourhoodError.none,
+                "convolution returned an error"
+            );
+        }
+
+        times[sample] =
+            (MonoTime.currTime - start).total!"nsecs";
+    }
+
+    return Measurement(
+        median(times),
+        checksumFloat(targetLease.view())
+    );
+}
+
+
 private Measurement benchReduction(
     size_t width,
     size_t height,
@@ -691,6 +867,16 @@ void main(string[] args)
         benchReduction(width, height, iterations)
     );
 
+    writeln("release_benchmark_begin workload=binary_multiply_float_mixed_rows");
+
+    emit(
+        "binary_multiply_float_mixed_rows",
+        width,
+        height,
+        iterations,
+        benchBinaryMultiply(width, height, iterations)
+    );
+
     writeln("release_benchmark_begin workload=neighbourhood_float_negative_source");
 
     emit(
@@ -699,6 +885,20 @@ void main(string[] args)
         height,
         neighbourhoodIterations,
         benchNeighbourhood(
+            width,
+            height,
+            neighbourhoodIterations
+        )
+    );
+
+    writeln("release_benchmark_begin workload=convolution_float_3x3_padded");
+
+    emit(
+        "convolution_float_3x3_padded",
+        width,
+        height,
+        neighbourhoodIterations,
+        benchConvolution(
             width,
             height,
             neighbourhoodIterations

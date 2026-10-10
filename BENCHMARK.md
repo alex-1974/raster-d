@@ -1702,3 +1702,100 @@ SIMD qualification phase.
 The earlier generic `ushort -> float` versus specialized `ubyte -> float`
 comparison remains non-apples-to-apples and is carried forward only as a
 comparable-type-pair/SIMD investigation input for M5.4.
+
+
+## v0.2.0 feature-freeze Production release baseline
+
+The initial v0.2.0 release-line baseline was collected on the reference Dell
+XPS 15 after the immutable feature-freeze checkpoint.
+
+Production source checkpoint:
+
+`658f4fd48a2141b4434996e2ed9e1044bf0d5ad3`
+(`freeze/feature-0.2.0`)
+
+Benchmark/release-line head:
+
+`5102ccac1401656839810cc2134998eeea12c42d`
+
+The runner records
+`source_tree_matches_feature_freeze=yes` and
+`source_change_from_feature_freeze=none`. The measured `source/raster`
+tree is therefore byte-for-byte the feature-freeze production source; the
+later release-line commit changes only the benchmark harness.
+
+Reference archive:
+
+`raster-release-0.2-baseline-20261008-140039.tar.gz`
+
+SHA256:
+
+`daf1502169a5d13da64f471e4d3dd8851a8dc43d83eb79af3e1c93bab435a3a3`
+
+The recursive SHA256 manifest verifies all 47 listed evidence files. The
+archive contains six independent CPU0-pinned processes for each compiler and
+stable checksums for all nine workloads.
+
+Toolchain:
+
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7;
+- Linux x86-64, Intel Core i7-9750H.
+
+Reference medians:
+
+| Workload | DMD 2.111 ns/pixel | LDC 1.41 ns/pixel | Checksum |
+| --- | ---: | ---: | --- |
+| Copy ubyte, padded | 0.057759 | 0.049326 | `a6fe21e16e3d0383` |
+| Exact ubyte->float, padded | 0.328067 | 0.135049 | `722e5202d1dd0383` |
+| Exact ubyte->float, negative source row | 0.323704 | 0.136205 | `3c6dae8fd2dd0383` |
+| Fill ubyte, padded | 0.022652 | 0.025913 | `5053d3e51d5d0383` |
+| Point transform float, padded | 0.557429 | 0.220603 | `37cee2ef2e81c0c3` |
+| Strict float->double reduction, negative source row | 1.003495 | 1.002077 | `c0d6a3a000000000` |
+| Binary multiply float, mixed row direction | 0.635261 | 0.765601 | `c363e84e5f2fe383` |
+| 3x3 neighbourhood float, negative source row | 3.754783 | 0.585484 | `8f547c1db49ce052` |
+| Fixed 3x3 convolution float, padded | 4.452610 | 0.758362 | `f00cbf643c6a8383` |
+
+### Regression review against v0.1.0
+
+Seven workloads are directly comparable with the retained v0.1.0 release
+baseline because the logical workload, dimensions and public operation remain
+the same.
+
+The v0.2/v0.1 median ratios are:
+
+| Workload | DMD ratio | LDC ratio | Interpretation |
+| --- | ---: | ---: | --- |
+| Copy ubyte, padded | 1.467x | 0.773x | DMD median noisy; no stable regression established |
+| Exact ubyte->float, padded | 1.039x | 1.022x | parity |
+| Exact ubyte->float, negative source row | 1.031x | 0.980x | parity |
+| Fill ubyte, padded | 0.991x | 0.974x | parity |
+| Point transform float, padded | 0.536x | 1.088x | DMD ~1.87x faster; LDC same class |
+| Strict float->double reduction | 0.995x | 0.295x | DMD parity; LDC ~3.39x faster |
+| 3x3 neighbourhood float | 0.0477x | 0.0384x | ~20.98x DMD and ~26.07x LDC speedup |
+
+The DMD copy median is not treated as a demonstrated regression. Its six
+process medians span 0.036740--0.114441 ns/pixel; the retained v0.1.0 value
+(0.039380 ns/pixel) lies inside that current-process performance class.
+CPU0 pre-run snapshots also range from 800 MHz to about 4.10 GHz under the
+powersave governor. The evidence therefore supports process/frequency variance,
+not a stable operation-level slowdown.
+
+The LDC copy baseline improves relative to v0.1.0.
+
+Binary multiply and fixed convolution are new release-baseline workloads in
+v0.2.0. Their absolute values are retained here as the release-line reference.
+M5 diagnostic results remain the appropriate evidence for source-form,
+executor, SIMD and C++-parity decisions because those diagnostics use different
+isolation workloads and must not be compared as if they were identical release
+workloads.
+
+### Release decision
+
+No reproducible material performance regression is identified by the initial
+v0.2.0 feature-freeze baseline.
+
+The baseline is accepted as the reference point for subsequent stabilization
+changes on `release/0.2`. Future performance-sensitive release-line changes
+must compare against this retained archive under equivalent conditions.

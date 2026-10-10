@@ -272,6 +272,19 @@ if (isRasterArithmeticSample!T)
     );
 }
 
+/// Example reporting add failure through the shared zip-transform model.
+@safe unittest
+{
+    import raster;
+    RasterView!float left;
+    RasterView!float right;
+    WritableRasterView!float destination;
+    RasterZipTransformError error;
+    assert(!addInto(left, 0, right, 0, destination, 0, error));
+    assert(error == RasterZipTransformError.invalidLeftPlane);
+}
+
+
 
 /++
     Subtracts corresponding right samples from left samples into destination.
@@ -321,6 +334,19 @@ if (isRasterArithmeticSample!T)
     );
 }
 
+/// Example reporting subtract failure through the shared zip-transform model.
+@safe unittest
+{
+    import raster;
+    RasterView!float left;
+    RasterView!float right;
+    WritableRasterView!float destination;
+    RasterZipTransformError error;
+    assert(!subtractInto(left, 0, right, 0, destination, 0, error));
+    assert(error == RasterZipTransformError.invalidLeftPlane);
+}
+
+
 
 /++
     Multiplies corresponding left/right samples into destination.
@@ -369,6 +395,19 @@ if (isRasterArithmeticSample!T)
         error
     );
 }
+
+/// Example reporting multiply failure through the shared zip-transform model.
+@safe unittest
+{
+    import raster;
+    RasterView!float left;
+    RasterView!float right;
+    WritableRasterView!float destination;
+    RasterZipTransformError error;
+    assert(!multiplyInto(left, 0, right, 0, destination, 0, error));
+    assert(error == RasterZipTransformError.invalidLeftPlane);
+}
+
 
 
 /++

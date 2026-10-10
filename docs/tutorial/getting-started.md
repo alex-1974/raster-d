@@ -1,12 +1,21 @@
 # Getting started
 
+Not familiar with rasters, bands, strides or leases? Start with
+[Understanding raster data and raster-d](../understanding-rasters.md).
+
 `raster-d` represents raster samples without imposing image, colour, or geospatial-image semantics.
 
 The usual starting point is an owned byte resource, a plane layout, and a logical raster region.
 
 ## Add the dependency
 
-Use the released `raster-d` package through DUB, then import the public package:
+The latest published stable package is v0.1.0. The v0.2.0 release candidate
+has a frozen API but is **not yet published**. For released-package usage,
+select the published version of `raster-d` in DUB. To test the v0.2.0
+candidate, use an explicit source checkout or archive of `release/0.2`
+through your consumer build; do not assume DUB already supplies v0.2.0.
+
+Both versions expose the public package import:
 
 ```d
 import raster;

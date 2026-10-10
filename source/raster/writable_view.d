@@ -24,9 +24,9 @@
     const(void)*. Mutable typed access is formed only inside the narrow trusted
     sample-write boundary below.
 
-    The semantic view is public from E5.4g.1 onward.
+    The semantic writable view is part of the public raster API.
 
-    Construction/certification and execution-oriented members remain
+    Construction, certification, and execution-oriented members remain
     package-internal.
 
     Authors: Alexander Bernardi

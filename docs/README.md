@@ -2,13 +2,19 @@
 
 Start here if you use the library rather than maintain it.
 
+**New to raster data?** Read [What is a raster and why use raster-d?](understanding-rasters.md) before the API tutorial.
+
 - [Getting started](tutorial/getting-started.md) shows how to create a retained raster and read samples.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
-- [Public API baseline](API.md) records the released 0.1 contract.
+- [v0.2 candidate release notes (not yet published)](V0_2_RELEASE_NOTES.md) describe changes, qualified gates and remaining blockers.
+- [v0.2 frozen API contract](API_0_2.md) records the audited release-candidate API at `freeze/api-0.2.0`.
+- [v0.1 API baseline](API.md) records the released 0.1 contract.
 
 Generated Ddoc/DDox remains the authoritative declaration-level API reference.
+
+Release maintainers: see the [Ddoc/DDox qualification status](V0_2_DDOX_QUALIFICATION.md) and the [final release-content gate](V0_2_FINAL_RELEASE_CONTENT_GATE.md) is mandatory immediately before v0.2 promotion and publication.
 
 Maintainer material lives separately:
 
