@@ -912,7 +912,7 @@ public:
 
 
 /++
-    Result carrier for one one-pass minMax reduction.
+    Result carrier for one-pass minMax reduction.
 
     minimum and maximum are meaningful only when ok is true.
 +/
