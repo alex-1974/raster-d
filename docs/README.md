@@ -13,7 +13,7 @@ Start here if you use the library rather than maintain it.
 
 Generated Ddoc/DDox remains the authoritative declaration-level API reference.
 
-Release maintainers: the [final release-content gate](V0_2_FINAL_RELEASE_CONTENT_GATE.md) is mandatory immediately before v0.2 promotion and publication.
+Release maintainers: see the [Ddoc/DDox qualification status](V0_2_DDOX_QUALIFICATION.md) and the [final release-content gate](V0_2_FINAL_RELEASE_CONTENT_GATE.md) is mandatory immediately before v0.2 promotion and publication.
 
 Maintainer material lives separately:
 
