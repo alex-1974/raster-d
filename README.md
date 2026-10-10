@@ -31,9 +31,11 @@ checks, public-only DDox, external archive consumers, and the reference XPS
 performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
 documentation, and DUB publication were verified after release.
 
-v0.2 is in release stabilization on `release/0.2`. Its feature set is frozen at
-`freeze/feature-0.2.0`; the public API is being audited before
-`freeze/api-0.2.0` is created.
+v0.2.0 is a release candidate undergoing stabilization on `release/0.2`.
+Its feature set is frozen at `freeze/feature-0.2.0`, and its public API
+is frozen at `freeze/api-0.2.0`. **v0.2.0 is not yet published**; v0.1.0
+remains the latest published stable version until the release checks,
+GitHub Release, documentation publication and DUB verification complete.
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
