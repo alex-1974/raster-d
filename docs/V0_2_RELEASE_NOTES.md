@@ -87,11 +87,30 @@ All results below apply to candidate commit
 The experimental Windows ARM64/LDC matrix job passed; this does not
 silently change the supported-platform contract.
 
+A later exact-release-branch documentation checkpoint at
+`a8b09687c52f8004f9a0eb509c1b8b9e31c9bf03` completed
+[Release Documentation run 38068884101](https://github.com/alex-1974/raster-d/actions/runs/38068884101):
+strict public-only DDox plus compiled DMD 2.111.0/LDC 1.41.0 examples,
+all PASS. The DDox ZIP (`11675448689`) and staged versioned Pages ZIP
+(`11675748317`) were downloaded and independently inspected; their
+public-only page inventories and stable-root byte comparisons passed.
+
+Subsequent documentation-only PRs advanced `release/0.2` beyond that
+checkpoint; the artifact does **not** qualify a newer final SHA or prove live
+Pages deployment. Any final content sign-off must be repeated on the actual
+candidate being promoted.
+
 ## Release blockers still open
 
-Do not publish v0.2.0 until the final public Ddoc/DDox editorial audit,
-tutorial/how-to/glossary/accuracy cross-check, published Pages behavior,
-and exact-head final release-content gate are complete. After publication,
+The tutorial/how-to/glossary/accuracy source-level editorial cross-check is
+complete in [issue #198](https://github.com/alex-1974/raster-d/issues/198),
+including the IEEE exceptional-value correction to the identity-style
+convolution guide in PR #239. This does not independently verify browser
+rendering or all public declaration comments.
+
+Do not publish v0.2.0 until the full public Ddoc editorial audit,
+live published Pages behavior, and exact-head final release-content gate
+are complete. After publication,
 verify GitHub Release, stable/versioned docs and DUB, then reconcile
 release-only corrections back to `develop`.
 
