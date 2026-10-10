@@ -239,25 +239,25 @@ nothrow
                 }
                 else
                 {
-                if (
-                    !tryAddChecked(
-                        total,
-                        value,
-                        next
+                    if (
+                        !tryAddChecked(
+                            total,
+                            value,
+                            next
+                        )
                     )
-                )
-                {
-                    result.status =
-                        StrictSumStatus.accumulatorOverflow;
+                    {
+                        result.status =
+                            StrictSumStatus.accumulatorOverflow;
 
-                    result.value =
-                        cast(Accumulator) 0;
+                        result.value =
+                            cast(Accumulator) 0;
 
-                    return result;
-                }
+                        return result;
+                    }
 
-                total =
-                    next;
+                    total =
+                        next;
                 }
             }
             else
