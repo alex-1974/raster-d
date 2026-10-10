@@ -14,6 +14,8 @@ on:
       - 'CHANGELOG.md'
       - 'README.md'
       - 'tools/validate-docs.sh'
+      - 'tools/verify-release-status.sh'
+      - 'tools/test-release-status.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
       - 'tools/verify-internal-ddoc.py'
@@ -31,6 +33,8 @@ on:
       - 'CHANGELOG.md'
       - 'README.md'
       - 'tools/validate-docs.sh'
+      - 'tools/verify-release-status.sh'
+      - 'tools/test-release-status.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
       - 'tools/verify-internal-ddoc.py'
@@ -53,7 +57,9 @@ jobs:
           dub: 1.40.0
           dc_format: shortname
       - name: Validate release documentation structure
-        run: bash tools/validate-docs.sh
+        run: |
+          bash tools/test-release-status.sh
+          bash tools/validate-docs.sh
       - name: Build and verify public-only DDox
         env:
           VERIFY_CONTRACTS: '1'
