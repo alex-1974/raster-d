@@ -1,5 +1,7 @@
 # Common operations
 
+Start with [Inspect a raster region without copying](inspect-roi.md) for a complete, beginner-friendly public-API example.
+
 Most raster-d operations use caller-owned source and destination storage. They report failure explicitly and do not hide worker threads.
 
 ## Copy one plane
