@@ -538,4 +538,57 @@ unittest
     assert(result.value == 0.0);
 }
 
+/*
+ * Inline ulong path accepts the exact upper boundary and rejects the
+ * first subsequent addition without committing wrapped output.
+ */
+unittest
+{
+    ulong[3] storage = [ulong.max - 2, 1, 1];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr, 3, 1)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 3, 1)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(result.ok);
+    assert(result.value == ulong.max);
+}
+
+unittest
+{
+    ulong[3] storage = [ulong.max - 2, 2, 1];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr, 3, 1)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 3, 1)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(!result.ok);
+    assert(result.status == StrictSumStatus.accumulatorOverflow);
+    assert(result.value == 0);
+}
+
+/*
+ * Signed row and sample strides retain the same logical iteration.
+ */
+unittest
+{
+    ulong[8] storage = [1, 99, 2, 99, 3, 99, 4, 99];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr + 6, -4, -2)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 2, 2)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(result.ok);
+    assert(result.value == 10);
+}
+
 } // version (unittest)
