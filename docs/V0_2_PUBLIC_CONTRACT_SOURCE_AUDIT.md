@@ -49,3 +49,28 @@ Related evidence:
 [DDox qualification](V0_2_DDOX_QUALIFICATION.md),
 [rendered artifact inspection](V0_2_RENDERED_DDOX_AUDIT.md),
 [release issue #198](https://github.com/alex-1974/raster-d/issues/198).
+
+
+## Follow-up source cross-check: reductions and allocating families
+
+**Reviewed:** 2026-10-10; baseline `release/0.2` at
+`aaf32ba0eb42dea9ec010e1807a1a12c91e3a18a` (PR #231).
+**Scope:** source/Ddoc correspondence only; no new runtime or rendered-DDox
+qualification is claimed by this follow-up.
+
+| Frozen public claim | Implementation and test evidence inspected | Finding |
+| --- | --- | --- |
+| `mean` uses the selected `sum!Accumulator` result and checks count before reduction | `source/raster/reduction.d`: `isSupportedRasterMeanTriple`, `mean`, and `RasterMeanResult` | Exact supported triples are constrained at compile time. The implementation checks invalid plane, empty input and `size_t` count overflow before `sum`, maps sum overflow, then casts numerator/count to the declared result type and divides. Failed results have `ok == false` and value +0. |
+| `min`/`max`/`minMax` propagate any NaN and select signed-zero extrema independent of encounter order | `source/raster/reduction.d` public wrappers and `source/raster/internal/extrema.d` `executeExtrema` | NaN returns a successful NaN result. For equal zero comparisons, `signbit` selects -0 for minimum and +0 for maximum. `minMax` uses the same single-pass mechanism. Invalid plane and valid empty input remain distinct failures. |
+| Unary point transform checks structure and overlap before writing | `source/raster/transform.d` `tryTransformRasterPlane` | Plane selection, shape, empty case, injective destination and physical sample-overlap tests precede canonical dispatch and fallback writes; the callback's `@safe pure nothrow @nogc` callability is checked by instantiation. |
+| Zip transform allows input/input overlap but rejects input/destination overlap | `source/raster/zip_transform_into.d` public declaration and validation prefix | The two read-only inputs are allowed to alias each other; destination must be injective and disjoint from both input sample sets. This check is a source-contract correspondence, not a new exhaustive alias stress test. |
+| Arithmetic wrappers have distinct integer modulo and floating IEEE semantics | `source/raster/arithmetic_into.d` | Add/subtract/multiply explicitly cast integer results to T modulo 2^N; integer `divideInto` is not provided. Floating divide uses ordinary T arithmetic. Wrappers delegate execution to the zip family. |
+| Allocating transform and conversion produce independent compact retained leases, not another execution kernel | `source/raster/transform_allocated.d`, `source/raster/conversion_allocated.d` | Both check source selection, allocate a compact retained destination, obtain writable access, invoke the existing Into operation and move the completed lease into the result. Failed result carriers retain a failing `.init`; `lease()` returns an inert lease on failure. |
+| Convolution uses fixed compile-time coefficients and declared accumulation | `source/raster/convolution.d` `FixedConvolutionKernel`, `evaluateFixedConvolution`, `convolveInto` and local unittests | Coefficients/shape are compile-time values; term order is row-major; accumulator/output combinations are constrained; one final cast to T is visible; spatial execution delegates to `applyNeighbourhoodInto`. This does not newly qualify every floating rounding mode or hardware backend. |
+| Border types describe policies but do not enable sample synthesis | `source/raster/border_policy.d` and `source/raster/convolution.d` | Policy kinds and zero-extent restrictions are documented; valid resident halo remains the only execution behavior of v0.2 neighbourhood/convolution APIs. |
+
+**Limits:** This follow-up does not certify all negative compilation probes,
+all error branches at runtime, generated example semantics, final-head DDox,
+live Pages, or release readiness. A passing historical PR workflow does not
+substitute for exact-final-SHA release qualification. Keep issue #198 release
+and Ddoc/DDox checkboxes open until the required independent gates pass.
