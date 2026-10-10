@@ -74,3 +74,29 @@ all error branches at runtime, generated example semantics, final-head DDox,
 live Pages, or release readiness. A passing historical PR workflow does not
 substitute for exact-final-SHA release qualification. Keep issue #198 release
 and Ddoc/DDox checkboxes open until the required independent gates pass.
+
+
+## Follow-up: region, layout, writable view and border Ddoc
+
+**Reviewed:** 2026-10-10, starting from `release/0.2` at
+`7a1da109e11bd401b2e5263b5ef200195370d47a`.
+This is a focused read of public declarations, their Ddoc and corresponding
+source logic, not a newly executed test or complete Ddoc sign-off.
+
+| Caller-visible contract | Inspected source | Finding |
+| --- | --- | --- |
+| A `Region2D` child is relative to the parent; `containsRelative` handles subtraction-based bounds without width addition overflow | `source/raster/region.d`: `containsRelative` | Ddoc and checked comparisons agree; empty regions remain representable. |
+| `tryResolveRelative` resets its `out` value on failure and checks translated-origin overflow | `source/raster/region.d`: `tryResolveRelative` | The implementation initializes `resolved = Region2D.init`, validates containment, then guards origin additions. |
+| `PlaneDescriptor` strides are signed **elements**, not external bytes | `source/raster/descriptor.d` | Ddoc and fields (`rowStrideElements`, `sampleStrideElements`) agree, distinct from `PlaneByteLayout` byte strides. |
+| A writable view is not an exclusive or no-alias capability | `source/raster/writable_view.d` public module Ddoc and inspection helpers | Wording explicitly excludes uniqueness, thread exclusivity and implicit mutation permission from read-only access. |
+| Exposed stride information is in signed sample elements; invalid requests reset both stride outputs | `source/raster/writable_view.d`: `tryExecutionPlaneStrides` | Ddoc and assignments agree. This helper is package-internal execution plumbing and is **not** a new root-export promise. |
+| Border policy types are semantic vocabulary; mirror is edge-inclusive, wrap uses Euclidean modulo and both need nonzero extent | `source/raster/border_policy.d` | Public type descriptions agree with the frozen `docs/API_0_2.md` wording. Their existence does not prove any border-synthesis executor. |
+
+No contradiction was found in these inspected source/Ddoc pairs. In
+particular, this check does not promote implementation-only helpers into the
+public compatibility surface.
+
+**Remaining limits:** not every public Ddoc comment or all 97 rendered Example
+bodies was editorially read; this does not establish live Pages behavior or
+the release content gate. Other module families, edge-case claims and complete
+rendered prose still require coverage before checking off issue #198.
