@@ -24,6 +24,22 @@ elif grep -Eq '^v0[.]2[.]0 is released' "$repo/README.md"; then
         echo "FAIL: published v0.2.0 cannot retain unpublished changelog status" >&2
         exit 1
     fi
+    # Do not ship user-facing pages that still advertise the unreleased
+    # candidate. These assertions are scoped to release-facing documents;
+    # historical audit/checkpoint records are intentionally excluded.
+    for published_doc in \
+        "$repo/docs/README.md" \
+        "$repo/docs/tutorial/getting-started.md" \
+        "$repo/docs/V0_2_RELEASE_NOTES.md"; do
+        [[ -f "$published_doc" ]] || {
+            echo "FAIL: missing published documentation: $published_doc" >&2
+            exit 1
+        }
+        if grep -Eiq 'not yet published|DRAFT / NOT PUBLISHED|release notes — candidate|v0[.]2[.]0 release candidate|v0[.]2 candidate release notes' "$published_doc"; then
+            echo "FAIL: stale v0.2 candidate wording: $published_doc" >&2
+            exit 1
+        fi
+    done
     echo "PASS: published v0.2.0 status is consistent"
 else
     echo "FAIL: README.md must explicitly identify candidate or published v0.2.0 status" >&2
