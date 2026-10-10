@@ -134,13 +134,33 @@ grep -q '^authors "Alexander Bernardi"$' "$repo/dub.sdl" || {
 
 
 
-# A release candidate must not regress to the stale status that previously
-# survived documentation updates. Check structural facts only; historical
-# release notes may legitimately retain old wording.
-grep -Eq '^v0[.]2[.]0 is a release candidate' "$repo/README.md" || {
-    echo "FAIL: README.md must identify v0.2.0 as the release candidate" >&2
+# Two explicit states: unpublished release candidate and published v0.2.0.
+# Both must describe the already-completed API freeze. Do not force
+# pre-release wording onto main after actual v0.2.0 publication.
+if grep -Eq '^v0[.]2[.]0 is a release candidate' "$repo/README.md"; then
+    grep -Fqx '## 0.2.0 — Release candidate (unpublished)' "$repo/CHANGELOG.md" || {
+        echo "FAIL: candidate README requires unpublished v0.2.0 changelog" >&2
+        exit 1
+    }
+    grep -q 'not yet published' "$repo/README.md" || {
+        echo "FAIL: candidate README must not imply publication" >&2
+        exit 1
+    }
+    echo "PASS: unpublished v0.2.0 candidate status is consistent"
+elif grep -Eq '^v0[.]2[.]0 is released' "$repo/README.md"; then
+    grep -Eq '^## 0[.]2[.]0 — [0-9]{4}-[0-9]{2}-[0-9]{2}$' "$repo/CHANGELOG.md" || {
+        echo "FAIL: published v0.2.0 README requires dated changelog heading" >&2
+        exit 1
+    }
+    if grep -Fq 'Release candidate (unpublished)' "$repo/CHANGELOG.md"; then
+        echo "FAIL: published v0.2.0 cannot retain unpublished changelog status" >&2
+        exit 1
+    fi
+    echo "PASS: published v0.2.0 status is consistent"
+else
+    echo "FAIL: README.md must explicitly identify candidate or published v0.2.0 status" >&2
     exit 1
-}
+fi
 
 grep -q 'is frozen at `freeze/api-0.2.0`' "$repo/README.md" || {
     echo "FAIL: README.md must identify the completed v0.2 API freeze" >&2
@@ -152,11 +172,6 @@ if grep -Eiq 'the public API is being audited before|API freeze pending|freeze/a
     exit 1
 fi
 
-grep -Fqx '## 0.2.0 — Release candidate (unpublished)' "$repo/CHANGELOG.md" || {
-    echo "FAIL: CHANGELOG.md needs an explicitly unpublished v0.2.0 section" >&2
-    exit 1
-}
-
 grep -Fqx '## 0.1.0 — 2026-10-05' "$repo/CHANGELOG.md" || {
     echo "FAIL: CHANGELOG.md must retain historical v0.1.0 section" >&2
     exit 1
@@ -166,7 +181,5 @@ grep -Fqx '## 0.1.0 — 2026-10-05' "$repo/CHANGELOG.md" || {
     echo "FAIL: mandatory final release-content gate documentation is absent" >&2
     exit 1
 }
-
-echo "PASS: candidate release status and API-freeze facts agree"
 
 echo "PASS: release documentation structure and metadata are synchronized"
