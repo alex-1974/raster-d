@@ -1,5 +1,9 @@
 # Getting started
 
+Not familiar with rasters, bands, strides or leases? Start with
+[Understanding raster data and raster-d](../understanding-rasters.md).
+
+
 `raster-d` represents raster samples without imposing image, colour, or geospatial-image semantics.
 
 The usual starting point is an owned byte resource, a plane layout, and a logical raster region.
