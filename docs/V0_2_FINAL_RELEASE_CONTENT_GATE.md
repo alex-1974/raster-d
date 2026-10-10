@@ -1,5 +1,14 @@
 # v0.2 final release-content gate
 
+> **Historical gate status (recorded after publication, 2026-10-10):**
+> v0.2.0 was published and its GitHub Release, DUB archive/consumer and
+> stable/versioned Pages were independently verified. The exact-head
+> **prepromotion** content sign-off required below was not completed before
+> publication, and the complete public Ddoc editorial audit remains open.
+> Do not convert retrospective checks into a historical prepromotion PASS.
+> See [issue #198](https://github.com/alex-1974/raster-d/issues/198).
+
+
 **Required — not yet passed.** Run this audit on the exact release candidate SHA immediately before promotion to main. Record evidence in issue #198.
 
 ## Objective
