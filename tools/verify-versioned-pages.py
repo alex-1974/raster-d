@@ -21,7 +21,13 @@ def main() -> int:
 
     html = page.read_text(encoding="utf-8")
     if 'href="./raster.html"' not in html:
-        print("FAIL: current documentation link missing", file=sys.stderr)
+        print("FAIL: stable root documentation link missing", file=sys.stderr)
+        return 1
+    if 'href="./dev/raster.html"' not in html or not (site / "dev" / "raster.html").is_file():
+        print("FAIL: development documentation link/page missing", file=sys.stderr)
+        return 1
+    if "The root documentation follows the latest published stable release." not in html:
+        print("FAIL: navigation does not identify stable root", file=sys.stderr)
         return 1
 
     tagged = sorted(
@@ -43,6 +49,14 @@ def main() -> int:
         r'[^<]* — latest stable release</a></li>',
         html,
     )
+    if not tagged:
+        print("FAIL: stable Pages root has no published version", file=sys.stderr)
+        return 1
+    # Reject an unreleased checkout being published at the default root.
+    if root.read_bytes() != (site / tagged[-1] / "raster.html").read_bytes():
+        print("FAIL: root API page differs from latest stable tag", file=sys.stderr)
+        return 1
+
     if tagged and labeled != [tagged[-1]]:
         print(
             f"FAIL: latest stable label {labeled!r} does not match "
@@ -62,7 +76,7 @@ def main() -> int:
 
     print(
         "PASS: versioned Pages navigation: "
-        f"current and {len(tagged)} tagged release(s); "
+        f"stable root, dev and {len(tagged)} tagged release(s); "
         f"stable={tagged[-1] if tagged else 'none'}"
     )
     return 0
