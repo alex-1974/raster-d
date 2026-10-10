@@ -220,6 +220,25 @@ nothrow
             {
                 Accumulator next;
 
+                static if (is(Accumulator == ulong))
+                {
+                    // Inline checked addition for the qualified ulong hot path.
+                    // Never evaluate the addition after detecting overflow.
+                    if (value > ulong.max - total)
+                    {
+                        result.status =
+                            StrictSumStatus.accumulatorOverflow;
+
+                        result.value =
+                            cast(Accumulator) 0;
+
+                        return result;
+                    }
+
+                    total += value;
+                }
+                else
+                {
                 if (
                     !tryAddChecked(
                         total,
@@ -239,6 +258,7 @@ nothrow
 
                 total =
                     next;
+                }
             }
             else
             {
