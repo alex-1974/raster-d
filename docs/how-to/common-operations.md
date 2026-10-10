@@ -48,6 +48,10 @@ That order is part of the numerical contract. An implementation may specialize l
 
 ## Apply a fixed convolution
 
+For a visual explanation of the 3 × 3 window, halo and edge conditions,
+read [Neighbourhoods and fixed convolution](neighbourhood-convolution.md).
+
+
 The fixed convolution family uses a compile-time kernel and a caller-selected output region.
 
 The caller supplies the destination. Border synthesis is not hidden inside the operation; the requested source context must be valid for the chosen output region.
