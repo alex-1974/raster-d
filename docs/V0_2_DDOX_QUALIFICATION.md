@@ -25,6 +25,10 @@ They do **not** establish that the documentation is understandable,
 that the generated website has been visually inspected, or that the
 published Pages/stable redirects are correct.
 
+The preliminary [rendered DDox artifact inspection](V0_2_RENDERED_DDOX_AUDIT.md)
+records what has actually been checked in the downloaded PR #221 artifact.
+It is not a final-candidate sign-off.
+
 ## Required remaining review
 
 Before checking off the Ddoc/DDox items in issue #198, on the exact
