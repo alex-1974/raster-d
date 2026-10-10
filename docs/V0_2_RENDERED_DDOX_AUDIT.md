@@ -53,3 +53,33 @@ Rebuild and re-inspect the DDox artifact from the **final candidate SHA**.
 Review representative public pages and examples for semantic clarity,
 confirm external links and versioned/stable Pages behavior, and attach
 the qualifying exact-SHA evidence to [release issue #198](https://github.com/alex-1974/raster-d/issues/198).
+
+## Follow-up independent ZIP inspection (PR #229)
+
+- Workflow: [38056976055](https://github.com/alex-1974/raster-d/actions/runs/38056976055), Release Documentation — PASS.
+- PR head SHA: `502bf0d0fdd14f59341958c2e197005723abc527`.
+- Artifact: `raster-ddox-release-candidate`, ID `11671952718`.
+- Inspected downloaded artifact ZIP on 2026-10-10 (not just its metadata).
+
+| Check | Observed |
+| --- | ---: |
+| ZIP entries | 146 |
+| HTML pages | 124 |
+| Public module pages (under `raster/`) | 25 |
+| Public symbol pages (nested beneath module paths) | 97 |
+| Symbol pages containing `Example` | 97 / 97 |
+| HTML pages mentioning `raster.internal` | 0 |
+| Unresolved relative HTML `href` / `src` targets | 0 |
+| Generic `index.html` browser title | `API documentation` |
+
+The follow-up scan parsed every generated HTML page in the ZIP, resolved
+non-external relative `href`/`src` targets against ZIP paths, counted
+symbol-level Example mentions, and checked for literal internal-module
+leakage. It **did not** establish external HTTP link health, rendered browser
+layout, JavaScript behavior or editorial correctness of every example.
+
+**Candidate limitation:** PR #229's inspected head preceded its squash merge
+(`7ffc0334ad03cd24fec57c6c006435717f2dc521`) and subsequent candidate
+qualification. This inspection is repeatable evidence of a successful PR
+artifact, **not final-release-head DDox sign-off**. Do not mark issue #198's
+final DDox/content gate complete from this artifact alone.
