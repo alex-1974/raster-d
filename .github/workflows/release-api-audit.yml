@@ -3,10 +3,10 @@ name: Release API Audit
 on:
   push:
     branches:
-      - validation-release-0.1-api-audit
+      - validation/release-0.2-api-audit
   pull_request:
     branches:
-      - release/0.1
+      - release/0.2
   workflow_dispatch:
 
 permissions:
@@ -34,18 +34,21 @@ jobs:
         run: |
           set -euo pipefail
           dub test --compiler="$DC" --force
+          DFLAGS="-unittest -preview=dip1000" dub test --compiler="$DC" --force
 
       - name: External positive API freeze contract
         shell: bash
         run: |
           set -euo pipefail
           dub test             --root=tests/external/raster_api_freeze             --compiler="$DC"             --force
+          DFLAGS="-preview=dip1000" dub test --root=tests/external/raster_api_freeze --compiler="$DC" --force
 
       - name: External negative API surface
         shell: bash
         run: |
           set -euo pipefail
           bash tools/release-api-audit.sh "$DC"
+          RASTER_API_AUDIT_DIP1000=1 bash tools/release-api-audit.sh "$DC"
 
       - name: Ownership/import source contracts
         shell: bash
@@ -66,3 +69,4 @@ jobs:
         run: |
           set -euo pipefail
           dub test             --root=tests/external/raster_import_link             --compiler="$DC"             --force
+          DFLAGS="-preview=dip1000" dub test --root=tests/external/raster_import_link --compiler="$DC" --force

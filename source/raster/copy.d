@@ -150,6 +150,112 @@ nothrow
     }
 }
 
+/// Example reporting an invalid source before any copy occurs.
+@safe unittest
+{
+    import raster;
+    RasterView!ubyte source;
+    WritableRasterView!ubyte destination;
+    RasterCopyError error;
+    assert(!tryCopyRasterPlane(source, 0, destination, 0, error));
+    assert(error == RasterCopyError.invalidSourcePlane);
+}
+
+
+
+/++
+    Copies one selected logical source plane into one equally shaped writable
+    destination plane.
+
+    This is the v0.2 destination-oriented spelling of tryCopyRasterPlane().
+
+    source is the semantic subject and therefore the first runtime argument.
+    The same free function supports ordinary-call and UFCS forms:
+
+        copyInto(source, sourcePlaneIndex, destination,
+            destinationPlaneIndex, error);
+
+        source.copyInto(sourcePlaneIndex, destination,
+            destinationPlaneIndex, error);
+
+    Structural, layout, alias, empty-input, failure and allocation semantics are
+    exactly those of tryCopyRasterPlane():
+
+    - source and destination plane indices must be valid;
+    - logical shapes must match;
+    - matching empty shapes succeed as a no-op;
+    - destination mapping must be injective;
+    - exact source/destination sample-byte overlap is rejected before writing;
+    - every validated signed affine resident layout is supported;
+    - the operation allocates nothing and retains neither operand.
+
+    RasterCopyError remains the authoritative failure model. No v0.2-specific
+    weaker or duplicate error enum is introduced.
+
+    The additional plane indices are a compatibility bridge while
+    RasterPlaneView/WritableRasterPlaneView are not yet production types.
++/
+bool copyInto(T)(
+    scope RasterView!T source,
+    size_t sourcePlaneIndex,
+
+    scope ref WritableRasterView!T destination,
+    size_t destinationPlaneIndex,
+
+    out RasterCopyError error
+)
+@safe
+nothrow
+@nogc
+{
+    return tryCopyRasterPlane(
+        source,
+        sourcePlaneIndex,
+        destination,
+        destinationPlaneIndex,
+        error
+    );
+}
+
+
+/// Example compiling both ordinary and UFCS v0.2 copy forms.
+@safe unittest
+{
+    import raster;
+
+    RasterView!ubyte source;
+    WritableRasterView!ubyte destination;
+
+    RasterCopyError ordinaryError;
+    RasterCopyError ufcsError;
+
+    assert(
+        !copyInto(
+            source,
+            0,
+            destination,
+            0,
+            ordinaryError
+        )
+    );
+
+    assert(
+        !source.copyInto(
+            0,
+            destination,
+            0,
+            ufcsError
+        )
+    );
+
+    assert(
+        ordinaryError
+        == RasterCopyError.invalidSourcePlane
+    );
+
+    assert(ufcsError == ordinaryError);
+}
+
 /// Example reporting an invalid source plane before any write.
 @safe unittest
 {

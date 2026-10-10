@@ -1,0 +1,7 @@
+name "raster-v0-2-binary-transform-arithmetic-benchmark"
+description "raster-d v0.2 binary transform and arithmetic benchmark family"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

@@ -370,6 +370,10 @@ nothrow
 
 /++
     Validates that a ResourceEntry describes a representable byte range.
+
+    Nonzero length requires a non-null base. The integer base address plus
+    byteLength must fit size_t before subsequent range arithmetic is used.
+    This checks representability, not resource ownership or memory mapping.
 +/
 private
 bool validResourceRange(

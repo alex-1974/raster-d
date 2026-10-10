@@ -55,7 +55,18 @@ INVENTORY_ONLY=0 \
 OUTPUT_ROOT="$current_output" \
     bash "$root/tools/build-docs.sh"
 
-cp -a "$current_output/build/ddox/site/." "$site_dir/"
+mkdir -p "$site_dir/dev"
+cp -a "$current_output/build/ddox/site/." "$site_dir/dev/"
+
+# Root URLs serve the latest published stable release, never the moving
+# release candidate or development checkout. Preserve tagged copies separately.
+if (("${#versions[@]}" > 0)); then
+    latest="${versions[${#versions[@]}-1]}"
+    cp -a "$site_dir/$latest/." "$site_dir/"
+else
+    echo "error: no published release tags for stable Pages root" >&2
+    exit 1
+fi
 
 {
     cat <<'HTML'
@@ -68,9 +79,10 @@ cp -a "$current_output/build/ddox/site/." "$site_dir/"
 </head>
 <body>
 <h1>raster-d API documentation</h1>
-<p>The root documentation follows the qualified current repository state.</p>
+<p>The root documentation follows the latest published stable release.</p>
 <ul>
-<li><a href="./raster.html">current</a></li>
+<li><a href="./raster.html">latest stable (root)</a></li>
+<li><a href="./dev/raster.html">development / unreleased</a></li>
 HTML
 
     if (("${#versions[@]}" > 0)); then
@@ -95,5 +107,7 @@ HTML
 
 test -f "$site_dir/raster.html"
 test -f "$site_dir/versions.html"
+
+python3 "$root/tools/verify-versioned-pages.py" "$site_dir"
 
 echo "PASS: versioned raster-d documentation site built"

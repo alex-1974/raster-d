@@ -60,10 +60,92 @@ jobs:
         run: |
           dub build --compiler="$DC"
 
+      - name: Package policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if grep -RInE \
+            --include='dub.sdl' \
+            --include='dub.json' \
+            '(^|[[:space:]])-preview=' \
+            .; then
+            echo "Preview compiler switches must not be package-wide dflags." >&2
+            exit 1
+          fi
+
       - name: Test
         shell: bash
         run: |
           dub test --compiler="$DC"
+
+      - name: Test with DIP1000
+        shell: bash
+        run: |
+          DFLAGS="-unittest -preview=dip1000" \
+            dub test --compiler="$DC" --force
+
+      - name: Consumer package boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+
+          bash tools/release-archive-consumer.sh "$DC"
+
+      - name: Consumer package boundary with DIP1000
+        shell: bash
+        run: |
+          set -euo pipefail
+          DFLAGS="-preview=dip1000" \
+            bash tools/release-archive-consumer.sh "$DC"
+
+      - name: Generic sum benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_sum \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+          g++ \
+            -O3 \
+            -std=c++20 \
+            -fno-fast-math \
+            -ffp-contract=off \
+            -fno-tree-vectorize \
+            -fno-tree-slp-vectorize \
+            benchmark/v0_2_sum/cpp/reference.cpp \
+            -o /tmp/raster-v0-2-sum-cpp-reference
+
+      - name: Generic sum benchmark DIP1000 compile smoke
+        shell: bash
+        run: |
+          DFLAGS="-preview=dip1000" \
+            dub build \
+              --root=benchmark/v0_2_sum \
+              --compiler="$DC" \
+              --build=release \
+              --force
+
+      - name: Reduction family benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_reduction_family \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Reduction codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_reduction_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
 
       - name: Raster lifetime compile probes
         shell: bash
@@ -84,6 +166,173 @@ jobs:
         shell: bash
         run: |
           tools/compile-negative/raster_import_public.sh "$DC"
+
+      - name: Generic conversion API compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_conversion_api.sh "$DC"
+
+      - name: Neighbourhood shape compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_neighbourhood_shape_api.sh "$DC"
+
+      - name: Generic neighbourhood compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_neighbourhood_into_api.sh "$DC"
+
+      - name: Border policy compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_border_policy_api.sh "$DC"
+
+      - name: Convolution compile contracts
+        shell: bash
+        run: |
+          bash tools/compile-negative/raster_convolution_api.sh "$DC"
+
+      - name: Neighbourhood release stride regression
+        shell: bash
+        run: bash tools/check_neighbourhood_release_strides.sh
+
+      - name: Neighbourhood codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_neighbourhood_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Affine multiversion diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_affine_multiversion \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Affine codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_affine_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Neighbourhood family benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_neighbourhood_family \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Convolution codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_convolution_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: SIMD convolution diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_simd_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Comparable C++ convolution gate compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_cpp_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+          g++ \
+            -O3 \
+            -std=c++20 \
+            -fno-fast-math \
+            -ffp-contract=off \
+            benchmark/v0_2_cpp_convolution/cpp/reference.cpp \
+            -o /tmp/raster-v0-2-cpp-convolution-reference
+
+      - name: Prepared convolution benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_prepared_convolution \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: v0.2 benchmark family manifest
+        shell: bash
+        run: |
+          bash tools/check_v0_2_benchmark_families.sh
+
+      - name: transformInto benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_transform_into \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Allocated transform benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_transform_allocated \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Binary transform/arithmetic benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_binary_transform_arithmetic \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Binary codegen diagnostic compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_binary_codegen \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Fill/copy benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_fill_copy \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
+      - name: Conversion benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_2_conversion \
+            --compiler="$DC" \
+            --build=release \
+            --force
 
       - name: Raster retained-import external link probe
         shell: bash

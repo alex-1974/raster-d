@@ -1,0 +1,7 @@
+family	public_surface	current_harness	evidence_scope	status
+reduction	sum|min|max|minMax|mean	benchmark/v0_2_sum + benchmark/v0_2_reduction_family	qualified strict-sum + extrema + mean reference-XPS evidence	qualified
+unary-transform	transformInto|tryTransformAllocated	benchmark/v0_2_transform_into + benchmark/v0_2_transform_allocated	qualified destination-oriented wrapper + M3.2b executor + allocated-wrapper reference-XPS evidence	qualified
+fill-copy	fill|copyInto	benchmark/v0_2_fill_copy	qualified v0.2 public/legacy/semantic bridge evidence + retained M3 executor evidence	qualified
+binary-transform-arithmetic	zipTransformInto|addInto|subtractInto|multiplyInto|divideInto	benchmark/v0_2_binary_transform_arithmetic	qualified reference-XPS evidence for public generic zip + arithmetic wrappers + approved Canonical executor	qualified
+conversion	convertRasterInto|tryConvertAllocated	benchmark/v0_2_conversion	qualified generic exact-policy API + allocated-wrapper reference-XPS evidence	qualified
+neighbourhood	applyNeighbourhoodInto|convolveInto	benchmark/v0_2_neighbourhood_family + benchmark/v0_2_prepared_convolution	qualified generic 3x3 layering + 5x3 Canonical/strided layout evidence + retained convolution isolation	qualified

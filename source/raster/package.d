@@ -12,7 +12,9 @@
 module raster;
 
 public import raster.sample :
-    isRasterSampleType;
+    isRasterSampleType,
+    isNumericRasterSample,
+    isExactConvertible;
 
 public import raster.owned_resource :
     OwnedByteResource,
@@ -40,26 +42,87 @@ public import raster.writable_view :
     WritableRasterView;
 
 public import raster.reduction :
+    RasterSumError,
+    RasterSumResult,
+    RasterExtremaError,
+    RasterExtremaResult,
+    RasterMinMaxResult,
+    RasterMeanError,
+    RasterMeanResult,
+    sum,
+    min,
+    max,
+    minMax,
+    mean,
     trySumFloatToDouble;
 
 public import raster.fill :
-    tryFillRasterPlane;
+    tryFillRasterPlane,
+    fill;
 
 public import raster.transform :
     RasterTransformError,
     tryTransformRasterPlane;
 
+public import raster.transform_into :
+    transformInto;
+
+public import raster.zip_transform_into :
+    RasterZipTransformError,
+    zipTransformInto;
+
+public import raster.arithmetic_into :
+    addInto,
+    subtractInto,
+    multiplyInto,
+    divideInto;
+
+public import raster.transform_allocated :
+    RasterAllocatedTransformError,
+    RasterAllocatedTransformResult,
+    tryTransformAllocated;
+
+public import raster.neighbourhood_shape :
+    NeighbourhoodShape;
+
+public import raster.border_policy :
+    RasterBorderKind,
+    RasterValidBorder,
+    RasterConstantBorder,
+    RasterClampBorder,
+    RasterMirrorBorder,
+    RasterWrapBorder;
+
 public import raster.neighbourhood :
     RasterNeighbourhood3x3Error,
     tryApplyRasterNeighbourhood3x3;
 
+public import raster.neighbourhood_into :
+    RasterNeighbourhoodError,
+    applyNeighbourhoodInto;
+
+public import raster.convolution :
+    FixedConvolutionKernel,
+    convolveInto;
+
 public import raster.copy :
     RasterCopyError,
-    tryCopyRasterPlane;
+    tryCopyRasterPlane,
+    copyInto;
+
+public import raster.conversion_policy :
+    RasterConversionPolicy;
 
 public import raster.conversion :
+    RasterConversionError,
     UbyteToFloatConversionError,
+    convertRasterInto,
     tryConvertUbyteToFloatPlane;
+
+public import raster.conversion_allocated :
+    RasterAllocatedConversionError,
+    RasterAllocatedConversionResult,
+    tryConvertAllocated;
 
 public import raster.backing :
     RasterLease;

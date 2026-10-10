@@ -1,0 +1,7 @@
+name "raster-v0-2-affine-codegen"
+description "raster-d M5.3 signed-affine codegen diagnostic"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

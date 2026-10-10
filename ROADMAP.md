@@ -891,6 +891,310 @@ qualified x86-64 results.
 
 ---
 
+
+## M5 — v0.2 Performance Qualification
+
+Status: active.
+
+M5 treats performance as a layered property of the supported v0.2 operation
+families. It does not expose execution-layout or compiler choices through the
+public API.
+
+### M5.1 — Establish v0.2 benchmark families
+
+Status: complete.
+
+Issue #115 owns the benchmark coverage matrix.
+
+The first M5.1 slice establishes:
+
+- six representative processing families;
+- an explicit distinction between public semantic latency, preflight,
+  approved hot-executor, layout-specialization and numeric-kernel cost;
+- a machine-readable family inventory;
+- CI validation of that inventory;
+- DMD/LDC release compile smoke for every retained v0.2 benchmark harness;
+- a qualification metadata contract covering compiler, build flags, platform,
+  workload, warm-up, samples/distribution, semantic preflight and baseline
+  commit.
+
+Final qualified family coverage:
+
+- reduction: qualified;
+- unary transform: qualified;
+- fill/copy: qualified;
+- binary transform/arithmetic: qualified;
+- conversion: qualified;
+- neighbourhood/convolution: qualified.
+
+Issue #115 is closed. Retained reference-XPS evidence, DMD/LDC separation,
+semantic preflight, public/hot layering and Fast-CI compile smoke are recorded
+in BENCHMARK.md and docs/V0_2_M5_BENCHMARK_FAMILIES.md.
+
+The M4.6 prepared-convolution isolation also creates an explicit M5 signal:
+public `convolveInto` and the validation-free direct-fixed execution shape are
+roughly an order of magnitude apart on both baseline compilers. M5 investigates
+that as public/preflight/dispatch/execution cost, not as a prepared-state
+benefit.
+
+### M5.2 — Internal layout specialization framework
+
+Status: complete.
+
+Issue #116 evaluated whether the internal execution-layout model should grow
+from the existing Universal/Canonical/Contiguous capability lattice into a
+larger physical-layout taxonomy.
+
+Decision:
+
+- retain PlaneExecutionLayout2D and PlaneExecutionTraits as the shared storage
+  capability classifier;
+- do not introduce separate generic classes for padded rows, negative row
+  stride, interleaved storage or general affine storage merely because those
+  physical descriptions differ;
+- keep signed row stride as a Canonical parameter whenever sample stride is one;
+- keep arbitrary sample-strided/interleaved/general affine traversal under
+  Universal until a concrete operation demonstrates a material benefit from a
+  stronger capability;
+- combine shared storage capabilities with operation-local facts such as
+  alias/non-overlap proof, numeric semantics, compiler capability, kernel/shape,
+  type pair and measured thresholds.
+
+The original M5.1 generic 5x3 sample-strided/Canonical timing was later found
+to have been collected under the release-only neighbourhood stride-
+initialization bug fixed by PR #168. The nominal Canonical path had therefore
+fallen through to Universal execution.
+
+Post-#168 evidence initially showed a material generic-neighbourhood
+sample-strided penalty. M5.2 therefore added one private operation-specific
+signed-affine pointer/stride executor without expanding the shared layout enum.
+
+Post-change reference-XPS evidence shows:
+
+- DMD sample-strided/Canonical: 0.875674x;
+- LDC sample-strided/Canonical: 6.217490x.
+
+This is sufficient to close the structural/layout part of M5.2: the shared
+Universal -> Canonical -> Contiguous capability model remains appropriate and
+the expensive public-view sampling fallback has been removed. The remaining
+LDC-only gap is retained for M5.3 code-generation analysis rather than encoded
+as another global layout class.
+
+The full decision and evidence mapping are recorded in
+docs/V0_2_M5_LAYOUT_SPECIALIZATION.md.
+
+### M5.3 — DMD/LDC code-generation audit
+
+Status: complete.
+
+Issue #117 owns compiler/code-generation investigation for the retained M5.1
+signals. The centered 3x3 neighbourhood public/hot signal has been root-caused and
+fixed. A release-only stride query had been placed inside assert(...), so the
+query vanished from optimized builds and Canonical dispatch was disabled.
+
+Post-fix public/hot reference-XPS ratios:
+
+- DMD 2.111.0: 0.999172x;
+- LDC 1.41.0: 0.968592x.
+
+M5.3 should now proceed to the remaining compiler/code-generation signals.
+
+The second M5.3 diagnostic is retained at `benchmark/v0_2_affine_codegen`.
+It targets the LDC-only signed-affine 5x3 gap by separating runtime versus
+compile-time sample strides and source-side versus destination-side stride
+effects while retaining DMD/LDC disassembly.
+
+The third M5.3 diagnostic is retained at
+`benchmark/v0_2_affine_multiversion`. It tests whether a small runtime
+dispatcher into template-static stride 2/3/4 executors recovers LDC codegen
+while leaving the general signed-affine runtime executor as fallback.
+
+The first M5.3 diagnostic is retained at
+`benchmark/v0_2_neighbourhood_codegen`. It compares the production public path,
+the approved hot executor, a benchmark-local noinline executor boundary, a
+diagnostic preflight-plus-noinline path and preflight-only cost, while retaining
+DMD/LDC disassembly.
+
+
+#### Fixed-convolution static expansion
+
+PR #176 is integrated at `f4df7e4cc436e9e061962e125c20fdba2c337173`. It replaces the ordinary runtime loop in the compile-time-fixed convolution evaluator with `static foreach` while preserving arithmetic order, accumulator/final-cast semantics and the public contract.
+
+Reported reference-XPS evidence reduces DMD 2.111.0 public convolution from 32.906413 ns/pixel in the retained pre-change diagnostic to 6.438273 ns/pixel after the change, with the same-run hot unrolled neighbourhood path at 6.520485 ns/pixel. LDC 1.41.0 remains at parity at about 1.69 ns/pixel.
+
+The dominant DMD fixed-convolution codegen cliff is therefore considered structurally solved. The post-change archive still requires retained-evidence verification before release qualification. M5.3 remains active; the next larger compiler-split candidate is reduction codegen decomposition, ahead of the smaller binary-multiply signal.
+
+
+The fifth M5.3 diagnostic is retained at
+`benchmark/v0_2_reduction_codegen`. It decomposes the remaining mean/max/minMax
+compiler split into public/semantic cost, runtime sample-stride induction and
+Canonical static-stride execution while retaining exact reduction semantics and
+DMD/LDC disassembly. No production optimization is selected until reference-XPS
+evidence is retained and inspected.
+
+
+#### M5.3 closeout
+
+The retained code-generation audit is complete.
+
+Resolved signals:
+
+- centered 3x3 public/hot: release-only side effect inside `assert(...)`
+  fixed by PR #168 and post-fix qualified;
+- LDC signed-affine small positive sample strides: compiler-specific runtime
+  stride induction addressed by private small-stride multiversioning in PR #174,
+  while arbitrary signed-affine fallback remains intact;
+- DMD fixed convolution: ordinary runtime `foreach` inside a compile-time-fixed
+  kernel replaced with `static foreach` in PR #176;
+- LDC strict float-to-double mean: Mir Canonical indexing removed from the hot
+  Canonical path in PR #180;
+- DMD minMax: helper-call source form exposed directly in `executeExtrema` by
+  PR #182, removing the hot-loop call cliff without changing NaN/signed-zero
+  semantics;
+- binary multiply wrapper/executor: focused diagnostic 8 found no stable
+  production slowdown; public generic zip is at executor parity and
+  `multiplyInto` is not slower on the retained reference-XPS run.
+
+The earlier generic `ushort -> float` versus specialized `ubyte -> float`
+observation remains explicitly non-apples-to-apples. It is not a remaining
+M5.3 source-form blocker. Comparable type-pair/vectorization questions continue
+under M5.4 SIMD qualification.
+
+M5.3 therefore closes without introducing compiler/ISA choices into the public
+API and without adding a second generic execution engine.
+
+### M5.4 — SIMD qualification
+
+Status: complete.
+
+Issue #118 reconciles the completed R0.5 CPU/SIMD study with the current v0.2
+production families after M5.3.
+
+Qualification record:
+
+- `docs/V0_2_M5_SIMD_QUALIFICATION.md`;
+- retained explicit-SIMD diagnostic:
+  `benchmark/v0_2_simd_convolution`;
+- reference archive:
+  `raster-v0.2-simd-convolution-20261008-090142.tar.gz`;
+- SHA256:
+  `ee52776194074e7ae9b28a117bde02b5e0ad3c56d6f0d9ad63c2a5c2c2787b02`.
+
+The strongest fixed-convolution candidate was tested with benchmark-local
+`core.simd.float4` and rejected: DMD explicit SIMD was materially slower than
+the direct scalar source form, while LDC already auto-vectorized the scalar
+control and gained no material benefit from handwritten SIMD.
+
+The complete family reconciliation finds no current v0.2 production operation
+that justifies handwritten SIMD on the qualified Linux x86-64 baseline.
+Compiler/ISA choice remains internal implementation detail, and future
+architecture/compiler versions require independent evidence.
+
+### M5.5 — caller-owned scheduling reconciliation
+
+Status: complete.
+
+Issue #119 reconciles the grandfathered R0.4e persistent-worker research with
+the workspace rule that scheduling remains caller-owned by default.
+
+Qualification record:
+
+- `docs/V0_2_M5_CALLER_SCHEDULING.md`;
+- grandfathered evidence branch:
+  `research/r0_4e-persistent-workers`.
+
+R0.4e's persistent worker reuse, bounded backpressure, request-lifetime
+separation, cancellation/failure recovery and deterministic shutdown remain
+valid engineering evidence. They do not justify a raster-d-owned WorkerPool,
+Executor, queue API, worker count, affinity policy or hidden scheduler.
+
+Production retains scheduler-neutral raster-domain mechanics: dependency
+geometry, materialization planning, synchronous caller-owned materialization,
+retained block resolution, explicit regions and caller-owned destinations.
+
+Reusable worker/queue techniques belong to the application or another
+independently justified general concurrency component.
+
+### M5.6 — prepared-state policy
+
+Status: complete.
+
+Issue #120 generalizes the M4.6 prepared-convolution evidence into one
+qualification rule for future runtime prepared-operation proposals.
+
+Qualification record:
+
+- `docs/V0_2_M5_PREPARED_STATE_POLICY.md`;
+- `docs/V0_2_M4_PREPARED_CONVOLUTION_RESEARCH.md`;
+- `benchmark/v0_2_prepared_convolution`.
+
+Prepared operation state must justify preparation cost, repeated one-shot cost,
+prepared repeated cost, break-even reuse count and a realistic consumer reuse
+profile under equivalent semantics and execution assumptions.
+
+The only concrete current proposal, runtime prepared convolution coefficient
+state, remains rejected: DMD shows noise-level parity against the fair
+direct-fixed control, while LDC makes the prepared representation materially
+slower and has no finite break-even.
+
+`RetainedRasterStore` is explicitly outside this operator-preparation rule: it
+is bounded raster residency/cache infrastructure whose value is avoiding
+rematerialization, not amortizing operator preparation.
+
+No runtime prepared-operation API is promoted by M5.6.
+
+### M5.7 — comparable C++ performance gate
+
+Status: complete.
+
+Issue #121 establishes the rule that material gaps against high-quality
+comparable C++ implementations must be closed, explained by non-equivalent
+work, or explicitly accepted as a compiler/platform/portability trade-off.
+
+Qualification record:
+
+- `docs/V0_2_M5_CPP_PERFORMANCE_GATE.md`;
+- `benchmark/v0_2_cpp_convolution`;
+- retained archive:
+  `raster-v0.2-cpp-convolution-20261008-105810.tar.gz`;
+- SHA256:
+  `4f63d7f19cb17681562e4d23ea42dc48afacd86b82ec46c14a0d5b1383315f8a`.
+
+For the strongest remaining fixed 3x3 float-convolution kernel, LDC direct
+execution reaches comparable g++ performance (0.970651x direct/C++ at the
+medians). DMD remains 4.502764x slower in the fair execution-kernel comparison.
+
+Disassembly attributes that DMD gap to code generation: g++ and LDC
+auto-vectorize the equivalent scalar graph, while DMD remains scalar. M5.4's
+independent `core.simd.float4` diagnostic was materially worse under DMD, so
+explicit SIMD does not close the gap.
+
+The DMD result is therefore explicitly accepted as a compiler trade-off on the
+qualified x86-64 baseline. LDC remains the primary optimized/codegen compiler;
+DMD remains the development/correctness baseline. No semantic, safety, public
+API or threading contract is weakened.
+
+## v0.2 pre-release hardening
+
+M5 is complete. The repository is preparing for the v0.2 feature-freeze
+sequence.
+
+Repository hardening now covers:
+
+- consumer/archive boundary;
+- production versus research evidence separation;
+- GitHub workflow baseline;
+- consumer documentation path;
+- documentation prose standard;
+- source-mode-neutral package metadata.
+
+Issue #193 removes the previous package-wide DIP1000 dependency. PR #197
+qualifies ordinary and explicit DIP1000 modes separately while preserving the
+existing RasterLease ownership and lifetime contract.
+
+The feature-freeze checkpoint may proceed only after #197 is merged and the
+required CI gates are green.
+
 ## Higher-level consumer — imagery-d
 
 Image-domain work no longer defines later milestones of `raster-d`.
@@ -938,3 +1242,9 @@ they reveal a coherent, reusable raster-domain need.
 
 They must not cause image semantics, provider policy or application-specific
 behaviour to leak into the generic raster API.
+
+
+The fourth M5.3 diagnostic is retained at
+`benchmark/v0_2_convolution_codegen`. It decomposes the remaining DMD-only
+fixed-convolution one-shot/direct-fixed gap into wrapper, neighbourhood
+preflight, kernel source-form and executor/materialization components.

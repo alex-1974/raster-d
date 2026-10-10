@@ -3,17 +3,20 @@ name: Release Documentation
 on:
   push:
     branches:
-      - release/0.1
+      - release/0.2
       - docs-release-0.1-documentation-gate
     paths:
       - 'source/raster/**'
       - 'docs/**'
       - 'tools/build-docs.sh'
       - 'tools/build-versioned-docs.sh'
+      - 'tools/verify-versioned-pages.py'
       - '.github/workflows/pages.yml'
       - 'CHANGELOG.md'
       - 'README.md'
       - 'tools/validate-docs.sh'
+      - 'tools/verify-release-status.sh'
+      - 'tools/test-release-status.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
       - 'tools/verify-internal-ddoc.py'
@@ -21,16 +24,19 @@ on:
       - '.github/workflows/release-docs.yml'
   pull_request:
     branches:
-      - release/0.1
+      - release/0.2
     paths:
       - 'source/raster/**'
       - 'docs/**'
       - 'tools/build-docs.sh'
       - 'tools/build-versioned-docs.sh'
+      - 'tools/verify-versioned-pages.py'
       - '.github/workflows/pages.yml'
       - 'CHANGELOG.md'
       - 'README.md'
       - 'tools/validate-docs.sh'
+      - 'tools/verify-release-status.sh'
+      - 'tools/test-release-status.sh'
       - 'tools/filter-internal-ddox-json.py'
       - 'tools/verify-public-module-ddoc.py'
       - 'tools/verify-internal-ddoc.py'
@@ -47,13 +53,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # versioned Pages builder needs published release tags
       - uses: dlang-community/setup-dlang@v2
         with:
           compiler: dmd-2.111.0
           dub: 1.40.0
           dc_format: shortname
       - name: Validate release documentation structure
-        run: bash tools/validate-docs.sh
+        run: |
+          bash tools/test-release-status.sh
+          bash tools/validate-docs.sh
       - name: Build and verify public-only DDox
         env:
           VERIFY_CONTRACTS: '1'
@@ -68,6 +78,12 @@ jobs:
         with:
           name: raster-ddox-release-candidate
           path: build/ddox/site
+          retention-days: 14
+      - name: Upload staged versioned Pages site for independent audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: raster-pages-release-candidate
+          path: build/versioned-docs/site
           retention-days: 14
 
 
@@ -90,3 +106,4 @@ jobs:
         run: |
           set -euo pipefail
           dub test --compiler="$DC" --force
+          DFLAGS="-unittest -preview=dip1000" dub test --compiler="$DC" --force

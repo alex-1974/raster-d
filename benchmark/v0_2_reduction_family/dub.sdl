@@ -1,0 +1,7 @@
+name "raster-v0-2-reduction-family-benchmark"
+description "raster-d v0.2 reduction family benchmark"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

@@ -21,18 +21,29 @@ The standard has four goals:
 
 ## 2. Writing standard
 
-All documentation is written in English and favors clarity, simplicity,
-brevity, direct language, and exact raster terminology.
+All documentation is written in English. William Zinsser's *On Writing
+Well* is the editorial model for ordinary prose: clarity, simplicity, brevity,
+and direct language. Technical precision still wins when a contract needs an
+exact term.
 
 Write for the reader, not for the implementation author:
 
 - state caller-visible meaning before mechanism;
 - prefer short, concrete words and active verbs;
+- omit words that do not change the meaning;
+- avoid noun stacks when a verb says the same thing more clearly;
+- let one sentence do one job;
+- remove throat-clearing phrases and repeated conclusions;
+- use positive statements when they are as precise as negative ones;
 - explain one idea at a time;
 - use raster terminology only when it is part of the contract;
 - distinguish logical coordinates, descriptor coordinates, resident backing,
   and execution layout;
 - do not make a consumer learn repository history to understand an API.
+
+Engineering evidence may be denser than a tutorial, but it should still state
+the question, evidence, and decision directly. Repetition is not a substitute
+for confidence.
 
 Good consumer documentation answers:
 
@@ -80,7 +91,7 @@ cannot express.
 
 ## 4. Public examples
 
-Every public DDox symbol page in the supported 0.1 API must own a
+Every public DDox symbol page in the supported release API must own a
 compiler-checked documented `unittest` that DDox renders as an **Example**.
 
 Examples must:

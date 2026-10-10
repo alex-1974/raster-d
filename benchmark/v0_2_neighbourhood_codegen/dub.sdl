@@ -1,0 +1,7 @@
+name "raster-v0-2-neighbourhood-codegen"
+description "raster-d M5.3 neighbourhood codegen diagnostic"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

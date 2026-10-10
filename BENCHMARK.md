@@ -577,3 +577,1225 @@ seven M2/M3 benchmark workloads above; no benchmarked operation source,
 public API, numerical path or x86-64 hot-path selector changed. The retained
 v0.1.0 M2/M3 reference baseline therefore remains the accepted release
 performance evidence.
+
+
+## v0.2 M2.1 transformInto API-bridge qualification
+
+Issue #95 adds the v0.2 destination-oriented/UFCS spelling
+`transformInto!transform` as a direct wrapper over the already-qualified
+`tryTransformRasterPlane!transform` semantic engine.
+
+The reference-XPS qualification compares both public call surfaces inside one
+fixed release binary over the same padded 2048 x 512 float workload with 16
+iterations per timed sample.
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DMD 2.111.0;
+- LDC 1.41.0 / LLVM 19.1.7;
+- DUB 1.40.0.
+
+The accepted harness uses 16 paired samples per process, alternates whether the
+legacy or v0.2 API is timed first on every sample, warms both call surfaces and
+records CPU-frequency/thermal snapshots around every process. Six independent
+processes are retained per compiler.
+
+Accepted archive:
+
+    raster-v0.2-transform-into-20261006-130132.tar.gz
+    SHA256 4cda1310ba6cc52f6d503a3f6171056a17f19350ea589dc188b2ff7b472dc4c7
+    head   60b486331f65de74ad2c5d541efb3a1243e41f1b
+
+The archive manifest verifies completely and every retained process reports the
+same semantic checksum:
+
+    37cee2ef2e81c0c3
+
+Retained summary:
+
+| Compiler | legacy ns/pixel | transformInto ns/pixel | median legacy/new ratio | ratio range |
+| --- | ---: | ---: | ---: | ---: |
+| DMD 2.111 | 0.522385 | 0.510475 | 1.014082 | 0.975698-1.060577 |
+| LDC 1.41 | 0.203886 | 0.200155 | 1.003748 | 0.923124-1.034650 |
+
+One DMD process ran both call surfaces at roughly 1.5 ns/pixel while retaining a
+near-parity ratio (1.014788), demonstrating a process-level system/frequency
+outlier rather than v0.2 wrapper overhead. LDC likewise shows absolute
+process-to-process variation while the paired API ratio remains centered near
+1.0.
+
+The qualification therefore supports the narrow conclusion required by #95:
+there is no measured material performance penalty from the v0.2
+`transformInto` API bridge on the qualified reference machine. This is API
+wrapper-equivalence evidence, not a new point-transform throughput claim and
+not a portable timing guarantee.
+
+The earlier diagnostic archive
+`raster-v0.2-transform-into-20261006-125147.tar.gz` is intentionally not used
+as qualification evidence because its harness measured all legacy samples
+before all v0.2 samples and therefore confounded call-surface comparison with
+frequency/thermal drift.
+
+
+## M5.1 v0.2 benchmark-family contract
+
+Issue #115 establishes a coverage matrix for the performance-relevant v0.2
+processing surface. The detailed contract is
+`docs/V0_2_M5_BENCHMARK_FAMILIES.md`; the machine-readable inventory is
+`benchmark/v0_2_families/families.tsv`.
+
+M5 measurements distinguish, where materially separable:
+
+~~~text
+public_semantic
+preflight
+hot_executor
+layout_specialization
+numeric_kernel
+~~~
+
+The layers are measurement vocabulary, not new public abstractions.
+
+The M4.6 convolution qualification is the first explicit example. On the
+reference XPS, `one_shot / direct_fixed` was about 10.27x for DMD and 10.37x
+for LDC, while `direct_fixed / prepared` showed noise-level parity for DMD and
+a material regression for LDC. The large public/direct gap is therefore tracked
+as semantic/preflight/execution evidence rather than being attributed to
+coefficient preparation.
+
+A family is not considered covered merely because an older executor experiment
+exists. Current public wrappers and policies require representative evidence
+whenever they can add material work.
+
+Fast CI validates the family manifest and compile-smokes every retained v0.2
+benchmark harness. Absolute timing remains reference-machine evidence.
+
+
+## M5.1 binary transform / arithmetic harness
+
+The retained harness at
+`benchmark/v0_2_binary_transform_arithmetic` covers the previously missing
+binary-transform/arithmetic family without adding a new execution engine.
+
+Representative Canonical padded `float` paths are:
+
+~~~text
+add:
+    public zipTransformInto
+    public addInto wrapper
+    approved Canonical zip executor
+
+subtract / multiply / divide:
+    public wrapper
+    approved Canonical zip executor
+~~~
+
+This separates arithmetic-wrapper cost from the public
+validation/relation/dispatch boundary and from the already-approved hot executor.
+Every compared path for one operation must produce the same logical checksum;
+destination padding is verified unchanged.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+The family remains only `partial` until a stable reference-XPS run is retained
+with the metadata required by the M5.1 benchmark-family contract. No C++
+performance conclusion is made here; the comparable C++ gate belongs to M5.7 /
+Issue #121.
+
+
+## M5.1 binary transform / arithmetic qualification
+
+Reference archive:
+
+    raster-v0.2-binary-transform-arithmetic-20261006-221741.tar.gz
+
+SHA256:
+
+    96e00251d079b3c49ebfa6097d7430bb98e95fcee65153132427aa39163521d8
+
+Benchmark head:
+
+    714e808b56b5a8cfb9bc8b53265d1112652b1e13
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- 32 elements row padding;
+- Canonical sample stride 1;
+- independent source/destination backing;
+- 8 iterations per timed sample;
+- 18 timed samples per process;
+- six independent processes per compiler.
+
+The recursive archive manifest verifies completely. Every compared path for one
+operation produced the same stable checksum and destination padding remained
+unchanged.
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired public/executor ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | add public zip | 0.480881 | 0.991960 |
+| DMD 2.111 | add public wrapper | 0.487226 | 0.996067 |
+| DMD 2.111 | add hot executor | 0.483760 | — |
+| DMD 2.111 | subtract wrapper | 0.541404 | 0.996800 |
+| DMD 2.111 | subtract hot executor | 0.541764 | — |
+| DMD 2.111 | multiply wrapper | 0.540704 | 1.113914 |
+| DMD 2.111 | multiply hot executor | 0.485399 | — |
+| DMD 2.111 | divide wrapper | 0.758606 | 0.995785 |
+| DMD 2.111 | divide hot executor | 0.763014 | — |
+| LDC 1.41 | add public zip | 0.429830 | 0.988816 |
+| LDC 1.41 | add public wrapper | 0.454840 | 1.029881 |
+| LDC 1.41 | add hot executor | 0.440601 | — |
+| LDC 1.41 | subtract wrapper | 0.399736 | 0.975722 |
+| LDC 1.41 | subtract hot executor | 0.421235 | — |
+| LDC 1.41 | multiply wrapper | 0.467124 | 1.063160 |
+| LDC 1.41 | multiply hot executor | 0.401172 | — |
+| LDC 1.41 | divide wrapper | 0.396779 | 0.941382 |
+| LDC 1.41 | divide hot executor | 0.419193 | — |
+
+Interpretation:
+
+- generic public `zipTransformInto` and `addInto` are effectively at parity
+  with the approved Canonical executor on the qualified DMD run;
+- LDC absolute process timings show larger machine-state variation, but paired
+  same-process ratios show no systematic public/preflight/executor cliff;
+- the approximately 10x M4.6 convolution public/direct gap is not reproduced by
+  this family;
+- DMD multiply retains an approximately 11% median wrapper/executor difference,
+  with LDC around 6%; this is a focused M5.3 codegen/inlining signal, not a new
+  execution-family problem.
+
+The binary-transform/arithmetic family is accepted as qualified M5.1 benchmark
+evidence. Cross-language comparison remains M5.7 / Issue #121.
+
+## M5.1 fill / copy harness
+
+The retained harness at `benchmark/v0_2_fill_copy` covers the v0.2 API bridge
+for fill and same-type copy.
+
+The production Canonical execution helpers remain private and are not exposed
+for benchmark convenience. Retained M3.3/M3.5 evidence remains the executor-level
+qualification. The current harness measures:
+
+~~~text
+fill:
+    public_v0_2
+    public_legacy
+    semantic_engine
+
+copy:
+    public_v0_2
+    public_legacy
+    semantic_engine
+~~~
+
+The representative workload is padded Canonical `ubyte`, 2048 x 512, with
+allocation outside timed regions. Six independent CPU-pinned processes per
+compiler are collected by the reference-XPS runner. Each process uses 18
+rotating timed samples and requires identical per-operation checksums plus
+unchanged row padding.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 fill / copy qualification
+
+Reference archive:
+
+    raster-v0.2-fill-copy-20261006-224753.tar.gz
+
+SHA256:
+
+    31d1210072cc069729a7b0054852562adbec5714ecfed8dec79f4fe498711e8b
+
+Benchmark head:
+
+    a3cac473191bcb02222b6bd51f3f3e9d6e8fe524
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- ubyte;
+- 2048 x 512 logical samples;
+- 32 elements row padding;
+- Canonical sample stride 1;
+- independent backing;
+- allocation outside timed regions;
+- 6 warmups;
+- 16 iterations per timed sample;
+- 18 rotating timed samples per process;
+- six independent processes per compiler.
+
+The recursive archive manifest verifies all 47 retained files. Every path leaves
+destination row padding unchanged. Stable operation-specific checksums are:
+
+    fill d924c80e436d0383
+    copy 76d6d3c997828383
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired v0.2/semantic ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | fill public v0.2 | 0.027529 | 1.005535 |
+| DMD 2.111 | fill legacy public | 0.027974 | — |
+| DMD 2.111 | fill semantic engine | 0.027423 | — |
+| DMD 2.111 | copy public v0.2 | 0.037129 | 1.004333 |
+| DMD 2.111 | copy legacy public | 0.036973 | — |
+| DMD 2.111 | copy semantic engine | 0.037016 | — |
+| LDC 1.41 | fill public v0.2 | 0.027293 | 0.997239 |
+| LDC 1.41 | fill legacy public | 0.027342 | — |
+| LDC 1.41 | fill semantic engine | 0.027370 | — |
+| LDC 1.41 | copy public v0.2 | 0.042728 | 0.997127 |
+| LDC 1.41 | copy legacy public | 0.042633 | — |
+| LDC 1.41 | copy semantic engine | 0.042798 | — |
+
+The paired v0.2/semantic ranges remain close to parity:
+
+- DMD fill: 0.994670-1.009141;
+- DMD copy: 0.997453-1.050954;
+- LDC fill: 0.985225-0.999774;
+- LDC copy: 0.993939-1.002829.
+
+One DMD Copy process is an absolute timing outlier, with all three Copy paths
+slowing together. Its paired ratios do not support a v0.2-wrapper regression.
+
+Conclusion: the v0.2 API spelling and public error bridge add no measured
+material cost above the existing semantic engines on the qualified reference
+machine. Together with retained M3.3/M3.5 executor evidence, the fill/copy
+family is qualified for M5.1.
+
+
+## M5.1 conversion harness
+
+The retained harness at `benchmark/v0_2_conversion` covers the generic exact
+conversion policy and allocating convenience surface without adding a second
+conversion engine or widening internal executor visibility.
+
+Representative comparisons:
+
+~~~text
+ubyte -> float:
+    public_generic
+    public_specialized
+    semantic_engine
+
+ushort -> float:
+    public_generic
+    semantic_engine
+
+allocated ushort -> float:
+    public_allocated
+    explicit_allocate_convert
+~~~
+
+The destination-oriented workload is padded Canonical, 2048 x 512, with
+allocation outside timed regions. The allocating pair intentionally includes
+allocation, retained backing construction, writable-view acquisition and
+conversion in both paths.
+
+The ubyte pair is a control over the already-qualified M3.5 specialized path.
+The ushort pair exercises the generic v0.2 exact-policy engine. The allocating
+pair isolates the convenience wrapper from the same explicit sequence.
+
+Six independent CPU-pinned processes per compiler are collected by the
+reference-XPS runner. Each process uses six warmups and eighteen rotating timed
+samples. Destination-oriented paths require identical per-pair checksums and
+unchanged row padding; allocating paths receive a semantic preflight before
+timing.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 conversion qualification
+
+Reference archive:
+
+    raster-v0.2-conversion-20261007-082153.tar.gz
+
+SHA256:
+
+    bda1844b8f4f9da2d58a15f26938469c8648c48b3ed06c635549bc9bc94dbbbe
+
+Benchmark head:
+
+    ce69499c99b9eedc300297f1622a6ed314de04f5
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+The archive contains 48 files total; its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself. Destination-oriented paths keep
+row padding intact and retain stable checksums:
+
+    ubyte -> float  8fd9fae9d49d0383
+    ushort -> float ecfb68c3e2e5a583
+
+Retained medians:
+
+| Compiler | Pair/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | ubyte->float public generic | 0.335947 | generic/specialized 0.998153 |
+| DMD 2.111 | ubyte->float public specialized | 0.342338 | specialized/semantic 1.004943 |
+| DMD 2.111 | ubyte->float semantic engine | 0.337945 | generic/semantic 1.003086 |
+| DMD 2.111 | ushort->float public generic | 3.800347 | generic/semantic 1.017085 |
+| DMD 2.111 | ushort->float semantic engine | 3.790440 | — |
+| DMD 2.111 | allocated public | 3.759492 | public/explicit 1.009449 |
+| DMD 2.111 | allocated explicit | 3.692126 | — |
+| LDC 1.41 | ubyte->float public generic | 0.159982 | generic/specialized 0.976328 |
+| LDC 1.41 | ubyte->float public specialized | 0.162438 | specialized/semantic 1.013020 |
+| LDC 1.41 | ubyte->float semantic engine | 0.159167 | generic/semantic 0.991100 |
+| LDC 1.41 | ushort->float public generic | 3.156083 | generic/semantic 0.996644 |
+| LDC 1.41 | ushort->float semantic engine | 3.148349 | — |
+| LDC 1.41 | allocated public | 3.093498 | public/explicit 1.009841 |
+| LDC 1.41 | allocated explicit | 3.062337 | — |
+
+Conclusion: neither the generic v0.2 exact-policy API bridge nor the allocating
+convenience wrapper introduces a material systematic penalty on the qualified
+reference machine. The conversion family is qualified for M5.1.
+
+The much larger absolute ushort->float time compared with specialized
+ubyte->float is retained as an execution-family/codegen signal only. Because the
+type pair and implementation path differ, it is not interpreted here as wrapper
+overhead or as a comparable C++ ratio. Cross-language qualification remains
+M5.7 / Issue #121.
+
+
+## M5.1 allocated transform harness
+
+The retained `benchmark/v0_2_transform_into` evidence already qualifies the
+v0.2 destination-oriented wrapper against the legacy public transform surface,
+while M3.2b / ADR 0011 retains executor-level qualification.
+
+The remaining unary-transform gap is the allocating convenience layer.
+`benchmark/v0_2_transform_allocated` compares:
+
+~~~text
+public_allocated
+    tryTransformAllocated!pointTransform
+
+explicit_allocate_transform
+    allocateCompactRaster!float
+    -> writable view
+    -> transformInto!pointTransform
+~~~
+
+Both paths include compact allocation, retained backing construction,
+writable-view acquisition, identical transform semantics and output-owner
+destruction. The benchmark therefore isolates convenience-wrapper cost rather
+than comparing an allocating API with a destination-reuse API.
+
+The representative workload is padded Canonical `float`, 2048 x 512, with six
+warmups, eighteen rotating timed samples, four allocations/transforms per timed
+sample and six independent CPU-pinned processes per compiler. A semantic
+preflight requires identical output checksums.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 allocated transform qualification
+
+Reference archive:
+
+    raster-v0.2-transform-allocated-20261007-085810.tar.gz
+
+SHA256:
+
+    e2b92d48b716dab5dcd655f7c915944392cdf641a818d9d9ae0590c4ce11cc89
+
+Benchmark head:
+
+    7e5a2c4452851e1378586d4f23eab644f3f21cbe
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- source rows padded by 32 elements;
+- Canonical source sample stride 1;
+- 6 warmups;
+- 18 rotating timed samples per process;
+- four allocations/transforms per timed sample;
+- six independent processes per compiler.
+
+The archive contains 51 tar members. Its recursive SHA256 manifest verifies all
+47 retained files other than SHA256SUMS itself. Both materialization surfaces
+produce the same stable checksum:
+
+    4de576fb40f77507
+
+Retained medians:
+
+| Compiler | Path | ns/sample | paired public/explicit ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | public allocated | 0.959474 | 1.000372 |
+| DMD 2.111 | explicit allocate+transform | 0.967597 | — |
+| LDC 1.41 | public allocated | 0.200731 | 1.002074 |
+| LDC 1.41 | explicit allocate+transform | 0.199360 | — |
+
+Paired ratio ranges:
+
+- DMD: 0.997263-1.006638;
+- LDC: 0.992010-1.016866.
+
+One LDC process has materially higher absolute times for both compared paths,
+but its paired ratio remains near parity. This supports a machine-state effect
+rather than allocating-wrapper overhead.
+
+Conclusion: `tryTransformAllocated` adds no measured material systematic cost
+above the equivalent explicit compact-allocation + writable-view +
+`transformInto` sequence. Together with retained transformInto bridge evidence
+and M3.2b / ADR 0011 executor evidence, unary-transform is qualified for M5.1.
+
+
+## M5.1 reduction family harness
+
+The existing `benchmark/v0_2_sum` evidence remains the accepted qualification
+for generic strict sum. The retained
+`benchmark/v0_2_reduction_family` harness covers the remaining public reduction
+members without introducing alternate algorithms.
+
+Measured layers:
+
+~~~text
+min:
+    public
+    semantic executeExtrema!(minimum)
+
+max:
+    public
+    semantic executeExtrema!(maximum)
+
+minMax:
+    public
+    semantic executeExtrema!(minMax)
+    public min + max two-pass control
+
+mean:
+    public mean!(double, double)
+    explicit sum!double + one division
+~~~
+
+The workload is padded Canonical `float`, 2048 x 512, deterministic finite
+values, 32 elements row padding, six warmups, eighteen timed samples, sixteen
+iterations per sample and six independent CPU-pinned processes per compiler.
+Each compared semantic pair must produce exact bit-equivalent checksums.
+
+The min + max control is informational evidence for the one-pass minMax design;
+family qualification depends on semantic/public coverage, not on claiming a
+portable speedup ratio.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 reduction family qualification
+
+Reference archive:
+
+    raster-v0.2-reduction-family-20261007-110540.tar.gz
+
+SHA256:
+
+    9dcb6116d4143434210182c053a443d613392f859d8ce9c7448b4887639d0f3b
+
+Benchmark head:
+
+    732119f87d222a45625e759c602ec99786e93523
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 2048 x 512 logical samples;
+- 32 elements source-row padding;
+- Canonical sample stride 1;
+- six warmups;
+- eighteen timed samples per process;
+- sixteen iterations per timed sample;
+- six independent processes per compiler.
+
+The archive contains 51 tar members and its recursive SHA256 manifest verifies
+all 47 retained files besides SHA256SUMS. Public/semantic or public/explicit
+pairs are bit-equal during semantic preflight.
+
+The timed XOR checksum folds to zero because the harness combines an even
+number of identical per-sample checksum contributions. This is retained as a
+known harness characteristic; the semantic preflight is the correctness proof
+for the compared result values.
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | min public | 2.459261 | public/semantic 0.988719 |
+| DMD 2.111 | min semantic | 2.484605 | — |
+| DMD 2.111 | max public | 4.772054 | public/semantic 0.997702 |
+| DMD 2.111 | max semantic | 4.778953 | — |
+| DMD 2.111 | minMax public | 5.972995 | public/semantic 1.005181 |
+| DMD 2.111 | minMax semantic | 5.994698 | — |
+| DMD 2.111 | min + max public | 7.305133 | two-pass/minMax 1.219937 |
+| DMD 2.111 | mean public | 0.984770 | public/explicit 1.006190 |
+| DMD 2.111 | mean explicit sum+divide | 0.968109 | — |
+| LDC 1.41 | min public | 2.340852 | public/semantic 0.997985 |
+| LDC 1.41 | min semantic | 2.358105 | — |
+| LDC 1.41 | max public | 2.797366 | public/semantic 1.012728 |
+| LDC 1.41 | max semantic | 2.789799 | — |
+| LDC 1.41 | minMax public | 2.102938 | public/semantic 0.999220 |
+| LDC 1.41 | minMax semantic | 2.109309 | — |
+| LDC 1.41 | min + max public | 5.212049 | two-pass/minMax 2.438111 |
+| LDC 1.41 | mean public | 3.457505 | public/explicit 0.995094 |
+| LDC 1.41 | mean explicit sum+divide | 3.472351 | — |
+
+Conclusion:
+
+- public extrema wrappers add no material systematic cost over the shared
+  `executeExtrema!(mode)` engine;
+- public mean adds no material systematic cost over the exact explicit
+  `sum!double + divide` composition;
+- one-pass minMax is materially cheaper than two public passes on both baseline
+  compilers;
+- absolute DMD/LDC differences remain compiler-specific optimization evidence
+  for M5.3, not an API-bridge issue.
+
+Together with the already-qualified strict-sum benchmark, the complete reduction
+family is qualified for M5.1.
+
+
+## M5.1 neighbourhood family harness
+
+The retained M4.6 prepared-convolution isolation benchmark already qualifies the
+convolution side of the family and rejects runtime prepared coefficient state.
+Its public/direct-fixed gap remains a separate M5 performance signal.
+
+The missing generic neighbourhood coverage is retained at
+`benchmark/v0_2_neighbourhood_family`.
+
+Representative measurements:
+
+~~~text
+centered 3x3:
+    public_generic
+    public_legacy
+    approved hot_executor
+
+generic 5x3:
+    public_canonical
+    public_strided
+~~~
+
+The 3x3 comparison separates the new generic public spelling from the preserved
+qualified public path and from the approved package execution entry.
+
+The 5x3 pair exercises the actual non-3x3 generic implementation on two
+semantically equivalent layouts:
+
+- Canonical source/destination sample stride 1;
+- valid source/destination sample stride 2, forcing the signed-affine fallback.
+
+No private 5x3 executor is exposed for benchmark convenience.
+
+The default workload is float, 1024 x 512 output samples, source row padding of
+32 physical floats, six warmups, eighteen rotating timed samples, eight
+iterations per timed sample and six independent CPU-pinned processes per
+compiler. Source and destination allocations occur before timing. Semantic
+preflight and post-timing checks require identical output checksums across
+equivalent paths.
+
+Fast CI compile-smokes the harness under DMD 2.111.0 and LDC 1.41.0.
+
+## M5.1 neighbourhood family qualification
+
+Reference archive:
+
+    raster-v0.2-neighbourhood-family-20261007-113929.tar.gz
+
+SHA256:
+
+    ff9ca09cefdbe3e39d22e13e4cc1a0ff02279660f2dc0014b501b03838aa62c0
+
+Benchmark head:
+
+    a4923a71e5c2df88caefe16e89e43deba27aa829
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+Workload:
+
+- float;
+- 1024 x 512 output samples;
+- 32 physical-float source-row padding;
+- centered 3x3 halo one sample per side;
+- generic 5x3 halo two samples horizontally and one vertically;
+- strided case sample stride 2;
+- six warmups;
+- eighteen timed samples per process;
+- eight iterations per timed sample;
+- six independent CPU-pinned processes per compiler.
+
+The archive contains 48 files total and its recursive SHA256 manifest verifies
+all 47 retained files besides SHA256SUMS.
+
+Stable output checksums:
+
+    3x3 846327cf63eba383
+    5x3 876633b3b2afab83
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | 3x3 public generic | 76.209098 | generic/legacy 0.996564 |
+| DMD 2.111 | 3x3 public legacy | 76.949913 | legacy/hot 16.745190 |
+| DMD 2.111 | 3x3 hot executor | 4.590744 | generic/hot 16.575960 |
+| DMD 2.111 | 5x3 public Canonical | 120.070195 | — |
+| DMD 2.111 | 5x3 public strided | 120.873677 | strided/Canonical 1.007901 |
+| LDC 1.41 | 3x3 public generic | 18.295198 | generic/legacy 0.987694 |
+| LDC 1.41 | 3x3 public legacy | 18.436974 | legacy/hot 22.287455 |
+| LDC 1.41 | 3x3 hot executor | 0.838107 | generic/hot 22.032183 |
+| LDC 1.41 | 5x3 public Canonical | 30.057437 | — |
+| LDC 1.41 | 5x3 public strided | 30.099535 | strided/Canonical 1.001187 |
+
+Paired process ranges:
+
+- DMD generic3/legacy3: 0.976221-1.004598;
+- DMD generic3/hot3: 16.384370-16.860886;
+- DMD strided5/Canonical5: 0.997348-1.019196;
+- LDC generic3/legacy3: 0.968464-1.014166;
+- LDC generic3/hot3: 21.399375-22.501127;
+- LDC strided5/Canonical5: 0.992973-1.027238.
+
+Conclusion:
+
+- generic and legacy centered-3x3 public surfaces are effectively equivalent;
+- the representative generic 5x3 signed-affine fallback is effectively at
+  parity with the public Canonical path;
+- the public semantic/preflight boundary is extremely material: about 16.6x
+  versus the approved hot executor on DMD and about 22.0x on LDC;
+- because generic and legacy public paths remain at parity, this is not a new
+  generic-wrapper regression;
+- the public/hot gap is retained for M5.2/M5.3 investigation rather than hidden
+  by widening private executor visibility.
+
+Together with the existing M4.6 convolution isolation evidence, the complete
+neighbourhood/convolution family is qualified for M5.1.
+
+
+## M5.3 neighbourhood public/hot codegen diagnostic
+
+The M5.1 reference-XPS evidence established that centered 3x3 generic and legacy
+public paths are at parity, while both are roughly 16.6x (DMD) and 22.0x (LDC)
+slower than the approved hot executor.
+
+Because the representative output contains more than 500,000 pixels, fixed
+once-per-call structural validation alone is unlikely to explain that per-pixel
+ratio. M5.3 therefore starts with a code-generation/inlining diagnostic rather
+than immediately weakening validation.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_neighbourhood_codegen
+
+It compares:
+
+~~~text
+public
+    production tryApplyRasterNeighbourhood3x3
+
+hot_direct
+    approved hot executor directly
+
+hot_noinline
+    approved hot executor behind one benchmark-local noinline boundary
+
+preflight_noinline_hot
+    benchmark-local structural preflight
+    + benchmark-local noinline hot executor
+
+preflight_only
+    same structural preflight without pixel execution
+~~~
+
+The benchmark-local preflight replica is restricted to the fixed independent
+Canonical 3x3 workload and uses production stride queries, ROI construction,
+injectivity and validated affine overlap classification. It is diagnostic only;
+it does not define a second production operation or public API.
+
+The XPS runner also retains full objdump disassembly for both compilers.
+Reference timing and generated-code inspection are required before any
+production source-form change is proposed.
+
+
+## M5.3 neighbourhood post-fix qualification
+
+PR #168 fixed a release-only side-effect-in-assert bug in fixed and generic
+neighbourhood execution. The required-source stride query previously existed
+only inside `assert(...)`, so release builds skipped the query and left the
+stride outputs at zero.
+
+Post-fix diagnostic archive:
+
+    raster-v0.2-neighbourhood-codegen-20261007-123630.tar.gz
+
+SHA256:
+
+    7bab061aeda2c54a936c9cac9b4e35787e4d8bca38b29a8e7c0fde9f53f7a1f6
+
+Head:
+
+    b186b2ea2cd57e7dda20835c1156adbf5e08c15d
+
+The recursive manifest verifies all 23 retained files besides SHA256SUMS.
+
+Post-fix medians:
+
+| Compiler | public ns/pixel | hot direct | preflight + hot | public/hot |
+| --- | ---: | ---: | ---: | ---: |
+| DMD 2.111 | 9.555155 | 9.659016 | 9.541207 | 0.999172 |
+| LDC 1.41 | 1.617783 | 1.638633 | 1.603442 | 0.968592 |
+
+The pre-fix 16-22x public/hot cliff is eliminated.
+
+Evidence correction:
+
+- the pre-fix generic 5x3 Canonical-vs-strided timing is no longer valid as
+  layout-specialization evidence because the nominal Canonical path could not
+  select its Canonical executor in release builds;
+- the pre-fix M4.6 public-convolution/direct-fixed timing is no longer a current
+  production-performance baseline for the same reason.
+
+Both measurements must be repeated on post-#168 develop before their
+performance conclusions are reused.
+
+
+## M5.2 signed-affine neighbourhood qualification
+
+Post-executor reference archive:
+
+    raster-v0.2-neighbourhood-family-20261007-133903.tar.gz
+
+SHA256:
+
+    f465624fcd886dfef79b5eb968dd77770ddf80cf1a13115ab2b9550cf495a7c6
+
+Benchmark head:
+
+    b43b46dcac74b8b36bdc6b7b5c37ee570abfcc62
+
+Reference machine/toolchain:
+
+- Dell XPS 15 / Intel Core i7-9750H;
+- Linux x86-64;
+- CPU affinity 0;
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7.
+
+The archive contains 51 tar members. Its recursive SHA256 manifest verifies all
+47 retained files besides SHA256SUMS.
+
+Stable checksums:
+
+    3x3 846327cf63eba383
+    5x3 876633b3b2afab83
+
+Retained medians:
+
+| Compiler | Operation/path | ns/sample | paired ratio |
+| --- | --- | ---: | ---: |
+| DMD 2.111 | 3x3 public generic | 4.794806 | generic/hot 1.008706 |
+| DMD 2.111 | 3x3 public legacy | 4.753190 | legacy/hot 0.997288 |
+| DMD 2.111 | 3x3 hot executor | 4.763806 | — |
+| DMD 2.111 | 5x3 public Canonical | 23.412985 | — |
+| DMD 2.111 | 5x3 public sample-strided | 20.560056 | strided/Canonical 0.875674 |
+| LDC 1.41 | 3x3 public generic | 0.835597 | generic/hot 1.022256 |
+| LDC 1.41 | 3x3 public legacy | 0.836623 | legacy/hot 1.019805 |
+| LDC 1.41 | 3x3 hot executor | 0.825864 | — |
+| LDC 1.41 | 5x3 public Canonical | 1.565992 | — |
+| LDC 1.41 | 5x3 public sample-strided | 9.885067 | strided/Canonical 6.217490 |
+
+Paired 5x3 ratio ranges:
+
+- DMD: 0.858948-0.900531;
+- LDC: 6.160787-6.380904.
+
+Relative to the corrected pre-executor post-#168 run, the sample-strided
+absolute path improved from approximately 129.56 to 20.56 ns/sample on DMD and
+from approximately 60.52 to 9.89 ns/sample on LDC.
+
+Interpretation:
+
+- the operation-specific signed-affine pointer/stride executor removes the
+  repeated public-view sampling overhead that caused the 6.5x/19.3x gap;
+- DMD now shows no penalty for the representative sample-strided layout;
+- LDC still shows a stable ~6.22x sample-strided/Canonical gap;
+- because both paths now use direct validated pointer/stride executors and the
+  shared storage-capability model already distinguishes Canonical from
+  Universal correctly, the remaining LDC gap is a compiler/code-generation
+  question rather than evidence that raster-d needs a larger shared physical
+  layout taxonomy.
+
+M5.2 is therefore qualified with the existing
+Universal -> Canonical -> Contiguous capability model plus operation-local
+executor selection. The remaining LDC signed-affine neighbourhood signal moves
+to M5.3 / Issue #117.
+
+
+## M5.3 signed-affine codegen diagnostic
+
+After M5.2 introduced a direct validated signed-affine neighbourhood executor,
+reference-XPS evidence showed:
+
+- DMD 2.111.0 sample-strided/Canonical: 0.875674x;
+- LDC 1.41.0 sample-strided/Canonical: 6.217490x.
+
+Because DMD reaches parity with the same semantic executor design, the remaining
+signal is treated as compiler/code-generation behavior rather than as evidence
+for another public API or shared storage-layout class.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_affine_codegen
+
+It compares semantically equivalent weighted 5x3 direct pointer loops:
+
+~~~text
+canonical_static1
+affine_runtime_s2_d2
+affine_static_s2_d2
+affine_runtime_s2_d1
+affine_runtime_s1_d2
+~~~
+
+This isolates:
+
+- runtime versus compile-time sample stride;
+- source-side versus destination-side sample stride;
+- compiler behavior on identical logical arithmetic.
+
+The XPS runner retains six independent CPU-pinned process measurements and
+complete DMD/LDC objdump disassembly. No production optimization is promoted
+until those results are retained and inspected.
+
+
+## M5.3 affine multiversion diagnostic
+
+Diagnostic 2 established that LDC 1.41.0 loses most 5x3 neighbourhood
+performance when either source or destination sample stride remains runtime
+variable, while DMD 2.111.0 does not.
+
+The next retained diagnostic is:
+
+    benchmark/v0_2_affine_multiversion
+
+It evaluates a D-native internal multiversioning shape for common positive
+sample strides 2, 3 and 4:
+
+~~~text
+runtime
+    direct runtime-stride loop
+
+dispatch
+    one runtime stride dispatch
+    -> template-instantiated static-stride loop
+
+static
+    direct template-instantiated static-stride loop
+~~~
+
+The general runtime signed-affine executor remains the fallback for all
+unmatched strides.
+
+The purpose is to determine whether small positive stride multiversioning
+recovers the LDC code-generation loss without materially penalizing DMD or
+requiring a new public API/layout type.
+
+The XPS runner retains six independent CPU-pinned process measurements and
+complete DMD/LDC objdump disassembly.
+
+
+## M5.3 convolution codegen diagnostic
+
+Corrected post-release-stride evidence retained a DMD-only fixed-convolution
+signal:
+
+- DMD 2.111.0 public one-shot/direct-fixed: about 2.90x;
+- LDC 1.41.0 public one-shot/direct-fixed: about 0.96x.
+
+The retained diagnostic harness is:
+
+    benchmark/v0_2_convolution_codegen
+
+It compares five semantically identical weighted 3x3 float convolution paths
+with double accumulation:
+
+~~~text
+public_convolution
+public_neighbourhood_loop
+hot_neighbourhood_loop
+hot_neighbourhood_unrolled
+direct_unrolled
+~~~
+
+The decomposition separates:
+
+- convolution wrapper/alias effects;
+- public neighbourhood preflight/dispatch;
+- loop-based versus explicitly unrolled kernel source form;
+- approved neighbourhood materialization versus fully direct pointer arithmetic.
+
+The XPS runner retains six CPU-pinned process measurements and complete DMD/LDC
+objdump disassembly. No production source-form change is accepted until the
+reference run is retained and inspected.
+
+
+## M5.3 fixed-convolution static-expansion qualification
+
+Production PR #176 replaces the ordinary runtime `foreach` in the compile-time-fixed convolution evaluator with `static foreach`, preserving row-major term order, accumulator type, coefficient values, the final cast, public API and failure semantics.
+
+Integrated production commit:
+
+`f4df7e4cc436e9e061962e125c20fdba2c337173`
+
+PR-head Fast CI run #250 completed successfully under both required compilers. The merge commit is GitHub-verified with `verified: true` and `reason: valid`.
+
+The pre-change retained diagnostic archive is `raster-v0.2-convolution-codegen-20261007-161914.tar.gz` (SHA256 `b031c18428301278c96843c3ac5ce6f4ec0f54540b6111e44c20c19e0cf4c39f`). Its DMD 2.111.0 public-convolution median was 32.906413 ns/pixel and hot-neighbourhood-unrolled median was 6.913483 ns/pixel.
+
+A post-change reference-XPS run was reported as:
+
+- archive: `raster-v0.2-convolution-codegen-20261007-180319.tar.gz`;
+- reported SHA256: `f65ca244b2b8c17683af8fe85ccf3eac33ccf40bfb43e79e35c507ac553dc9cb`;
+- stable workload checksum: `7596c236fe0ac383`.
+
+Reported medians:
+
+| Path | DMD 2.111.0 ns/pixel | LDC 1.41.0 ns/pixel |
+| --- | ---: | ---: |
+| public_convolution | 6.438273 | 1.688785 |
+| public_neighbourhood_loop | 24.855328 | 1.661647 |
+| hot_neighbourhood_loop | 25.025904 | 1.680178 |
+| hot_neighbourhood_unrolled | 6.520485 | 1.713860 |
+| direct_unrolled | 10.971236 | 1.698989 |
+
+The same-run DMD public-convolution / hot-neighbourhood-unrolled ratio is about 0.987x. Relative to the retained pre-change public-convolution median, the reported improvement is about 5.1x. LDC remains in the same performance class across all five paths.
+
+This supports the production conclusion that the material DMD convolution cliff was a source-form/code-generation problem in the runtime loop over a compile-time-fixed kernel. The D-native compile-time expansion closes that gap without a second traversal engine, runtime prepared state, weaker validation or changed public semantics.
+
+**Evidence status:** the post-change timing is reported reference-XPS evidence. The archive itself has not yet been inspected here, so its tar membership, internal `SHA256SUMS`, environment/head metadata, expected run count and disassembly remain to be verified before release-evidence promotion.
+
+
+## M5.3 reduction codegen diagnostic
+
+The retained harness at `benchmark/v0_2_reduction_codegen` decomposes the compiler split observed by the qualified v0.2 reduction-family benchmark.
+
+Input signal:
+
+- mean: DMD about 0.985 ns/sample versus LDC about 3.458;
+- max: DMD about 4.772 versus LDC about 2.797;
+- minMax: DMD about 5.973 versus LDC about 2.103.
+
+For mean, max and minMax the diagnostic separates the production public path, package-internal semantic execution, a benchmark-local exact pointer loop with runtime sample stride, and an otherwise equivalent Canonical sample-stride-one loop. minMax additionally measures two static-stride passes.
+
+The benchmark-local extrema controls preserve NaN propagation and signed-zero selection. Mean preserves one double accumulator, row-major encounter order and one final division. The diagnostic does not introduce fast-math, reassociation, alternate reduction semantics, SIMD or threading.
+
+The XPS collector retains six CPU-pinned processes per compiler and complete objdump disassembly. Production source-form changes require the retained reference run and generated-code inspection.
+
+
+## M5.3 diagnostic 8: binary multiply closeout
+
+Reference archive:
+`raster-v0.2-binary-codegen-20261008-082930.tar.gz`
+
+SHA256:
+`a0bf6b80338f2ee9f0ba11821c8bb4e8430eb3e2a9a8bc19c26b849258f1b436`
+
+Head:
+`841123061378f9ec151eff61981ea81a18c80585`
+
+The recursive SHA256 manifest verifies successfully. The retained run contains
+six CPU-pinned processes per compiler, identical output checksums
+(`1d074824c4a32b83`) across all three paths, compiler/platform/frequency
+metadata and complete DMD/LDC disassembly.
+
+Reference-XPS medians (ns/sample):
+
+### DMD 2.111.0
+
+- public generic zip: 0.906497;
+- public `multiplyInto`: 0.650602;
+- approved Canonical executor: 0.881332;
+- public zip / executor: 1.003496x;
+- wrapper / executor: 0.727610x.
+
+### LDC 1.41.0
+
+- public generic zip: 0.556860;
+- public `multiplyInto`: 0.533331;
+- approved Canonical executor: 0.584779;
+- public zip / executor: 0.962322x;
+- wrapper / executor: 0.925493x.
+
+The earlier small multiply wrapper/executor signal is not reproduced as a stable
+production slowdown. The generic public zip path is at executor parity and the
+arithmetic wrapper is not slower in this focused run. No production
+source-form change is justified.
+
+CPU-frequency snapshots vary materially under the powersave governor; therefore
+cross-run absolute latency is not used for this decision. Same-run paired ratios
+are the retained decision evidence.
+
+PR #183 retains this diagnostic and its Fast-CI compile smoke. It merged as
+`ee0951a21cbafa2b000cfa31929dd737f29f55e5`.
+
+## M5.3 closeout
+
+The compiler/source-form audit is complete. Material retained signals were
+either fixed and qualified or rejected after focused decomposition. M5.3 does
+not leave an unresolved production code-generation cliff that should block the
+SIMD qualification phase.
+
+The earlier generic `ushort -> float` versus specialized `ubyte -> float`
+comparison remains non-apples-to-apples and is carried forward only as a
+comparable-type-pair/SIMD investigation input for M5.4.
+
+
+## v0.2.0 feature-freeze Production release baseline
+
+The initial v0.2.0 release-line baseline was collected on the reference Dell
+XPS 15 after the immutable feature-freeze checkpoint.
+
+Production source checkpoint:
+
+`658f4fd48a2141b4434996e2ed9e1044bf0d5ad3`
+(`freeze/feature-0.2.0`)
+
+Benchmark/release-line head:
+
+`5102ccac1401656839810cc2134998eeea12c42d`
+
+The runner records
+`source_tree_matches_feature_freeze=yes` and
+`source_change_from_feature_freeze=none`. The measured `source/raster`
+tree is therefore byte-for-byte the feature-freeze production source; the
+later release-line commit changes only the benchmark harness.
+
+Reference archive:
+
+`raster-release-0.2-baseline-20261008-140039.tar.gz`
+
+SHA256:
+
+`daf1502169a5d13da64f471e4d3dd8851a8dc43d83eb79af3e1c93bab435a3a3`
+
+The recursive SHA256 manifest verifies all 47 listed evidence files. The
+archive contains six independent CPU0-pinned processes for each compiler and
+stable checksums for all nine workloads.
+
+Toolchain:
+
+- DUB 1.40.0;
+- DMD 2.111.0;
+- LDC 1.41.0, D frontend 2.111.0, LLVM 19.1.7;
+- Linux x86-64, Intel Core i7-9750H.
+
+Reference medians:
+
+| Workload | DMD 2.111 ns/pixel | LDC 1.41 ns/pixel | Checksum |
+| --- | ---: | ---: | --- |
+| Copy ubyte, padded | 0.057759 | 0.049326 | `a6fe21e16e3d0383` |
+| Exact ubyte->float, padded | 0.328067 | 0.135049 | `722e5202d1dd0383` |
+| Exact ubyte->float, negative source row | 0.323704 | 0.136205 | `3c6dae8fd2dd0383` |
+| Fill ubyte, padded | 0.022652 | 0.025913 | `5053d3e51d5d0383` |
+| Point transform float, padded | 0.557429 | 0.220603 | `37cee2ef2e81c0c3` |
+| Strict float->double reduction, negative source row | 1.003495 | 1.002077 | `c0d6a3a000000000` |
+| Binary multiply float, mixed row direction | 0.635261 | 0.765601 | `c363e84e5f2fe383` |
+| 3x3 neighbourhood float, negative source row | 3.754783 | 0.585484 | `8f547c1db49ce052` |
+| Fixed 3x3 convolution float, padded | 4.452610 | 0.758362 | `f00cbf643c6a8383` |
+
+### Regression review against v0.1.0
+
+Seven workloads are directly comparable with the retained v0.1.0 release
+baseline because the logical workload, dimensions and public operation remain
+the same.
+
+The v0.2/v0.1 median ratios are:
+
+| Workload | DMD ratio | LDC ratio | Interpretation |
+| --- | ---: | ---: | --- |
+| Copy ubyte, padded | 1.467x | 0.773x | DMD median noisy; no stable regression established |
+| Exact ubyte->float, padded | 1.039x | 1.022x | parity |
+| Exact ubyte->float, negative source row | 1.031x | 0.980x | parity |
+| Fill ubyte, padded | 0.991x | 0.974x | parity |
+| Point transform float, padded | 0.536x | 1.088x | DMD ~1.87x faster; LDC same class |
+| Strict float->double reduction | 0.995x | 0.295x | DMD parity; LDC ~3.39x faster |
+| 3x3 neighbourhood float | 0.0477x | 0.0384x | ~20.98x DMD and ~26.07x LDC speedup |
+
+The DMD copy median is not treated as a demonstrated regression. Its six
+process medians span 0.036740--0.114441 ns/pixel; the retained v0.1.0 value
+(0.039380 ns/pixel) lies inside that current-process performance class.
+CPU0 pre-run snapshots also range from 800 MHz to about 4.10 GHz under the
+powersave governor. The evidence therefore supports process/frequency variance,
+not a stable operation-level slowdown.
+
+The LDC copy baseline improves relative to v0.1.0.
+
+Binary multiply and fixed convolution are new release-baseline workloads in
+v0.2.0. Their absolute values are retained here as the release-line reference.
+M5 diagnostic results remain the appropriate evidence for source-form,
+executor, SIMD and C++-parity decisions because those diagnostics use different
+isolation workloads and must not be compared as if they were identical release
+workloads.
+
+### Release decision
+
+No reproducible material performance regression is identified by the initial
+v0.2.0 feature-freeze baseline.
+
+The baseline is accepted as the reference point for subsequent stabilization
+changes on `release/0.2`. Future performance-sensitive release-line changes
+must compare against this retained archive under equivalent conditions.

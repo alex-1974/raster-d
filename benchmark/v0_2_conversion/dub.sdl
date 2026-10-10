@@ -1,0 +1,7 @@
+name "raster-v0-2-conversion-benchmark"
+description "raster-d v0.2 conversion benchmark family"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

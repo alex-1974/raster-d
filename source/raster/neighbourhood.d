@@ -1,7 +1,7 @@
 /++
     Public fixed 3 x 3 raster neighbourhood operation.
 
-    M2.3 exposes one semantic radius-one neighbourhood primitive over an
+    This module provides a radius-one neighbourhood primitive over an
     already-materialized resident source. Logical dependency derivation,
     ContextDeficit interpretation, border policy, execution specialization and
     scheduling remain outside this public contract.
@@ -273,11 +273,14 @@ nothrow
     ptrdiff_t requiredSourceRowStrideElements;
     ptrdiff_t requiredSourceSampleStrideElements;
 
-    assert(requiredSource.tryExecutionPlaneStrides(
-        sourcePlaneIndex,
-        requiredSourceRowStrideElements,
-        requiredSourceSampleStrideElements
-    ));
+    const requiredSourceStridesOk =
+        requiredSource.tryExecutionPlaneStrides(
+            sourcePlaneIndex,
+            requiredSourceRowStrideElements,
+            requiredSourceSampleStrideElements
+        );
+
+    assert(requiredSourceStridesOk);
 
     const sourceBase =
         requiredSource.executionRegionBase(sourcePlaneIndex);

@@ -1,0 +1,7 @@
+name "raster-v0-2-simd-convolution"
+description "raster-d M5.4 explicit SIMD convolution diagnostic"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."

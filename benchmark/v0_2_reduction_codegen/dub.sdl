@@ -1,0 +1,7 @@
+name "raster-v0-2-reduction-codegen"
+description "raster-d M5.3 reduction codegen diagnostic"
+authors "Alexander Bernardi"
+license "MIT"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."
