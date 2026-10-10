@@ -18,6 +18,11 @@ are proposed by this review.
 | External `PlaneByteLayout` strides are **bytes** | `source/raster/byte_layout.d` | Public fields are `rowStrideBytes` and `sampleStrideBytes`; validated internal descriptors use element strides. |
 | Strict generic sum has checked overflow and an unsuccessful default result | `source/raster/reduction.d` | `RasterSumError.accumulatorOverflow` is public; `RasterSumResult` initializes with `invalidPlane` and `ok == false`. |
 | Root contract states borrowed lifetime, numerical order and no hidden scheduling | `docs/API_0_2.md` | The source-owned concepts above are represented in the frozen contract; this is a targeted cross-check, **not** comprehensive behavioral validation. |
+| Copy rejects actual source/destination byte overlap before writes | `source/raster/copy.d` | Public Ddoc explicitly rejects overlap, identifies `sourceDestinationOverlap`, and excludes snapshot/memmove semantics. |
+| Generic exact conversion has only structural failure channels | `source/raster/conversion.d` | `RasterConversionError` declares structural failures; public Ddoc states no per-sample numerical failure for `exact`. |
+| Generic neighbourhood requires resident halo | `source/raster/neighbourhood_into.d` | `RasterNeighbourhoodError.unsatisfiedNeighbourhood` is exposed; Ddoc places structural checks before writes. |
+
+
 
 The root contract and the reviewed Ddoc contain no contradiction in
 these *selected* areas. The public documentation remains the caller-facing
