@@ -1,7 +1,13 @@
 # Public API Example Audit
 
 **Status:** complete for the v0.2 release-candidate surface  
-**Baseline:** `release/0.2` before `freeze/api-0.2.0`
+**API checkpoint:** `freeze/api-0.2.0` (`1ea67cb6ffb2c887f78d160249a293ad74ba5cda`)  
+**Qualification target:** current `release/0.2` release-candidate head
+
+The public symbol inventory was completed during the v0.2 API audit and is
+now tied to the immutable API-freeze checkpoint. Documentation-only changes
+on `release/0.2` must still pass the strict DDox/example checks on their
+actual commit, rather than relying on the historical checkpoint alone.
 
 ## Purpose
 
