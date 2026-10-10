@@ -29,6 +29,10 @@ The preliminary [rendered DDox artifact inspection](V0_2_RENDERED_DDOX_AUDIT.md)
 records what has actually been checked in the downloaded PR #221 artifact.
 It is not a final-candidate sign-off.
 
+The [scoped public-contract source cross-check](V0_2_PUBLIC_CONTRACT_SOURCE_AUDIT.md)
+records which source modules and caller-visible claims were inspected.
+It is partial editorial evidence, not a final sign-off.
+
 ## Required remaining review
 
 Before checking off the Ddoc/DDox items in issue #198, on the exact
