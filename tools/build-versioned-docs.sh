@@ -96,4 +96,6 @@ HTML
 test -f "$site_dir/raster.html"
 test -f "$site_dir/versions.html"
 
+python3 "$root/tools/verify-versioned-pages.py" "$site_dir"
+
 echo "PASS: versioned raster-d documentation site built"
