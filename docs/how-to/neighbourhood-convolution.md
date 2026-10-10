@@ -15,8 +15,13 @@ G H I
 
 A fixed convolution multiplies each neighbour by one compile-time coefficient
 and adds the nine products in the specified order. An *identity* kernel
-uses coefficient 1 for the centre and zero for the other eight entries:
-the output equals `E`.
+uses coefficient 1 for the centre and zero for the other eight entries.
+For finite ordinary inputs, it preserves the centre value in the usual
+non-exceptional cases. It is **not** an unconditional identity for all IEEE
+floating-point inputs: multiplying a zero coefficient by `NaN` or infinity
+produces `NaN`, and signed-zero details are governed by the documented
+convolution accumulation order. The kernel executes every coefficient term;
+it does not skip terms whose coefficient is zero.
 
 ## The public building blocks
 
