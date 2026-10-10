@@ -8,6 +8,7 @@ Start here if you use the library rather than maintain it.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
+- [v0.2 candidate release notes (not yet published)](V0_2_RELEASE_NOTES.md) describe changes, qualified gates and remaining blockers.
 - [v0.2 frozen API contract](API_0_2.md) records the audited release-candidate API at `freeze/api-0.2.0`.
 - [v0.1 API baseline](API.md) records the released 0.1 contract.
 
