@@ -79,6 +79,12 @@ jobs:
           name: raster-ddox-release-candidate
           path: build/ddox/site
           retention-days: 14
+      - name: Upload staged versioned Pages site for independent audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: raster-pages-release-candidate
+          path: build/versioned-docs/site
+          retention-days: 14
 
 
   examples:
