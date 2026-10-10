@@ -211,6 +211,13 @@ private:
     }
 
 
+    /++
+        Retains the current backing control block when one is present.
+
+        The count is non-atomic because raster-d exposes no hidden
+        cross-thread ownership policy. Saturation is treated as an
+        Error-level allocation/lifetime failure.
+    +/
     void retain()
     @trusted
     nothrow
@@ -231,6 +238,13 @@ private:
     }
 
 
+    /++
+        Releases one retained-owner reference.
+
+        The final reference destroys RasterBacking exactly once, removes the
+        conservative GC scan range, and frees the malloc-backed control block.
+        An inert/moved-from owner is a no-op.
+    +/
     void release()
     @trusted
     nothrow
@@ -502,7 +516,7 @@ nothrow
     Lifetime of the returned view remains tied to `backing`.
 
     The backing entered retained ownership only after ordinary validation.
-    E5.4d.1c nevertheless deliberately reuses the existing complete writable
+    Writable view derivation deliberately reuses the complete writable
     factory instead of introducing a second assume-validated construction
     boundary.
 
@@ -541,10 +555,13 @@ nothrow
 /++
     Lifetime capability for a retained raster representation.
 
-    Copying a RasterLease retains the same backing representation.
+    Copying a RasterLease retains the same backing representation. The
+    retained-owner reference count is non-atomic; the lease does not provide
+    implicit synchronization for concurrent copies, assignment or destruction.
 
     A RasterView obtained from `view()` borrows from this lease and therefore
-    must not outlive it.
+    must not outlive it. A writable borrow from `tryWritableView()` is bound
+    to the same retained lifetime and does not imply exclusive storage.
 +/
 struct RasterLease(T)
 {

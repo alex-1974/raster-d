@@ -91,7 +91,7 @@ cannot express.
 
 ## 4. Public examples
 
-Every public DDox symbol page in the supported 0.1 API must own a
+Every public DDox symbol page in the supported release API must own a
 compiler-checked documented `unittest` that DDox renders as an **Example**.
 
 Examples must:

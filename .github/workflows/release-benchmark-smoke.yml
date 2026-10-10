@@ -2,12 +2,12 @@ name: Release Benchmark Smoke
 
 on:
   push:
-    branches: [bench-release-0.1-baseline]
+    branches: [release/0.2]
     paths:
       - 'benchmark/release_baseline/**'
       - '.github/workflows/release-benchmark-smoke.yml'
   pull_request:
-    branches: [release/0.1]
+    branches: [release/0.2]
     paths:
       - 'benchmark/release_baseline/**'
       - '.github/workflows/release-benchmark-smoke.yml'
@@ -49,4 +49,4 @@ jobs:
           BIN=benchmark/release_baseline/raster-release-baseline
           "$BIN" 64 32 1 > /tmp/release-benchmark-smoke.txt
           cat /tmp/release-benchmark-smoke.txt
-          test "$(grep -c '^release_benchmark ' /tmp/release-benchmark-smoke.txt)" -eq 7
+          test "$(grep -c '^release_benchmark ' /tmp/release-benchmark-smoke.txt)" -eq 9

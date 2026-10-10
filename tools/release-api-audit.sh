@@ -33,6 +33,11 @@ done < <(
 
 failures=0
 
+extra_flags=()
+if [[ "${RASTER_API_AUDIT_DIP1000:-0}" == "1" ]]; then
+    extra_flags+=("-preview=dip1000")
+fi
+
 compile_probe()
 {
     local name="$1"
@@ -43,7 +48,7 @@ compile_probe()
 
     if (
         cd "$repo_root"
-        "$compiler" -c -preview=dip1000 "${import_args[@]}" \
+        "$compiler" -c "${extra_flags[@]}" "${import_args[@]}" \
             -of="$object" "$source"
     ) >"$log" 2>&1; then
         actual=pass

@@ -46,6 +46,12 @@ enum ExactRasterConversionError : ubyte
 }
 
 
+/++
+    Returns whether two byte intervals overlap.
+
+    Inputs are already-representable start addresses and non-zero sample sizes.
+    Subtraction-based comparison avoids address-addition overflow.
++/
 private
 bool byteIntervalsOverlap(
     size_t first,
@@ -119,6 +125,12 @@ nothrow
 }
 
 
+/++
+    Returns whether two reachable sample-start envelopes are byte-disjoint.
+
+    Sample sizes extend each envelope from its final sample start to its final
+    occupied byte without forming an unchecked end address.
++/
 private
 bool envelopesDisjoint(
     size_t firstMinimum,

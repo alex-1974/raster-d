@@ -2,13 +2,11 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-EXPECTED_BRANCH="release/0.1"
-FEATURE_FREEZE="d8cbcb270d24a344f59c4a7f1880848add38c975"
-API_FREEZE="7afcaad4181566d21ca7ced78cf7b417eae8adbf"
+FEATURE_FREEZE="658f4fd48a2141b4434996e2ed9e1044bf0d5ad3"
+FEATURE_TAG="freeze/feature-0.2.0"
 CPU="${2:-0}"
-OUT="${1:-/tmp/raster-release-0.1-baseline-$(date +%Y%m%d-%H%M%S)}"
+OUT="${1:-/tmp/raster-release-0.2-baseline-$(date +%Y%m%d-%H%M%S)}"
 
-test "$(git -C "$ROOT" branch --show-current)" = "$EXPECTED_BRANCH"
 test ! -e "$OUT"
 mkdir -p "$OUT"
 
@@ -17,38 +15,29 @@ if ! git -C "$ROOT" merge-base --is-ancestor "$FEATURE_FREEZE" HEAD; then
     exit 1
 fi
 
-if ! git -C "$ROOT" merge-base --is-ancestor "$API_FREEZE" HEAD; then
-    echo "STOP: release branch no longer descends from API-freeze baseline" >&2
+if ! git -C "$ROOT" show-ref --verify --quiet "refs/tags/$FEATURE_TAG"; then
+    echo "STOP: required feature-freeze tag is missing: $FEATURE_TAG" >&2
+    exit 1
+fi
+
+tag_commit="$(git -C "$ROOT" rev-list -n 1 "$FEATURE_TAG")"
+
+if [[ "$tag_commit" != "$FEATURE_FREEZE" ]]; then
+    echo "STOP: feature-freeze tag points at $tag_commit, expected $FEATURE_FREEZE" >&2
     exit 1
 fi
 
 mapfile -t source_changes < <(
-    git -C "$ROOT" diff --name-only "$API_FREEZE"..HEAD -- source/raster
+    git -C "$ROOT" diff --name-only "$FEATURE_FREEZE"..HEAD -- source/raster
 )
 
-unexpected_source_changes=()
-
-for path in "${source_changes[@]}"; do
-    case "$path" in
-        source/raster/internal/retained_store.d)
-            ;;
-        *)
-            unexpected_source_changes+=("$path")
-            ;;
-    esac
-done
-
-if (("${#unexpected_source_changes[@]}" != 0)); then
-    echo "STOP: benchmark-relevant or unqualified source changed after freeze/api-0.1.0" >&2
-    printf '  %s\n' "${unexpected_source_changes[@]}" >&2
+if (("${#source_changes[@]}" != 0)); then
+    echo "STOP: production source changed after the v0.2 feature freeze" >&2
+    printf '  %s\n' "${source_changes[@]}" >&2
     exit 1
 fi
 
-source_tree_matches_api_freeze=yes
-
-if (("${#source_changes[@]}" != 0)); then
-    source_tree_matches_api_freeze=no
-fi
+source_tree_matches_feature_freeze=yes
 
 snapshot_freq()
 {
@@ -76,10 +65,10 @@ snapshot_freq()
 {
     echo "benchmark_head=$(git -C "$ROOT" rev-parse HEAD)"
     echo "feature_freeze=$FEATURE_FREEZE"
-    echo "api_freeze=$API_FREEZE"
+    echo "feature_tag=$FEATURE_TAG"
     echo "branch=$(git -C "$ROOT" branch --show-current)"
-    echo "source_tree_matches_api_freeze=$source_tree_matches_api_freeze"
-    printf 'source_change_from_api_freeze=%s\n' "${source_changes[@]:-none}"
+    echo "source_tree_matches_feature_freeze=$source_tree_matches_feature_freeze"
+    printf 'source_change_from_feature_freeze=%s\n' "${source_changes[@]:-none}"
     echo "cpu=$CPU"
     echo "shell_affinity=$(taskset -pc $$ 2>&1 || true)"
     echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -114,7 +103,7 @@ for compiler in dmd ldc2; do
 
         taskset -c "$CPU" "$tmp/$label"             > "$dir/run-$process.txt"
 
-        test "$(grep -c '^release_benchmark ' "$dir/run-$process.txt")" -eq 7
+        test "$(grep -c '^release_benchmark ' "$dir/run-$process.txt")" -eq 9
 
         snapshot_freq "$label-post-$process"
     done
@@ -137,8 +126,8 @@ for path in sorted(root.glob("run-*.txt")):
         rows.setdefault(key,[]).append(float(fields["ns_per_pixel"]))
         checksums.setdefault(key,set()).add(fields["checksum"])
 
-if len(rows) != 7:
-    raise SystemExit(f"expected 7 workloads, got {len(rows)}")
+if len(rows) != 9:
+    raise SystemExit(f"expected 9 workloads, got {len(rows)}")
 
 for key,values in rows.items():
     if len(values) != 6:

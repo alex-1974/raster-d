@@ -395,9 +395,9 @@ public:
         This accessor returns a value copy and therefore grants no write
         capability to the underlying raster storage.
 
-        This is primarily a correctness/control-plane accessor. Performance
-        kernels will later use separately validated internal adapters rather
-        than repeatedly performing these bounds checks.
+        This is primarily a correctness/control-plane accessor. Optimized
+        execution uses separately validated package-internal adapters rather
+        than repeating these bounds checks at each sample.
     +/
     bool trySample(
         size_t band,

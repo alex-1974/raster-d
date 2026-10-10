@@ -6,6 +6,41 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.2.0 — Release candidate (unpublished)
+
+The v0.2.0 feature set and public API are frozen at
+`freeze/feature-0.2.0` and `freeze/api-0.2.0`, respectively.
+Release qualification is in progress; **this entry does not announce
+publication**. The latest published stable release remains v0.1.0.
+
+### Added and expanded
+
+- generic, checked destination-oriented raster operation families,
+  including exact sample conversion and typed reductions;
+- fixed compile-time convolution kernels on the established
+  neighbourhood execution family;
+- v0.2 public API contract inventory in `docs/API_0_2.md`.
+
+### Performance and compatibility
+
+- M5 compiler/codegen, SIMD and comparable-C++ performance qualification
+  recorded in the repository's release evidence documents;
+- existing raster ownership and borrowing semantics retained, without
+  adding a package-wide DIP1000 requirement;
+- public API frozen independently of the earlier v0.1.0 source contract.
+
+### Documentation and release qualification
+
+- beginner introduction explaining raster grids and the library boundary;
+- practical guides for zero-copy ROI, checked sums, exact conversion and
+  neighbourhood/halo requirements;
+- release-content gate requiring an exact-head README, changelog, Ddoc/DDox,
+  Pages and publication-status audit immediately before promotion.
+
+A detailed unpublished release-notes draft is maintained in
+`docs/V0_2_RELEASE_NOTES.md`. The final release date, remaining gates and
+publication status will be verified at the actual v0.2.0 release.
+
 ## 0.1.0 — 2026-10-05
 
 First public release of the generic raster-core library.

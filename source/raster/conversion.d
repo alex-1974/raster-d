@@ -103,6 +103,15 @@ enum RasterConversionError : ubyte
     sourceDestinationOverlap
 }
 
+/// Example recognizing a generic conversion failure category.
+@safe unittest
+{
+    import raster;
+    assert(RasterConversionError.init == RasterConversionError.none);
+    assert(RasterConversionError.shapeMismatch != RasterConversionError.none);
+}
+
+
 
 /++
     Converts one selected logical source plane into an equally shaped writable
