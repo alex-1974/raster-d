@@ -37,8 +37,9 @@ publication**. The latest published stable release remains v0.1.0.
 - release-content gate requiring an exact-head README, changelog, Ddoc/DDox,
   Pages and publication-status audit immediately before promotion.
 
-The final release notes, completion of all release gates and publication
-date will be finalized at the actual v0.2.0 release.
+A detailed unpublished release-notes draft is maintained in
+`docs/V0_2_RELEASE_NOTES.md`. The final release date, remaining gates and
+publication status will be verified at the actual v0.2.0 release.
 
 ## 0.1.0 — 2026-10-05
 
