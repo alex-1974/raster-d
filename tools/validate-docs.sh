@@ -113,7 +113,7 @@ grep -q 'freeze/feature-0.2.0' "$repo/README.md" || {
 }
 
 grep -q 'freeze/api-0.2.0' "$repo/README.md" || {
-    echo "FAIL: README.md does not identify the pending v0.2 API checkpoint" >&2
+    echo "FAIL: README.md does not identify the completed v0.2 API checkpoint" >&2
     exit 1
 }
 
@@ -131,5 +131,44 @@ grep -q '^authors "Alexander Bernardi"$' "$repo/dub.sdl" || {
     echo "FAIL: unexpected DUB package author metadata" >&2
     exit 1
 }
+
+
+
+# A release candidate must not regress to the stale status that previously
+# survived documentation updates. Check structural facts only; historical
+# release notes may legitimately retain old wording.
+grep -Eq '^v0[.]2[.]0 is a release candidate' "$repo/README.md" || {
+    echo "FAIL: README.md must identify v0.2.0 as the release candidate" >&2
+    exit 1
+}
+
+grep -q 'is frozen at `freeze/api-0.2.0`' "$repo/README.md" || {
+    echo "FAIL: README.md must identify the completed v0.2 API freeze" >&2
+    exit 1
+}
+
+if grep -Eiq 'the public API is being audited before|API freeze pending|freeze/api-0[.]2[.]0.*(to be created|will be created)' "$repo/README.md"; then
+    echo "FAIL: README.md retains obsolete pre-API-freeze wording" >&2
+    exit 1
+fi
+
+grep -q '^## 0.2.0 — Release candidate (unpublished)
+ "$repo/CHANGELOG.md" || {
+    echo "FAIL: CHANGELOG.md needs an explicitly unpublished v0.2.0 section" >&2
+    exit 1
+}
+
+grep -q '^## 0.1.0 — 2026-10-05
+ "$repo/CHANGELOG.md" || {
+    echo "FAIL: CHANGELOG.md must retain historical v0.1.0 section" >&2
+    exit 1
+}
+
+[[ -f "$repo/docs/V0_2_FINAL_RELEASE_CONTENT_GATE.md" ]] || {
+    echo "FAIL: mandatory final release-content gate documentation is absent" >&2
+    exit 1
+}
+
+echo "PASS: candidate release status and API-freeze facts agree"
 
 echo "PASS: release documentation structure and metadata are synchronized"
