@@ -2,7 +2,11 @@
 
 `raster-d` is a high-performance generic raster library for D.
 
-`raster-d` is a high-performance generic raster library for D.
+**New to raster data?** A raster is a grid of values: heights, temperatures,
+measurements or image samples. `raster-d` helps programs work with their
+shape, storage, regions and processing without making every application
+implement that machinery itself. Start with
+[What is a raster, and what can raster-d do?](docs/understanding-rasters.md).
 
 It represents large resident or streamed raster data without forcing image,
 colour, radiometric, or geospatial-image semantics on every consumer.
