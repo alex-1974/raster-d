@@ -83,3 +83,38 @@ layout, JavaScript behavior or editorial correctness of every example.
 qualification. This inspection is repeatable evidence of a successful PR
 artifact, **not final-release-head DDox sign-off**. Do not mark issue #198's
 final DDox/content gate complete from this artifact alone.
+
+
+## Independent rendered ZIP inspection (PR #234)
+
+- Inspected: 2026-10-10.
+- Source: [Release Documentation workflow 38067809305](https://github.com/alex-1974/raster-d/actions/runs/38067809305), PASS (PR #234).
+- PR head SHA: `d788febef6b2d1b91c001559d3ad155bef47fedb`.
+- Downloaded artifact: `raster-ddox-release-candidate`, ID `11676420121`, size 268468 bytes.
+- Corresponding subsequent squash merge to `release/0.2`:
+  `3ab1b7831da590c7f25a9429d17c3c2face616ea`.
+
+The archive was downloaded and its file contents independently inspected;
+the result is not inferred from artifact metadata or the CI checkmark alone.
+
+| Check | Observed |
+| --- | ---: |
+| Files | 146 |
+| HTML pages | 124 |
+| Public module pages | 25 |
+| Public symbol pages | 97 |
+| Public symbol pages containing `Example` | 97 / 97 |
+| HTML files containing literal `raster.internal` | 0 |
+| Unresolved relative HTML `href` / `src` references | 0 |
+
+Representative page files were inspected: `raster.html`,
+`raster/reduction/mean.html`, `raster/reduction/minMax.html`,
+`raster/backing/RasterLease.html` and
+`raster/convolution/convolveInto.html`. The `index.html` browser title is
+still the generic `API documentation`.
+
+**Limitations:** This is a **PR-head** HTML artifact and not a new
+post-squash exact release-head documentation build. It does not certify
+every example's editorial accuracy, external HTTP links, browser rendering
+or JavaScript, deployed live GitHub Pages aliases, or the final candidate's
+release-content gate. These requirements remain open in issue #198.
