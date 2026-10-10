@@ -51,6 +51,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # versioned Pages builder needs published release tags
       - uses: dlang-community/setup-dlang@v2
         with:
           compiler: dmd-2.111.0
