@@ -152,12 +152,12 @@ if grep -Eiq 'the public API is being audited before|API freeze pending|freeze/a
     exit 1
 fi
 
-grep -Fqx '## 0.2.0 — Release candidate (unpublished)'$repo/CHANGELOG.md" || {
+grep -Fqx '## 0.2.0 — Release candidate (unpublished)' "$repo/CHANGELOG.md" || {
     echo "FAIL: CHANGELOG.md needs an explicitly unpublished v0.2.0 section" >&2
     exit 1
 }
 
-grep -Fqx '## 0.1.0 — 2026-10-05'$repo/CHANGELOG.md" || {
+grep -Fqx '## 0.1.0 — 2026-10-05' "$repo/CHANGELOG.md" || {
     echo "FAIL: CHANGELOG.md must retain historical v0.1.0 section" >&2
     exit 1
 }
