@@ -2,6 +2,8 @@
 
 `raster-d` is a high-performance generic raster library for D.
 
+`raster-d` is a high-performance generic raster library for D.
+
 It represents large resident or streamed raster data without forcing image,
 colour, radiometric, or geospatial-image semantics on every consumer.
 
