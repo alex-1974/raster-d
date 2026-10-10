@@ -52,10 +52,20 @@ def main() -> int:
     if not tagged:
         print("FAIL: stable Pages root has no published version", file=sys.stderr)
         return 1
-    # Reject an unreleased checkout being published at the default root.
-    if root.read_bytes() != (site / tagged[-1] / "raster.html").read_bytes():
-        print("FAIL: root API page differs from latest stable tag", file=sys.stderr)
-        return 1
+    # Reject a mixed site where the root landing page is stable but its
+    # module/symbol pages or assets were copied from an unreleased checkout.
+    stable_dir = site / tagged[-1]
+    for stable_file in stable_dir.rglob("*"):
+        if not stable_file.is_file():
+            continue
+        root_file = site / stable_file.relative_to(stable_dir)
+        if not root_file.is_file() or root_file.read_bytes() != stable_file.read_bytes():
+            print(
+                f"FAIL: root differs from latest stable tag: "
+                f"{stable_file.relative_to(stable_dir)}",
+                file=sys.stderr,
+            )
+            return 1
 
     if tagged and labeled != [tagged[-1]]:
         print(
