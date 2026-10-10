@@ -6,6 +6,10 @@ fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/docs"
 touch "$fixture/docs/V0_2_FINAL_RELEASE_CONTENT_GATE.md"
+mkdir -p "$fixture/docs/tutorial"
+printf "v0.2 documentation\\n" > "$fixture/docs/README.md"
+printf "Getting started with v0.2\\n" > "$fixture/docs/tutorial/getting-started.md"
+printf "raster-d v0.2 release notes\\n" > "$fixture/docs/V0_2_RELEASE_NOTES.md"
 
 make_readme() {
     printf 'v0.2.0 is %s\nIts public API\nis frozen at `freeze/api-0.2.0`.\n%s\n' "$1" "$2" > "$fixture/README.md"
@@ -33,6 +37,18 @@ expect_pass 'valid candidate'
 make_readme 'released' 'v0.2.0 is published'
 make_changelog '## 0.2.0 — 2026-10-10'
 expect_pass 'valid published'
+
+make_readme 'released' 'v0.2.0 is published'
+make_changelog '## 0.2.0 — 2026-10-10'
+printf 'The latest published stable package is v0.1.0; v0.2.0 is not yet published\\n' > "$fixture/docs/tutorial/getting-started.md"
+expect_fail 'published release cannot retain candidate tutorial'
+printf 'Getting started with v0.2\\n' > "$fixture/docs/tutorial/getting-started.md"
+printf '# raster-d v0.2.0 release notes — candidate\\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
+expect_fail 'published release cannot retain draft release notes'
+printf 'raster-d v0.2 release notes\\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
+printf -- '- [v0.2 candidate release notes (not yet published)]\\n' > "$fixture/docs/README.md"
+expect_fail 'published release cannot retain draft docs index'
+printf 'v0.2 documentation\\n' > "$fixture/docs/README.md"
 
 make_readme 'a release candidate' 'v0.2.0 is not yet published'
 make_changelog '## 0.2.0 — 2026-10-10'
