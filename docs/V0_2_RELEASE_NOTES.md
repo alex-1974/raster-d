@@ -95,10 +95,23 @@ all PASS. The DDox ZIP (`11675448689`) and staged versioned Pages ZIP
 (`11675748317`) were downloaded and independently inspected; their
 public-only page inventories and stable-root byte comparisons passed.
 
-Subsequent documentation-only PRs advanced `release/0.2` beyond that
-checkpoint; the artifact does **not** qualify a newer final SHA or prove live
-Pages deployment. Any final content sign-off must be repeated on the actual
-candidate being promoted.
+A later exact-branch release-documentation push at
+`eb51831f011b583e45c3d508df6ee1d11aeafadc` passed
+[run 38072236527](https://github.com/alex-1974/raster-d/actions/runs/38072236527):
+strict DDox and both compiled-example jobs passed. Its independently
+inspected DDox artifact (`11676973853`) contains 97 public symbol Example
+pages; its staged Pages artifact (`11676774008`) preserves the latest tagged
+stable release at the root, provides `/dev/` and `/versions.html`, and has
+no broken relative HTML links in the checked inventory. These artifacts
+qualify the named SHA only, not any later candidate or a live deployment.
+
+The independent live site check on 2026-10-10 returned HTTP 200 for
+`/raster.html`, `/v0.1.0/raster.html` and `/versions.html`, but HTTP 404 for
+`/dev/raster.html`. The deployed `main` Pages builder predates the
+release-branch versioned-site layout; the qualified staged site has not
+been deployed. Do not mistake the live stable Pages check for complete
+versioned-site publication. Recheck the exact final candidate and live
+version navigation during the release gate.
 
 ## Release blockers still open
 
