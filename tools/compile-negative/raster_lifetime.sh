@@ -13,6 +13,14 @@ mkdir -p "$tmp_dir"
 
 failures=0
 
+# Ordinary-mode observation keeps positive probes mandatory, while reporting
+# negative outcomes without assuming DIP1000 rejection semantics.
+observe_ordinary="${RASTER_LIFETIME_OBSERVE_ORDINARY:-0}"
+compile_flags=()
+if [ "$observe_ordinary" != "1" ]; then
+    compile_flags+=(-preview=dip1000)
+fi
+
 
 cat > "$tmp_dir/positive.d" <<'D'
 module raster_lifetime_positive;
@@ -361,7 +369,7 @@ compile_probe()
         cd "$repo_root" &&
         "$compiler" \
             -c \
-            -preview=dip1000 \
+            "${compile_flags[@]}" \
             -unittest \
             -Isource \
             -of="$object_file" \
@@ -382,7 +390,12 @@ compile_probe()
             failures=$((failures + 1))
         fi
     else
-        if [ "$compiled" = "no" ]; then
+        if [ "$observe_ordinary" = "1" ]; then
+            echo "OBSERVE ordinary-mode $name: compiled=$compiled"
+            if [ "$compiled" = "no" ]; then
+                sed -n '1,30p' "$log_file" | sed 's/^/    /'
+            fi
+        elif [ "$compiled" = "no" ]; then
             echo "PASS expected-rejection: $name"
             echo "  compiler diagnostic:"
             sed -n '1,80p' "$log_file" | sed 's/^/    /'

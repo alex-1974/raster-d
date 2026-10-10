@@ -64,6 +64,13 @@ jobs:
           tools/compile-negative/raster_lifetime.sh "$DC"
           tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
 
+      - name: Observe ordinary-mode lifetime compiler outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          RASTER_LIFETIME_OBSERVE_ORDINARY=1 tools/compile-negative/raster_lifetime.sh "$DC"
+          RASTER_LIFETIME_OBSERVE_ORDINARY=1 tools/compile-negative/raster_writable_view_lifetime.sh "$DC"
+
       - name: External retained-import link closure
         shell: bash
         run: |
