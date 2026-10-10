@@ -12,6 +12,10 @@ The operation checks shape, writable backing, overlap, and address representabil
 
 ## Convert samples
 
+For a complete `ubyte` to `float` example with checked results, see
+[Convert raster samples exactly](convert-samples.md).
+
+
 Use the generic conversion family for supported sample conversions. The released 0.1 API also includes exact `ubyte -> float` conversion.
 
 Keep source and destination lifetimes visible in the calling scope:
