@@ -2,6 +2,8 @@
 
 Start here if you use the library rather than maintain it.
 
+**New to raster data?** Read [What is a raster and why use raster-d?](understanding-rasters.md) before the API tutorial.
+
 - [Getting started](tutorial/getting-started.md) shows how to create a retained raster and read samples.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
 - [Glossary](glossary.md) defines the raster terms used by the API.
