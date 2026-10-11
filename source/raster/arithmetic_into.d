@@ -479,7 +479,7 @@ if (isRasterArithmeticFloating!T)
     RasterZipTransformError error;
 
     assert(
-        !left.addInto(
+        !left.divideInto(
             0,
             right,
             0,
