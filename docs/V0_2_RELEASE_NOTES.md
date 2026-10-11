@@ -1,5 +1,16 @@
 # raster-d v0.2.0 release notes — candidate
 
+> **Postpublication update (2026-10-10):** v0.2.0 is published at the
+> [signed release tag](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0).
+> GitHub Release, DUB `raster-d@0.2.0`, versioned/stable Pages, and fresh
+> DMD/LDC external consumers were verified. The candidate-era status and
+> blocker sections below are preserved as **historical prepublication
+> evidence**, not statements of current availability. The complete public
+> Ddoc editorial review and exact-head prepromotion content sign-off were
+> **not completed before publication** and must not be marked retroactively
+> PASS (see [issue #198](https://github.com/alex-1974/raster-d/issues/198)).
+
+
 **Status: DRAFT / NOT PUBLISHED.** This text describes the frozen v0.2
 release candidate. Do not present it as an actual GitHub Release or a
 published DUB package until the final content gate, tag, publication,

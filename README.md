@@ -6,7 +6,7 @@
 measurements or image samples. `raster-d` helps programs work with their
 shape, storage, regions and processing without making every application
 implement that machinery itself. Start with
-[What is a raster, and what can raster-d do?](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/understanding-rasters.md).
+[What is a raster, and what can raster-d do?](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/understanding-rasters.md).
 
 It represents large resident or streamed raster data without forcing image,
 colour, radiometric, or geospatial-image semantics on every consumer.
@@ -31,11 +31,17 @@ checks, public-only DDox, external archive consumers, and the reference XPS
 performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
 documentation, and DUB publication were verified after release.
 
-v0.2.0 is a release candidate undergoing stabilization on `release/0.2`.
-Its feature set is frozen at `freeze/feature-0.2.0`, and its public API
-is frozen at `freeze/api-0.2.0`. **v0.2.0 is not yet published**; v0.1.0
-remains the latest published stable version until the release checks,
-GitHub Release, documentation publication and DUB verification complete.
+v0.2.0 was published on 2026-10-10. Its feature set was frozen at
+`freeze/feature-0.2.0` and its public API at `freeze/api-0.2.0`.
+The signed `v0.2.0` tag, [GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0),
+versioned/stable documentation, DUB `raster-d@0.2.0`, and independent
+DMD/LDC external consumers were verified after publication.
+
+The full declaration-by-declaration editorial Ddoc review and exact-head
+prepromotion content sign-off were not completed before publication; the
+remaining audit is tracked in [issue #198](https://github.com/alex-1974/raster-d/issues/198).
+This does not reverse the published release or turn historical evidence
+into a retrospective prepublication PASS.
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
@@ -92,7 +98,7 @@ A successful import transfers the adopted resource into retained raster
 ownership. `RasterLease` keeps that storage alive. `RasterView` borrows from
 the retained lifetime and does not own storage.
 
-See [docs/README.md](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md) for the user documentation path.
+See [docs/README.md](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md) for the user documentation path.
 
 ## What raster-d provides
 
@@ -200,9 +206,9 @@ compiler-package floor.
 
 Start with:
 
-- [user documentation](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md);
-- [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API_0_2.md);
-- [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API.md);
+- [user documentation](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md);
+- [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API_0_2.md);
+- [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API.md);
 - [changelog](CHANGELOG.md).
 
 Maintainer context lives in `ROADMAP.md`, `DESIGN.md`, `BENCHMARK.md`,
