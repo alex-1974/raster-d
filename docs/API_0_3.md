@@ -1,9 +1,14 @@
-# raster-d 0.3 public API audit — release candidate
+# raster-d v0.3.0 public API contract
 
-**Status:** `v0.3.0` is **not published**. API review and release qualification are pending.
+**Status:** The v0.3.0 public source API is frozen and qualified. Actual package
+publication is established separately by the signed `v0.3.0` release tag,
+GitHub Release and DUB registry availability.
 **Base:** `develop` commit `c7aff5d1c8ccb25e8741e940dfb69c1439a51541` (2026-10-22).
 **Earlier published source contract:** [v0.2.0](API_0_2.md), frozen at `freeze/api-0.2.0`.
-**v0.3 freeze checkpoints:** `freeze/feature-0.3.0` and `freeze/api-0.3.0` are **not yet created**. Do not treat this draft as an API-freeze receipt.
+**Feature checkpoint:** `freeze/feature-0.3.0` at `c7aff5d1c8ccb25e8741e940dfb69c1439a51541`.
+**API checkpoint:** `freeze/api-0.3.0` at `fdea765a271893b25d5f8af1f29087b40caa5dc7`.
+Both are signed annotated tags. Release-line documentation-only changes after
+that checkpoint do not alter the frozen public source contract.
 
 ## Supported consumer boundary
 
@@ -19,7 +24,7 @@ Implementation submodules do not acquire separate compatibility guarantees merel
 ## Compatibility
 
 The entire frozen v0.2 root export set (66 symbols; see [v0.2 audit](API_0_2.md)) is retained.
-v0.3 adds **six** histogram-related root exports, for a candidate total of **72**.
+v0.3 adds **six** histogram-related root exports, for a total of **72**.
 
 | Added public root export | Role |
 | --- | --- |
@@ -77,8 +82,15 @@ image colour/channel policies or automatic bucket allocation.
 
 ## Release qualification
 
-The v0.3 release candidate must pass complete compiler/platform,
-package/clean-consumer, documentation/DDox, API, numerical and publication gates.
-The previous two feature PRs passed Fast DMD/LDC CI; that is **not** by itself
-a full release qualification. Track sign-off in [issue #254](https://github.com/alex-1974/raster-d/issues/254)
+Source/API qualification at the v0.3.0 API checkpoint includes the full
+15/15 Release Gate, 8/8 Compiler Floor, 3/3 Release Documentation and 2/2
+Archive Consumer checks, with API documentation build successful. The
+public DDox example audit covers 111/111 symbol pages. A representative
+LDC 1.42.0 release-mode histogram smoke verified count results and measured
+median 776.6 MiB/s for `histogram256` and 219.4 MiB/s for
+`histogramInto`; no C++ performance-parity claim is made.
+The exact-head and publication evidence are in
+[issue #254](https://github.com/alex-1974/raster-d/issues/254)
 and [v0.3 release gate](V0_3_RELEASE_GATE.md).
+The release tag, registry and published-package consumer must be independently
+verified before declaring publication complete.
