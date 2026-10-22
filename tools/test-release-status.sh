@@ -70,8 +70,7 @@ expect_fail 'obsolete pending audit claim'
 # A new minor candidate must not invalidate already-published v0.2.
 make_readme 'released' 'v0.2.0 is published'
 printf 'v0.3.0 is a release candidate\n' >> "$fixture/README.md"
-make_changelog 
-## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026-10-10'
+make_changelog $'## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026-10-10'
 printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
 expect_pass 'v0.3 candidate alongside published v0.2'
 
@@ -86,8 +85,7 @@ printf 'PUBLISHED: incorrectly claiming v0.3 release\n' > "$fixture/docs/V0_3_RE
 expect_fail 'v0.3 candidate cannot claim publication'
 printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
 
-make_changelog 
-## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
+make_changelog $'## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
 expect_fail 'v0.3 candidate requires an unpublished changelog'
 
 echo 'PASS: v0.2 publication history and v0.3 candidate status positive/negative regressions'
