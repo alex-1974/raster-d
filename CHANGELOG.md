@@ -24,7 +24,13 @@ added. The v0.2.0 release and freeze tags remain unchanged.
 - Generic caller-buffered interval histograms for all 10 numeric sample types,
   exact signed and 64-bit integral bin assignment, finite floating range policy,
   explicit out-of-range/NaN counts, and ROI/tiled composition (issue #251).
-  Available on `develop` after integration, not in v0.2.0.
+  Available on the v0.3 release-candidate branch, not in published v0.2.0.
+
+### Documentation and release
+
+- Candidate API audit: `docs/API_0_3.md`.
+- Candidate release notes: `docs/V0_3_RELEASE_NOTES.md`.
+- Exact-head release qualification checklist: `docs/V0_3_RELEASE_GATE.md`.
 
 ## 0.2.0 — 2026-10-10
 
