@@ -43,6 +43,13 @@ remaining audit is tracked in [issue #198](https://github.com/alex-1974/raster-d
 This does not reverse the published release or turn historical evidence
 into a retrospective prepublication PASS.
 
+v0.3.0 is a release candidate and is **not yet published**. It adds generic
+numeric histogram operations for exact 8-bit frequency counts and configurable
+intervals over the ten supported numeric sample types. The candidate API is
+recorded in [docs/API_0_3.md](docs/API_0_3.md), and its release qualification
+is tracked in [issue #254](https://github.com/alex-1974/raster-d/issues/254).
+The existing v0.2.0 DUB package cannot yet supply these new symbols.
+
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
 
