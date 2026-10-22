@@ -477,7 +477,7 @@ version (unittest)
         static foreach (Sample; AliasSeq!(
             byte, ubyte, short, ushort, int, uint, long, ulong, float, double
         ))
-        {
+        {{
             Sample[4] values = [
                 cast(Sample) 0,
                 cast(Sample) 2,
@@ -500,7 +500,7 @@ version (unittest)
             assert(result.belowRange == 0);
             assert(result.aboveRange == 0);
             assert(result.nanCount == 0);
-        }
+        }}
     }
 
     // Signed values, range endpoints and both out-of-range categories.
@@ -665,7 +665,7 @@ version (unittest)
     unittest
     {
         static foreach (Sample; AliasSeq!(float, double))
-        {
+        {{
             Sample[8] values = [
                 -Sample.infinity, cast(Sample) -10,
                 cast(Sample) -5, cast(Sample) 0,
@@ -687,7 +687,7 @@ version (unittest)
             assert(result.belowRange == 1);
             assert(result.aboveRange == 1);
             assert(result.nanCount == 1);
-        }
+        }}
     }
 
     unittest
