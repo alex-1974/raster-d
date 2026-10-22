@@ -56,6 +56,11 @@ public import raster.reduction :
     mean,
     trySumFloatToDouble;
 
+public import raster.histogram :
+    RasterHistogram256Error,
+    RasterHistogram256Result,
+    histogram256;
+
 public import raster.fill :
     tryFillRasterPlane,
     fill;
