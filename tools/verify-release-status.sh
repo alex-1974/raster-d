@@ -20,7 +20,7 @@ elif grep -Eq '^v0[.]2[.]0 is released' "$repo/README.md"; then
         echo "FAIL: published v0.2.0 README requires dated changelog heading" >&2
         exit 1
     }
-    if grep -Fq 'Release candidate (unpublished)' "$repo/CHANGELOG.md"; then
+    if grep -Fq '## 0.2.0 — Release candidate (unpublished)' "$repo/CHANGELOG.md"; then
         echo "FAIL: published v0.2.0 cannot retain unpublished changelog status" >&2
         exit 1
     fi
