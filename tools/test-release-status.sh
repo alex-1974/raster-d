@@ -74,6 +74,13 @@ make_changelog $'## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026
 printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
 expect_pass 'v0.3 candidate alongside published v0.2'
 
+# The docs index may describe the new unpublished v0.3 candidate.
+printf '%s\n' '- [v0.3 candidate API](API_0_3.md); v0.3 is not yet published.' > "$fixture/docs/README.md"
+expect_pass 'unpublished v0.3 announcement in shared docs index'
+printf '%s\n' '- v0.2.0 is not yet published.' > "$fixture/docs/README.md"
+expect_fail 'shared docs index cannot regress published v0.2'
+printf 'v0.2 documentation\n' > "$fixture/docs/README.md"
+
 # Historical v0.2 candidate notes are allowed only with a retrospective caveat.
 printf 'Postpublication update: historical prepublication evidence. DRAFT / NOT PUBLISHED\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
 expect_pass 'historical candidate notes explicitly marked retrospective'

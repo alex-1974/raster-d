@@ -8,6 +8,7 @@
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
     License: MIT
+    Date: 2026-10-22
 +/
 module raster.histogram_into;
 
@@ -291,9 +292,13 @@ if (isNumericRasterSample!T)
 }
 
 
-// Integer multiplication/division without overflow or floating rounding.
-// Offsets and span are unsigned differences of ordered signed/unsigned
-// values, so they correctly cover even [long.min, long.max] and [0, ulong.max].
+/++
+    Assigns an integer offset to an equal-width interval exactly.
+
+    All operands are unsigned widths/differences of ordered integers;
+    the fallback preserves integer rounding without intermediate overflow.
+    This also covers full signed/unsigned 64-bit value domains.
++/
 private
 size_t exactIntegralBin(
     ulong offset,
@@ -357,6 +362,13 @@ nothrow
 }
 
 
+/++
+    Assigns a finite floating value to an equal-width interval.
+
+    Uses double arithmetic and a scaled fraction if the direct double
+    span would overflow. The public contract explicitly permits rounding
+    near interval boundaries.
++/
 private
 size_t floatingBin(T)(
     T value,

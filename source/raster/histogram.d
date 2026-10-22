@@ -9,6 +9,7 @@
     Authors: Alexander Bernardi
     Copyright: Copyright © 2026, Alexander Bernardi
     License: MIT
+    Date: 2026-10-22
 +/
 module raster.histogram;
 
