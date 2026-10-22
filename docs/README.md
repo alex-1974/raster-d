@@ -6,7 +6,7 @@ Start here if you use the library rather than maintain it.
 
 - [Getting started](tutorial/getting-started.md) shows how to create a retained raster and read samples.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
-- [Exact 8-bit histogram](how-to/histogram256.md) counts ubyte values on resident views and windows (unreleased development API).
+- [Exact 8-bit histogram](how-to/histogram256.md) counts ubyte values on resident views and windows (v0.3 release-candidate API).
 - [Numeric interval histograms](how-to/histogram-intervals.md) use caller-owned bins for signed, unsigned and floating-point rasters (unreleased development API).
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
