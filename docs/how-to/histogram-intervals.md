@@ -1,6 +1,6 @@
 # Numeric interval histograms
 
-**Availability:** Unreleased development API for
+**Availability:** Unreleased v0.3.0 release-candidate API for
 [raster-d issue #251](https://github.com/alex-1974/raster-d/issues/251).
 It is not part of the immutable v0.2.0 release.
 
