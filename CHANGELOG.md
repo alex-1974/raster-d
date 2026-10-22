@@ -6,6 +6,15 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## Unreleased
+
+### Added
+
+- exact, allocation-free `ubyte` histogram reduction with 256 `ulong`
+  counts, signed-stride/ROI support, checked count overflow and composable
+  window counts (raster-d issue #251). This development API is **not**
+  part of the frozen v0.2.0 release.
+
 ## 0.2.0 — 2026-10-10
 
 The v0.2.0 feature set and public API are frozen at
