@@ -95,12 +95,11 @@ printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELE
 make_changelog $'## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
 expect_fail 'v0.3 candidate requires an unpublished changelog'
 
-# The final pre-tag metadata can be publication-neutral: v0.3 source
-# qualified and frozen, but actual DUB/GitHub availability is still external.
+# The final pre-tag metadata may describe a frozen, qualified source
+# without claiming publication in GitHub or DUB.
 make_readme 'released' 'v0.2.0 is published'
 printf 'v0.3.0 adds generic numeric histograms; frozen at `freeze/api-0.3.0`.\n' >> "$fixture/README.md"
-make_changelog 
-## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
+make_changelog $'## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
 printf 'v0.3 contract frozen at freeze/api-0.3.0\n' > "$fixture/docs/API_0_3.md"
 printf 'Source qualified; check registry for v0.3 availability.\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
 mkdir -p "$fixture/docs/how-to"
@@ -120,8 +119,7 @@ sed -i 's/freeze\/api-0.3.0/freeze\/api-0.2.0/' "$fixture/docs/API_0_3.md"
 expect_fail 'v0.3 source requires explicit completed v0.3 API freeze'
 printf 'v0.3 contract frozen at freeze/api-0.3.0\n' > "$fixture/docs/API_0_3.md"
 
-make_changelog 
-## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026-10-10'
+make_changelog $'## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026-10-10'
 expect_fail 'qualified source requires dated changelog'
 
-echo 'PASS: v0.2 publication history and v0.3 candidate / qualified status positive/negative regressions'
+echo 'PASS: v0.2 publication history and v0.3 candidate and qualified states positive/negative regressions'
