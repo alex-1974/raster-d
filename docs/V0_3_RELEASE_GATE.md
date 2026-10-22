@@ -1,8 +1,11 @@
-# raster-d v0.3.0 release gate — candidate
+# raster-d v0.3.0 release qualification and publication gate
 
-**Status:** Open. Do not promote to `main` or tag `v0.3.0` until every
-applicable prepromotion check below is backed by evidence from the **same
-exact release-head commit**. Record evidence in [issue #254](https://github.com/alex-1974/raster-d/issues/254).
+**Status:** Feature/API freezes and initial exact-head qualification complete
+on `fdea765a271893b25d5f8af1f29087b40caa5dc7`. The publication-neutral
+documentation transition requires a **fresh exact-head CI sign-off** before
+promotion to `main`. Publication is not established by a changelog date or
+completed source CI. Record final evidence in
+[issue #254](https://github.com/alex-1974/raster-d/issues/254).
 
 ## Scope
 
@@ -10,28 +13,40 @@ Release branch `release/0.3` starts from `develop` commit
 `c7aff5d1c8ccb25e8741e940dfb69c1439a51541`.
 The published `v0.2.0` source and `freeze/*-0.2.0` tags remain immutable.
 
+Signed annotated checkpoint tags, verified against remote refs:
+- `freeze/feature-0.3.0` -> `c7aff5d1c8ccb25e8741e940dfb69c1439a51541`.
+- `freeze/api-0.3.0` -> `fdea765a271893b25d5f8af1f29087b40caa5dc7`.
+
+Original checkpoint exact-head GitHub CI passed: Release Gate 15/15,
+Compiler Floor 8/8, Release Documentation 3/3, Archive Consumer 2/2 and
+API-documentation build. The independent DDox audit rendered 111/111
+public Example pages. On the same source commit an XPS LDC 1.42.0 release
+smoke verified count results and measured five-round median throughput
+of 776.6 MiB/s for `histogram256` and 219.4 MiB/s for `histogramInto`.
+This is not a comparative C++/SIMD claim.
+
 ## Prepromotion checks
 
-- [ ] Release candidate SHA and immutable `freeze/feature-0.3.0` checkpoint recorded.
-- [ ] Public import/export inventory checked against `source/raster/package.d`
+- [x] Release candidate SHA and immutable `freeze/feature-0.3.0` checkpoint recorded.
+- [x] Public import/export inventory checked against `source/raster/package.d`
       and `docs/API_0_3.md` (66 retained v0.2 exports + 6 histogram exports).
-- [ ] Contract audit covers histogram interval inclusivity, float and 64-bit
+- [x] Contract audit covers histogram interval inclusivity, float and 64-bit
       integer behaviour, failure/no-partial-output, empty, ROI, layout,
       per-bin count overflow and window composition.
-- [ ] Immutable `freeze/api-0.3.0` checkpoint recorded **after** API audit.
-- [ ] Full `Release Gate` workflow PASS: supported compiler generations,
+- [x] Immutable `freeze/api-0.3.0` checkpoint recorded **after** API audit.
+- [x] Full `Release Gate` workflow PASS: supported compiler generations,
       compiler-floor checks, supported platform matrix, DIP1000, negative
       compile and clean archive consumers.
-- [ ] `Release Documentation` workflow PASS: strict public-only DDox,
+- [x] `Release Documentation` workflow PASS: strict public-only DDox,
       complete compiled public Example inventory, versioned Pages staging.
-- [ ] Candidate DDox module navigation, rendered examples and staged Pages
+- [x] Candidate DDox module navigation, rendered examples and staged Pages
       independently inspected against the same commit.
-- [ ] New histogram throughput has been smoke-checked on a representative
+- [x] New histogram throughput has been smoke-checked on a representative
       consumer path if necessary; no unsupported C++/SIMD performance
       superiority claim.
-- [ ] README, CHANGELOG, release notes and tutorials consistently describe
-      v0.2.0 as published and v0.3.0 as **unpublished**.
-- [ ] Actual source/consumer archive and metadata/licence verified.
+- [ ] Final README, CHANGELOG, release notes and tutorials are consistent,
+      publication-neutral, and pass full exact-head release qualification.
+- [x] Actual source/consumer archive and metadata/licence verified.
 - [ ] Pull request from `release/0.3` to `main` reviewed and release-head
       SHA confirmed; any correction invalidates prior exact-head sign-off.
 
