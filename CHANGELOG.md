@@ -14,6 +14,10 @@ Each published release nevertheless has its own frozen source contract.
   counts, signed-stride/ROI support, checked count overflow and composable
   window counts (raster-d issue #251). This development API is **not**
   part of the frozen v0.2.0 release.
+- Generic caller-buffered interval histograms for all 10 numeric sample types,
+  exact signed and 64-bit integral bin assignment, finite floating range policy,
+  explicit out-of-range/NaN counts, and ROI/tiled composition (issue #251).
+  Available on `develop` after integration, not in v0.2.0.
 
 ## 0.2.0 — 2026-10-10
 

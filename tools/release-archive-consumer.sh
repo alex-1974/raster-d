@@ -153,6 +153,18 @@ void main()
     foreach (count; invalidHistogram.bins)
         assert(count == 0);
 
+    // Public root import and optimized external DUB consumer for the
+    // generic, caller-buffered interval operation.
+    ulong[2] intervalBins = [99, 99];
+    const interval = source.histogramInto(
+        0, cast(ubyte) 1, cast(ubyte) 4, intervalBins[]
+    );
+    assert(interval.ok);
+    assert(intervalBins == [2UL, 2UL]);
+    assert(interval.belowRange == 0);
+    assert(interval.aboveRange == 0);
+    assert(interval.nanCount == 0);
+
     bool writableSuccess;
 
     scope auto destination =
