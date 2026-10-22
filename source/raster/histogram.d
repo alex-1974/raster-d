@@ -54,6 +54,16 @@ struct RasterHistogram256Result
     /// Exact frequency counts indexed by the original ubyte sample value.
     ulong[256] bins;
 
+    /// Example inspecting the fixed 256-value count buffer.
+    @safe unittest
+    {
+        import raster;
+        RasterHistogram256Result result;
+        assert(result.bins.length == 256);
+        assert(result.bins[0] == 0);
+        assert(result.bins[255] == 0);
+    }
+
 private:
     RasterHistogram256Error error_ = RasterHistogram256Error.invalidPlane;
 
