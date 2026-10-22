@@ -55,11 +55,35 @@ struct RasterHistogramResult
     /// Samples strictly below the lower bound, including -Infinity.
     ulong belowRange;
 
+    /// Example checking the default number of samples below the range.
+    @safe unittest
+    {
+        import raster;
+        RasterHistogramResult result;
+        assert(result.belowRange == 0);
+    }
+
     /// Samples strictly above the upper bound, including +Infinity.
     ulong aboveRange;
 
+    /// Example checking the default number of samples above the range.
+    @safe unittest
+    {
+        import raster;
+        RasterHistogramResult result;
+        assert(result.aboveRange == 0);
+    }
+
     /// NaN samples, for floating-point sources only.
     ulong nanCount;
+
+    /// Example checking that the default result has no NaN samples.
+    @safe unittest
+    {
+        import raster;
+        RasterHistogramResult result;
+        assert(result.nanCount == 0);
+    }
 
 private:
     RasterHistogramError error_ = RasterHistogramError.invalidPlane;
