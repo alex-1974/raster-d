@@ -1,8 +1,8 @@
 # Public API Example Audit
 
-**Status:** complete for the v0.2 release-candidate surface  
-**API checkpoint:** `freeze/api-0.2.0` (`1ea67cb6ffb2c887f78d160249a293ad74ba5cda`)  
-**Qualification target:** current `release/0.2` release-candidate head
+**Status:** v0.3 release-candidate extension pending generated DDox audit  
+**Historical v0.2 API checkpoint:** `freeze/api-0.2.0` (`1ea67cb6ffb2c887f78d160249a293ad74ba5cda`)  
+**Current target:** `release/0.3` candidate; v0.3 API checkpoint not yet created
 
 The public symbol inventory was completed during the v0.2 API audit and is
 now tied to the immutable API-freeze checkpoint. Documentation-only changes
@@ -65,7 +65,7 @@ The audit is complete when:
 
 ## Per-symbol classification
 
-The v0.2 public-only DDox inventory contains **97 symbol pages**.
+The published v0.2 public-only DDox inventory had **97 symbol pages**. The v0.3 candidate adds histogram pages; the exact count is provisional until the release DDox renderer confirms it.
 
 | DDox page | Status | Owning family |
 | --- | --- | --- |
@@ -99,6 +99,20 @@ The v0.2 public-only DDox inventory contains **97 symbol pages**.
 | `raster.descriptor.PlaneDescriptor` | existing | geometry/layout |
 | `raster.fill.fill` | existing | fill |
 | `raster.fill.tryFillRasterPlane` | existing | fill |
+| `raster.histogram.RasterHistogram256Error` | existing | exact numeric histogram |
+| `raster.histogram.RasterHistogram256Result` | existing | exact numeric histogram |
+| `raster.histogram.RasterHistogram256Result.bins` | existing | exact numeric histogram |
+| `raster.histogram.RasterHistogram256Result.error` | existing | exact numeric histogram |
+| `raster.histogram.RasterHistogram256Result.ok` | existing | exact numeric histogram |
+| `raster.histogram.histogram256` | existing | exact numeric histogram |
+| `raster.histogram_into.RasterHistogramError` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult.belowRange` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult.aboveRange` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult.nanCount` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult.error` | existing | numeric interval histogram |
+| `raster.histogram_into.RasterHistogramResult.ok` | existing | numeric interval histogram |
+| `raster.histogram_into.histogramInto` | existing | numeric interval histogram |
 | `raster.import_owned.OwnedRasterImportError` | existing | ownership/import |
 | `raster.import_owned.OwnedRasterImportResult` | existing | ownership/import |
 | `raster.import_owned.OwnedRasterImportResult.error` | existing | ownership/import |
@@ -167,7 +181,7 @@ The v0.2 public-only DDox inventory contains **97 symbol pages**.
 | `raster.zip_transform_into.RasterZipTransformError` | existing | binary transform |
 | `raster.zip_transform_into.zipTransformInto` | existing | binary transform |
 
-All 97 pages must render their own Example. Every Example is backed by a
+Every public page in the v0.3 candidate must render its own Example. Every Example is backed by a
 documented, compiler-checked `unittest`. The source may contain additional
 documented tests for a page or family, so the documented-unittest count may be
 greater than the DDox page count but must never be smaller.
