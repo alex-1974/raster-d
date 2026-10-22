@@ -11,6 +11,11 @@ required=(
   DESIGN.md
   docs/API.md
   docs/API_0_2.md
+  docs/API_0_3.md
+  docs/V0_3_RELEASE_NOTES.md
+  docs/V0_3_RELEASE_GATE.md
+  docs/how-to/histogram256.md
+  docs/how-to/histogram-intervals.md
   docs/ddoc-style.md
   docs/public-api-example-audit.md
   docs/README.md
@@ -95,7 +100,29 @@ for symbol in "${v02_symbols[@]}"; do
     }
 done
 
-echo "PASS: v0.2 release-candidate API inventory covers ${#v02_symbols[@]} root exports"
+echo "PASS: immutable v0.2 frozen API inventory covers ${#v02_symbols[@]} root exports"
+
+# A pre-1.0 minor release extends the package root; do not rewrite the
+# historical v0.2 export inventory.
+grep -Fq 'entire frozen v0.2 root export set (66 symbols' "$repo/docs/API_0_3.md" || {
+    echo "FAIL: v0.3 API audit must inherit all 66 frozen v0.2 exports" >&2
+    exit 1
+}
+v03_symbols=(
+  RasterHistogram256Error RasterHistogram256Result histogram256
+  RasterHistogramError RasterHistogramResult histogramInto
+)
+for symbol in "${v03_symbols[@]}"; do
+    grep -q "$symbol" "$repo/source/raster/package.d" || {
+        echo "FAIL: missing v0.3 root export: $symbol" >&2
+        exit 1
+    }
+    grep -q "$symbol" "$repo/docs/API_0_3.md" || {
+        echo "FAIL: missing v0.3 API audit entry: $symbol" >&2
+        exit 1
+    }
+done
+echo "PASS: v0.3 API audit accounts for 66 preserved exports and 6 new histogram exports"
 
 grep -q '^## 0.1.0 — 2026-10-05$' "$repo/CHANGELOG.md" || {
     echo "FAIL: CHANGELOG.md does not retain the finalized 0.1.0 entry" >&2

@@ -1,6 +1,7 @@
 # Exact 8-bit raster histograms
 
-**Availability:** Present on `develop` after PR #252; not part of the published v0.2.0 contract.
+**Availability:** Introduced in raster-d v0.3.0; not part of the immutable
+v0.2.0 API. Check the DUB registry for published dependency availability.
 See [issue #251](https://github.com/alex-1974/raster-d/issues/251).
 For other numeric types and configurable intervals, see [Numeric interval histograms](histogram-intervals.md).
 
