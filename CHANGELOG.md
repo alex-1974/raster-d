@@ -6,7 +6,14 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
-## Unreleased
+## 0.3.0 — Release candidate (unpublished)
+
+This is an **unpublished** minor-release candidate for the imagery-d consumer.
+It is not yet tagged, published in the DUB registry or integrated into the
+`main` release line. Its release audit and full release gates are tracked in
+[issue #254](https://github.com/alex-1974/raster-d/issues/254).
+All 66 published v0.2 root exports are retained; six histogram exports are
+added. The v0.2.0 release and freeze tags remain unchanged.
 
 ### Added
 
