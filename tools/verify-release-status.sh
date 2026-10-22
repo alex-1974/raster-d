@@ -42,7 +42,15 @@ elif grep -Eq '^v0[.]2[.]0 is released' "$repo/README.md"; then
             && grep -Fq 'historical prepublication' "$published_doc"; then
             continue
         fi
-        if grep -Eiq 'not yet published|DRAFT / NOT PUBLISHED|release notes — candidate|v0[.]2[.]0 release candidate|v0[.]2 candidate release notes' "$published_doc"; then
+        # Release notes are exclusively v0.2; the shared docs index and
+        # tutorial may legitimately advertise the UNPUBLISHED v0.3 candidate.
+        # On those pages reject only publication claims about v0.2 itself.
+        if [[ "$published_doc" == "$repo/docs/V0_2_RELEASE_NOTES.md" ]]; then
+            stale_pattern='not yet published|DRAFT / NOT PUBLISHED|release notes — candidate|v0[.]2[.]0 release candidate|v0[.]2 candidate release notes'
+        else
+            stale_pattern='v0[.]2([.]0)?[^[:cntrl:]]*(not yet published|DRAFT / NOT PUBLISHED|release notes — candidate|candidate release notes|release candidate)'
+        fi
+        if grep -Eiq "$stale_pattern" "$published_doc"; then
             echo "FAIL: stale v0.2 candidate wording: $published_doc" >&2
             exit 1
         fi
