@@ -1,8 +1,8 @@
 # Exact 8-bit raster histograms
 
-**Availability:** Unreleased `develop` API, proposed in
+**Availability:** Unreleased feature-branch candidate, proposed in
 [raster-d issue #251](https://github.com/alex-1974/raster-d/issues/251).
-This function is **not** part of the published v0.2.0 contract.
+This function is **not** part of the published v0.2.0 contract and is not yet merged into `develop`.
 
 `histogram256` counts exact values in one numeric `ubyte` raster plane.
 It is independent of image formats, RGB, colour spaces, alpha and NoData.
