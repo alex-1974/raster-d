@@ -1,8 +1,11 @@
-# raster-d v0.3.0 release notes — candidate
+# raster-d v0.3.0 release notes
 
-**Status:** NOT PUBLISHED. This is release-preparation documentation; do not
-advertise `raster-d@0.3.0` as a DUB dependency until the `v0.3.0` tag,
-GitHub Release and registry availability are independently verified.
+**Source qualification:** v0.3.0 passed the required release gates and its public
+API is frozen at `freeze/api-0.3.0`. These release notes describe the
+qualified source, not an assertion that a package has already appeared in the
+registry. Confirm the [GitHub Release](https://github.com/alex-1974/raster-d/releases)
+and [DUB listing](https://code.dlang.org/packages/raster-d) before adopting
+the new dependency.
 
 ## Why this minor version
 
@@ -30,7 +33,7 @@ of `imagery-d`.
   conversion. Floating range boundaries must be finite; near-edge
   floating bin placement is subject to double-rounding behaviour.
 
-See [the v0.3 candidate API contract](API_0_3.md),
+See [the v0.3 frozen API contract](API_0_3.md),
 [exact 8-bit guide](how-to/histogram256.md), and
 [numeric interval guide](how-to/histogram-intervals.md).
 
@@ -40,24 +43,30 @@ All 66 frozen v0.2 root exports remain available through `import raster;`.
 Six histogram root exports are added. No v0.2-compatible operation is
 deliberately removed or renamed.
 
-v0.3 is a pre-1.0 minor release; once published, its own public source
-contract will be frozen for that release.
+v0.3 is a pre-1.0 minor release; its public source contract was frozen
+at `freeze/api-0.3.0`. The older v0.2.0 source contract remains immutable.
 
 ## Integration with imagery-d
 
 The currently published imagery-d consumer uses `raster-d ~>0.2.0`.
-After v0.3.0 publication, a **separate imagery-d PR** must update its
-DUB dependency to `~>0.3.0`, update any pinned source baseline used by
-its CI, and test the image-specific histogram and ROI consumer against
-the actual released raster package. Nothing is automatically merged into
-`imagery-d` by publishing this library.
+Once `raster-d@0.3.0` is available through DUB, a **separate imagery-d
+PR** must update the dependency to `~>0.3.0`, update the pinned source
+baseline used by CI, and test the image-specific histogram and ROI consumer
+against the actual package. Publishing raster-d does not automatically
+update `imagery-d`.
 
 ## Qualification and publication
 
-This draft does not establish a feature/API freeze, full release-gate PASS,
-signed tag, GitHub Release, stable Pages deployment, DUB registry availability
-or fresh published-artifact consumer. See issue #254 and
-[v0.3 release-gate checklist](V0_3_RELEASE_GATE.md).
+Release source qualification is recorded in [issue #254](https://github.com/alex-1974/raster-d/issues/254)
+and the [v0.3 release-gate record](V0_3_RELEASE_GATE.md). Exact-head
+GitHub workflows passed: 15/15 Release Gate, 8/8 Compiler Floor, 3/3
+Release Documentation, 2/2 Archive Consumer and API documentation build.
+Public DDox rendered 111/111 Examples. A representative x86-64 LDC 1.42.0
+release-mode smoke checked correct counts and observed 776.6 MiB/s median
+for `histogram256` and 219.4 MiB/s for `histogramInto`. These figures
+are not claims of C++ performance parity. Signed annotated feature/API
+freeze tags exist. Actual release publication, Pages promotion, DUB
+availability and a fresh published consumer are separate post-tag checks.
 
 The published v0.2.0 is unchanged. Its previous retrospective documentation
 qualification gap is preserved in [issue #198](https://github.com/alex-1974/raster-d/issues/198).
