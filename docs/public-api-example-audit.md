@@ -1,8 +1,8 @@
 # Public API Example Audit
 
-**Status:** v0.3 release-candidate extension pending generated DDox audit  
+**Status:** v0.3 public DDox audit qualified on `fdea765a271893b25d5f8af1f29087b40caa5dc7`: 111/111 public symbol pages with rendered Examples; 113 documented unittests.  
 **Historical v0.2 API checkpoint:** `freeze/api-0.2.0` (`1ea67cb6ffb2c887f78d160249a293ad74ba5cda`)  
-**Current target:** `release/0.3` candidate; v0.3 API checkpoint not yet created
+**v0.3 API checkpoint:** `freeze/api-0.3.0` (signed annotated tag at `fdea765a271893b25d5f8af1f29087b40caa5dc7`)
 
 The public symbol inventory was completed during the v0.2 API audit and is
 now tied to the immutable API-freeze checkpoint. Documentation-only changes
@@ -65,7 +65,7 @@ The audit is complete when:
 
 ## Per-symbol classification
 
-The published v0.2 public-only DDox inventory had **97 symbol pages**. The v0.3 candidate adds histogram pages; the exact count is provisional until the release DDox renderer confirms it.
+The published v0.2 public-only DDox inventory had **97 symbol pages**. The v0.3 API adds **14 histogram pages** for a verified total of **111**. The exact-head release DDox renderer confirmed that all 111 public symbol pages render a compiler-checked Example.
 
 | DDox page | Status | Owning family |
 | --- | --- | --- |

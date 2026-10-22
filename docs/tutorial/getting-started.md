@@ -9,21 +9,23 @@ The usual starting point is an owned byte resource, a plane layout, and a logica
 
 ## Add the dependency
 
-The latest published stable package is **raster-d v0.2.0**, released
-on 2026-10-10. Add the released DUB dependency:
+v0.2.0 was published on 2026-10-10. It supports the original raster
+operations; add it as a DUB dependency for consumers that do not need
+the new histogram APIs:
 
 ```sdl
 dependency "raster-d" version="~>0.2.0"
 ```
 
-**v0.3.0 is a release candidate and is not yet published.** It adds exact
-8-bit and configurable numeric interval histograms. To evaluate that API
-before publication, use an explicit source checkout or archive of
-`release/0.3` in your consumer build rather than assuming DUB already
-supplies `raster-d@0.3.0`. Once v0.3.0 is published and independently
-verified, update the consumer dependency and run its own tests.
+v0.3.0 adds exact 8-bit and configurable numeric interval histograms. When
+the [DUB registry](https://code.dlang.org/packages/raster-d) lists v0.3.0,
+consumers using those APIs can instead select:
 
-Both published v0.2.0 and the v0.3.0 candidate expose the public import:
+```sdl
+dependency "raster-d" version="~>0.3.0"
+```
+
+Both versions expose the same public package import:
 
 ```d
 import raster;

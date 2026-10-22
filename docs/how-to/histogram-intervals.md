@@ -1,8 +1,9 @@
 # Numeric interval histograms
 
-**Availability:** Unreleased v0.3.0 release-candidate API for
+**Availability:** Introduced in raster-d v0.3.0 for
 [raster-d issue #251](https://github.com/alex-1974/raster-d/issues/251).
-It is not part of the immutable v0.2.0 release.
+It is not part of the immutable v0.2.0 API. Check DUB for current
+published package availability.
 
 Use `histogramInto` to group samples of a numeric raster plane into a
 caller-defined number of equally spaced bins. Unlike
