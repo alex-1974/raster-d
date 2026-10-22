@@ -35,6 +35,13 @@ elif grep -Eq '^v0[.]2[.]0 is released' "$repo/README.md"; then
             echo "FAIL: missing published documentation: $published_doc" >&2
             exit 1
         }
+        # The archived v0.2 notes deliberately preserve candidate-era text.
+        # An explicit postpublication warning makes that section historical.
+        if [[ "$published_doc" == "$repo/docs/V0_2_RELEASE_NOTES.md" ]] \
+            && grep -Fq 'Postpublication update' "$published_doc" \
+            && grep -Fq 'historical prepublication' "$published_doc"; then
+            continue
+        fi
         if grep -Eiq 'not yet published|DRAFT / NOT PUBLISHED|release notes — candidate|v0[.]2[.]0 release candidate|v0[.]2 candidate release notes' "$published_doc"; then
             echo "FAIL: stale v0.2 candidate wording: $published_doc" >&2
             exit 1
@@ -66,4 +73,17 @@ grep -Fqx '## 0.1.0 — 2026-10-05' "$repo/CHANGELOG.md" || {
     exit 1
 }
 
-echo "PASS: v0.2 release status verified"
+# The next minor release is still a candidate. A changelog heading and
+# release notes must never suggest registry publication before the tag exists.
+if grep -Fq 'v0.3.0 is a release candidate' "$repo/README.md"; then
+    grep -Fqx '## 0.3.0 — Release candidate (unpublished)' "$repo/CHANGELOG.md" || {
+        echo "FAIL: unpublished v0.3 README requires candidate changelog" >&2
+        exit 1
+    }
+    grep -Fq 'NOT PUBLISHED' "$repo/docs/V0_3_RELEASE_NOTES.md" || {
+        echo "FAIL: unpublished v0.3 must have candidate release notes" >&2
+        exit 1
+    }
+fi
+
+echo "PASS: v0.2 published history and v0.3 candidate status verified"
