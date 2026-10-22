@@ -67,4 +67,27 @@ make_readme 'a release candidate' 'v0.2.0 is not yet published'
 printf '%s\n' 'the public API is being audited before freeze/API' >> "$fixture/README.md"
 expect_fail 'obsolete pending audit claim'
 
-echo 'PASS: v0.2 publication-status positive and negative regressions'
+# A new minor candidate must not invalidate already-published v0.2.
+make_readme 'released' 'v0.2.0 is published'
+printf 'v0.3.0 is a release candidate\n' >> "$fixture/README.md"
+make_changelog 
+## 0.3.0 — Release candidate (unpublished)\n## 0.2.0 — 2026-10-10'
+printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
+expect_pass 'v0.3 candidate alongside published v0.2'
+
+# Historical v0.2 candidate notes are allowed only with a retrospective caveat.
+printf 'Postpublication update: historical prepublication evidence. DRAFT / NOT PUBLISHED\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
+expect_pass 'historical candidate notes explicitly marked retrospective'
+printf 'v0.2.0 release notes — candidate\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
+expect_fail 'uncaveated historical release notes still rejected'
+printf 'raster-d v0.2 release notes\n' > "$fixture/docs/V0_2_RELEASE_NOTES.md"
+
+printf 'PUBLISHED: incorrectly claiming v0.3 release\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
+expect_fail 'v0.3 candidate cannot claim publication'
+printf 'NOT PUBLISHED: v0.3.0 is still a candidate\n' > "$fixture/docs/V0_3_RELEASE_NOTES.md"
+
+make_changelog 
+## 0.3.0 — 2026-10-22\n## 0.2.0 — 2026-10-10'
+expect_fail 'v0.3 candidate requires an unpublished changelog'
+
+echo 'PASS: v0.2 publication history and v0.3 candidate status positive/negative regressions'
