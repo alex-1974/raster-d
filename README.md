@@ -118,6 +118,7 @@ The current raster foundation includes:
 - lease-bound `WritableRasterView`;
 - checked copy, fill, transform, conversion, reduction, neighbourhood, and
   convolution families;
+- exact ubyte and configurable numeric interval histograms (v0.3 candidate);
 - bounded request residency and retained reuse;
 - exact multi-block dependency assembly for streamed requests;
 - synchronous caller-owned materialization;
