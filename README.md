@@ -231,3 +231,11 @@ Inside `d-geospatial-workspace`, shared engineering rules are available under
 
 That directory is local workspace context. It is ignored by Git and is not part
 of the raster-d package.
+
+## Development acknowledgement
+
+Assisted by AI.
+
+The library has been developed and reviewed with assistance from multiple AI
+systems and models. API compatibility, source correctness and release decisions
+remain subject to maintainer review and the repository's verification gates.
