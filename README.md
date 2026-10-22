@@ -32,7 +32,7 @@ performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
 documentation, and DUB publication were verified after release.
 
 v0.2.0 is released. It was published on 2026-10-10. Its feature set was frozen at
-`freeze/feature-0.2.0` and its public API at `freeze/api-0.2.0`.
+`freeze/feature-0.2.0` and its public API is frozen at `freeze/api-0.2.0`.
 The signed `v0.2.0` tag, [GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0),
 versioned/stable documentation, DUB `raster-d@0.2.0`, and independent
 DMD/LDC external consumers were verified after publication.
