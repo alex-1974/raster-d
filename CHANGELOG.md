@@ -6,12 +6,44 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
-## 0.2.0 — Release candidate (unpublished)
+## 0.3.0 — 2026-10-22
+
+This minor version adds generic numeric histograms for consumers including
+`imagery-d`. Its source/API freezes are recorded at
+`freeze/feature-0.3.0` and `freeze/api-0.3.0`, with qualification evidence
+in [issue #254](https://github.com/alex-1974/raster-d/issues/254).
+All 66 published v0.2 root exports are retained; six histogram exports are
+added. The v0.2.0 release and freeze tags remain unchanged.
+The signed release tag and registry listing, rather than this changelog date,
+are authoritative for actual publication availability.
+
+### Added
+
+- exact, allocation-free `ubyte` histogram reduction with 256 `ulong`
+  counts, signed-stride/ROI support, checked count overflow and composable
+  window counts (raster-d issue #251). These APIs are **not**
+  part of the frozen v0.2.0 release.
+- Generic caller-buffered interval histograms for all 10 numeric sample types,
+  exact signed and 64-bit integral bin assignment, finite floating range policy,
+  explicit out-of-range/NaN counts, and ROI/tiled composition (issue #251).
+  Introduced in v0.3.0; not present in published v0.2.0.
+
+### Documentation and release
+
+- Frozen API contract: `docs/API_0_3.md`.
+- Release notes: `docs/V0_3_RELEASE_NOTES.md`.
+- Exact-head release qualification: `docs/V0_3_RELEASE_GATE.md` and issue #254.
+
+## 0.2.0 — 2026-10-10
 
 The v0.2.0 feature set and public API are frozen at
 `freeze/feature-0.2.0` and `freeze/api-0.2.0`, respectively.
-Release qualification is in progress; **this entry does not announce
-publication**. The latest published stable release remains v0.1.0.
+v0.2.0 is published as a signed Git tag, GitHub Release and DUB package.
+The release matrices, documentation build and external archive consumers
+passed at the release candidate; postpublication Pages and independent
+DUB consumer checks also passed. The full editorial Ddoc review and
+exact-head prepromotion content sign-off remain historically unverified
+and are tracked in issue #198.
 
 ### Added and expanded
 
@@ -37,9 +69,9 @@ publication**. The latest published stable release remains v0.1.0.
 - release-content gate requiring an exact-head README, changelog, Ddoc/DDox,
   Pages and publication-status audit immediately before promotion.
 
-A detailed unpublished release-notes draft is maintained in
-`docs/V0_2_RELEASE_NOTES.md`. The final release date, remaining gates and
-publication status will be verified at the actual v0.2.0 release.
+Detailed release notes and qualification history are in
+`docs/V0_2_RELEASE_NOTES.md`. The immutable release is
+[`v0.2.0`](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0).
 
 ## 0.1.0 — 2026-10-05
 

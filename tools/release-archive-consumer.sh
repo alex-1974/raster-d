@@ -139,6 +139,32 @@ void main()
     scope auto source =
         sourceLease.view();
 
+    // Independent package consumer of the new exact numeric histogram.
+    const histogram = source.histogram256(0);
+    assert(histogram.ok);
+    foreach (value; 1 .. 5)
+        assert(histogram.bins[value] == 1);
+    assert(histogram.bins[0] == 0);
+    assert(histogram.bins[255] == 0);
+
+    const invalidHistogram = source.histogram256(1);
+    assert(!invalidHistogram.ok);
+    assert(invalidHistogram.error == RasterHistogram256Error.invalidPlane);
+    foreach (count; invalidHistogram.bins)
+        assert(count == 0);
+
+    // Public root import and optimized external DUB consumer for the
+    // generic, caller-buffered interval operation.
+    ulong[2] intervalBins = [99, 99];
+    const interval = source.histogramInto(
+        0, cast(ubyte) 1, cast(ubyte) 4, intervalBins[]
+    );
+    assert(interval.ok);
+    assert(intervalBins == [2UL, 2UL]);
+    assert(interval.belowRange == 0);
+    assert(interval.aboveRange == 0);
+    assert(interval.nanCount == 0);
+
     bool writableSuccess;
 
     scope auto destination =

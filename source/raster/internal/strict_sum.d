@@ -220,25 +220,45 @@ nothrow
             {
                 Accumulator next;
 
-                if (
-                    !tryAddChecked(
-                        total,
-                        value,
-                        next
-                    )
-                )
+                static if (is(Accumulator == ulong))
                 {
-                    result.status =
-                        StrictSumStatus.accumulatorOverflow;
+                    // Inline checked addition for the qualified ulong hot path.
+                    // Never evaluate the addition after detecting overflow.
+                    if (value > ulong.max - total)
+                    {
+                        result.status =
+                            StrictSumStatus.accumulatorOverflow;
 
-                    result.value =
-                        cast(Accumulator) 0;
+                        result.value =
+                            cast(Accumulator) 0;
 
-                    return result;
+                        return result;
+                    }
+
+                    total += value;
                 }
+                else
+                {
+                    if (
+                        !tryAddChecked(
+                            total,
+                            value,
+                            next
+                        )
+                    )
+                    {
+                        result.status =
+                            StrictSumStatus.accumulatorOverflow;
 
-                total =
-                    next;
+                        result.value =
+                            cast(Accumulator) 0;
+
+                        return result;
+                    }
+
+                    total =
+                        next;
+                }
             }
             else
             {
@@ -516,6 +536,59 @@ unittest
 
     assert(result.ok);
     assert(result.value == 0.0);
+}
+
+/*
+ * Inline ulong path accepts the exact upper boundary and rejects the
+ * first subsequent addition without committing wrapped output.
+ */
+unittest
+{
+    ulong[3] storage = [ulong.max - 2, 1, 1];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr, 3, 1)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 3, 1)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(result.ok);
+    assert(result.value == ulong.max);
+}
+
+unittest
+{
+    ulong[3] storage = [ulong.max - 2, 2, 1];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr, 3, 1)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 3, 1)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(!result.ok);
+    assert(result.status == StrictSumStatus.accumulatorOverflow);
+    assert(result.value == 0);
+}
+
+/*
+ * Signed row and sample strides retain the same logical iteration.
+ */
+unittest
+{
+    ulong[8] storage = [1, 99, 2, 99, 3, 99, 4, 99];
+    const PlaneDescriptor[1] descriptors =
+    [
+        PlaneDescriptor(storage.ptr + 6, -4, -2)
+    ];
+    scope auto source = makeRasterViewAssumeValidated!ulong(
+        descriptors[], Region2D(0, 0, 2, 2)
+    );
+    const result = executeStrictSum!(ulong, ulong)(source, 0);
+    assert(result.ok);
+    assert(result.value == 10);
 }
 
 } // version (unittest)

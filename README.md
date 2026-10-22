@@ -6,7 +6,7 @@
 measurements or image samples. `raster-d` helps programs work with their
 shape, storage, regions and processing without making every application
 implement that machinery itself. Start with
-[What is a raster, and what can raster-d do?](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/understanding-rasters.md).
+[What is a raster, and what can raster-d do?](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/understanding-rasters.md).
 
 It represents large resident or streamed raster data without forcing image,
 colour, radiometric, or geospatial-image semantics on every consumer.
@@ -31,11 +31,27 @@ checks, public-only DDox, external archive consumers, and the reference XPS
 performance gate. The signed `v0.1.0` tag, GitHub Release, stable/versioned
 documentation, and DUB publication were verified after release.
 
-v0.2.0 is a release candidate undergoing stabilization on `release/0.2`.
-Its feature set is frozen at `freeze/feature-0.2.0`, and its public API
-is frozen at `freeze/api-0.2.0`. **v0.2.0 is not yet published**; v0.1.0
-remains the latest published stable version until the release checks,
-GitHub Release, documentation publication and DUB verification complete.
+v0.2.0 is released. It was published on 2026-10-10. Its feature set was frozen at
+`freeze/feature-0.2.0` and its public API is frozen at `freeze/api-0.2.0`.
+The signed `v0.2.0` tag, [GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.2.0),
+versioned/stable documentation, DUB `raster-d@0.2.0`, and independent
+DMD/LDC external consumers were verified after publication.
+
+The full declaration-by-declaration editorial Ddoc review and exact-head
+prepromotion content sign-off were not completed before publication; the
+remaining audit is tracked in [issue #198](https://github.com/alex-1974/raster-d/issues/198).
+This does not reverse the published release or turn historical evidence
+into a retrospective prepublication PASS.
+
+v0.3.0 adds generic numeric histogram operations: exact 8-bit frequency
+counts and configurable intervals for ten numeric sample types. The public
+source API is frozen at `freeze/api-0.3.0` (feature baseline:
+`freeze/feature-0.3.0`). See the [v0.3 API contract](docs/API_0_3.md)
+and [release qualification](https://github.com/alex-1974/raster-d/issues/254).
+The previously published v0.2.0 package does not include these symbols.
+Check the [GitHub releases](https://github.com/alex-1974/raster-d/releases)
+and [DUB registry](https://code.dlang.org/packages/raster-d) for current
+v0.3.0 publication and dependency availability.
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
@@ -92,7 +108,7 @@ A successful import transfers the adopted resource into retained raster
 ownership. `RasterLease` keeps that storage alive. `RasterView` borrows from
 the retained lifetime and does not own storage.
 
-See [docs/README.md](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md) for the user documentation path.
+See [docs/README.md](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md) for the user documentation path.
 
 ## What raster-d provides
 
@@ -105,6 +121,7 @@ The current raster foundation includes:
 - lease-bound `WritableRasterView`;
 - checked copy, fill, transform, conversion, reduction, neighbourhood, and
   convolution families;
+- exact ubyte and configurable numeric interval histograms (v0.3.0);
 - bounded request residency and retained reuse;
 - exact multi-block dependency assembly for streamed requests;
 - synchronous caller-owned materialization;
@@ -200,9 +217,11 @@ compiler-package floor.
 
 Start with:
 
-- [user documentation](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/README.md);
-- [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API_0_2.md);
-- [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/release/0.2/docs/API.md);
+- [user documentation](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md);
+- [v0.3 frozen public API](docs/API_0_3.md);
+- [v0.3 release notes](docs/V0_3_RELEASE_NOTES.md);
+- [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API_0_2.md);
+- [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API.md);
 - [changelog](CHANGELOG.md).
 
 Maintainer context lives in `ROADMAP.md`, `DESIGN.md`, `BENCHMARK.md`,
@@ -215,3 +234,11 @@ Inside `d-geospatial-workspace`, shared engineering rules are available under
 
 That directory is local workspace context. It is ignored by Git and is not part
 of the raster-d package.
+
+## Development acknowledgement
+
+Assisted by AI.
+
+The library has been developed and reviewed with assistance from multiple AI
+systems and models. API compatibility, source correctness and release decisions
+remain subject to maintainer review and the repository's verification gates.

@@ -6,15 +6,21 @@ Start here if you use the library rather than maintain it.
 
 - [Getting started](tutorial/getting-started.md) shows how to create a retained raster and read samples.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
+- [Exact 8-bit histogram](how-to/histogram256.md) counts ubyte values on resident views and windows (v0.3.0 API).
+- [Numeric interval histograms](how-to/histogram-intervals.md) use caller-owned bins for signed, unsigned and floating-point rasters (v0.3.0 API).
+- [v0.3 frozen API](API_0_3.md), [release notes](V0_3_RELEASE_NOTES.md) and [release qualification](V0_3_RELEASE_GATE.md) document the new minor version; verify its current DUB availability before upgrading consumers.
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
-- [v0.2 candidate release notes (not yet published)](V0_2_RELEASE_NOTES.md) describe changes, qualified gates and remaining blockers.
-- [v0.2 frozen API contract](API_0_2.md) records the audited release-candidate API at `freeze/api-0.2.0`.
+- [v0.2 published release notes and historical qualification](V0_2_RELEASE_NOTES.md) describe changes, qualification evidence and remaining retrospective audits.
+- [v0.2 frozen API contract](API_0_2.md) records the frozen published API at `freeze/api-0.2.0`.
 - [v0.1 API baseline](API.md) records the released 0.1 contract.
 
 Generated Ddoc/DDox remains the authoritative declaration-level API reference.
 
-Release maintainers: see the [Ddoc/DDox qualification status](V0_2_DDOX_QUALIFICATION.md) and the [final release-content gate](V0_2_FINAL_RELEASE_CONTENT_GATE.md) is mandatory immediately before v0.2 promotion and publication.
+Release maintainers: see the [Ddoc/DDox qualification status](V0_2_DDOX_QUALIFICATION.md)
+and the [final release-content gate](V0_2_FINAL_RELEASE_CONTENT_GATE.md).
+The historical prepromotion editorial/content sign-off was not fully
+completed; it must not be retroactively marked PASS.
 
 Maintainer material lives separately:
 
