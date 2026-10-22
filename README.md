@@ -43,12 +43,15 @@ remaining audit is tracked in [issue #198](https://github.com/alex-1974/raster-d
 This does not reverse the published release or turn historical evidence
 into a retrospective prepublication PASS.
 
-v0.3.0 is a release candidate and is **not yet published**. It adds generic
-numeric histogram operations for exact 8-bit frequency counts and configurable
-intervals over the ten supported numeric sample types. The candidate API is
-recorded in [docs/API_0_3.md](docs/API_0_3.md), and its release qualification
-is tracked in [issue #254](https://github.com/alex-1974/raster-d/issues/254).
-The existing v0.2.0 DUB package cannot yet supply these new symbols.
+v0.3.0 adds generic numeric histogram operations: exact 8-bit frequency
+counts and configurable intervals for ten numeric sample types. The public
+source API is frozen at `freeze/api-0.3.0` (feature baseline:
+`freeze/feature-0.3.0`). See the [v0.3 API contract](docs/API_0_3.md)
+and [release qualification](https://github.com/alex-1974/raster-d/issues/254).
+The previously published v0.2.0 package does not include these symbols.
+Check the [GitHub releases](https://github.com/alex-1974/raster-d/releases)
+and [DUB registry](https://code.dlang.org/packages/raster-d) for current
+v0.3.0 publication and dependency availability.
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
@@ -118,7 +121,7 @@ The current raster foundation includes:
 - lease-bound `WritableRasterView`;
 - checked copy, fill, transform, conversion, reduction, neighbourhood, and
   convolution families;
-- exact ubyte and configurable numeric interval histograms (v0.3 candidate);
+- exact ubyte and configurable numeric interval histograms (v0.3.0);
 - bounded request residency and retained reuse;
 - exact multi-block dependency assembly for streamed requests;
 - synchronous caller-owned materialization;
@@ -215,8 +218,8 @@ compiler-package floor.
 Start with:
 
 - [user documentation](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md);
-- [v0.3 candidate public API](docs/API_0_3.md);
-- [v0.3 candidate release notes](docs/V0_3_RELEASE_NOTES.md);
+- [v0.3 frozen public API](docs/API_0_3.md);
+- [v0.3 release notes](docs/V0_3_RELEASE_NOTES.md);
 - [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API_0_2.md);
 - [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API.md);
 - [changelog](CHANGELOG.md).
