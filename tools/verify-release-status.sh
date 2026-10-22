@@ -95,11 +95,10 @@ if grep -Fq 'v0.3.0 is a release candidate' "$repo/README.md"; then
 fi
 
 # The candidate status check above remains supported for earlier branches.
-# The qualified source documentation is deliberately publication-neutral:
-# publication can be asserted only after tag, GitHub Release and DUB checks.
+# Qualified source documentation must remain publication-neutral both before
+# and after the final signed release tag; availability is independently checked.
 if grep -Eq '^v0[.]3[.]0 adds generic numeric histogram' "$repo/README.md"; then
-    grep -Eq '^## 0[.]3[.]0 — [0-9]{4}-[0-9]{2}-[0-9]{2}
- "$repo/CHANGELOG.md" || {
+    grep -Eq '^## 0[.]3[.]0 — [0-9]{4}-[0-9]{2}-[0-9]{2}$' "$repo/CHANGELOG.md" || {
         echo "FAIL: qualified v0.3 README requires a dated changelog" >&2
         exit 1
     }
