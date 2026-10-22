@@ -215,6 +215,8 @@ compiler-package floor.
 Start with:
 
 - [user documentation](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/README.md);
+- [v0.3 candidate public API](docs/API_0_3.md);
+- [v0.3 candidate release notes](docs/V0_3_RELEASE_NOTES.md);
 - [v0.2 public API audit](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API_0_2.md);
 - [v0.1 public API baseline](https://github.com/alex-1974/raster-d/blob/v0.2.0/docs/API.md);
 - [changelog](CHANGELOG.md).
