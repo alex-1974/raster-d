@@ -41,6 +41,13 @@ public import raster.view :
 public import raster.writable_view :
     WritableRasterView;
 
+public import raster.data_plane :
+    RasterPlaneWindow,
+    WritableRasterPlaneWindow,
+    withContiguousPlane,
+    withPlane,
+    withPlanesInto;
+
 public import raster.reduction :
     RasterSumError,
     RasterSumResult,

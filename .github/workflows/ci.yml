@@ -334,6 +334,15 @@ jobs:
             --build=release \
             --force
 
+      - name: v0.3 data-plane benchmark compile smoke
+        shell: bash
+        run: |
+          dub build \
+            --root=benchmark/v0_3_data_plane \
+            --compiler="$DC" \
+            --build=release \
+            --force
+
       - name: Raster retained-import external link probe
         shell: bash
         run: |
@@ -350,6 +359,11 @@ jobs:
         shell: bash
         run: |
           tools/compile-negative/raster_target_lifetime.sh "$DC"
+
+      - name: Raster data-plane lifetime compile probes
+        shell: bash
+        run: |
+          tools/compile-negative/raster_data_plane_lifetime.sh "$DC"
 
       - name: Raster writable-view lifetime compile probes
         shell: bash
