@@ -678,11 +678,14 @@ private bool provenDisjointSamples(T)(
 }
 
 /** Proves disjointness for one validated ubyte source and float destination. */
-private bool provenDisjointMixed(
-    scope const RasterPlaneWindow!ubyte source,
-    scope const WritableRasterPlaneWindow!float destination)
+private bool provenDisjointMixed(Source, Destination)(
+    scope const RasterPlaneWindow!Source source,
+    scope const WritableRasterPlaneWindow!Destination destination)
 @safe pure nothrow @nogc
 {
+    static if (!is(Source == ubyte) || !is(Destination == float))
+        return false;
+
     const sourceAddress = cast(size_t) source.base_;
     const destinationAddress = cast(size_t) destination.base_;
     const commonBase = sourceAddress < destinationAddress
