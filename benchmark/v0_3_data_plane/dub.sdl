@@ -1,0 +1,5 @@
+name "raster-v0-3-data-plane-benchmark"
+description "raster-d v0.3 public data-plane benchmark"
+targetType "executable"
+sourcePaths "source"
+dependency "raster-d" path="../.."
