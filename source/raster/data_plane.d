@@ -683,21 +683,22 @@ private bool provenDisjointMixed(Source, Destination)(
     scope const WritableRasterPlaneWindow!Destination destination)
 @safe pure nothrow @nogc
 {
-    static if (!is(Source == ubyte) || !is(Destination == float))
+    static if (!is(Source == ubyte) || !is(Destination == float)) {
         return false;
+    } else {
+        const sourceAddress = cast(size_t) source.base_;
+        const destinationAddress = cast(size_t) destination.base_;
+        const commonBase = sourceAddress < destinationAddress
+            ? sourceAddress : destinationAddress;
+        if (sourceAddress < commonBase || destinationAddress < commonBase)
+            return false;
 
-    const sourceAddress = cast(size_t) source.base_;
-    const destinationAddress = cast(size_t) destination.base_;
-    const commonBase = sourceAddress < destinationAddress
-        ? sourceAddress : destinationAddress;
-    if (sourceAddress < commonBase || destinationAddress < commonBase)
-        return false;
-
-    return classifyValidatedUbyteToFloatAffine2DByteOverlap(
-        source.width_, source.height_,
-        sourceAddress - commonBase,
-        source.rowStride_ * ubyte.sizeof, source.sampleStride_ * ubyte.sizeof,
-        destinationAddress - commonBase,
-        destination.rowStride_ * float.sizeof, destination.sampleStride_ * float.sizeof)
-        == AffineByteOverlapRelation.disjoint;
+        return classifyValidatedUbyteToFloatAffine2DByteOverlap(
+            source.width_, source.height_,
+            sourceAddress - commonBase,
+            source.rowStride_ * ubyte.sizeof, source.sampleStride_ * ubyte.sizeof,
+            destinationAddress - commonBase,
+            destination.rowStride_ * float.sizeof, destination.sampleStride_ * float.sizeof)
+            == AffineByteOverlapRelation.disjoint;
+    }
 }
