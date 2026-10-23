@@ -16,6 +16,8 @@ module raster.data_plane;
 
 import raster.view : RasterView;
 import raster.writable_view : WritableRasterView;
+import raster.internal.affine_relation : AffineByteOverlapRelation;
+import raster.internal.validated_affine_relation : classifyValidatedUbyteToFloatAffine2DByteOverlap;
 
 /** A validated, read-only affine plane window valid only inside one callback. */
 struct RasterPlaneWindow(T)
@@ -57,6 +59,37 @@ public:
     {
         return loadUnchecked(base_, x, y, rowStride_, sampleStride_);
     }
+
+    /** Returns a row view with the row offset hoisted out of the sample loop. */
+    RasterPlaneRow!T row(size_t y) const @safe nothrow @nogc
+    {
+        return RasterPlaneRow!T(rowBase(base_, y, rowStride_), width_, sampleStride_);
+    }
+
+    /**
+        Returns one validated contiguous row as a scoped slice.
+        Returns an empty slice when the row has a non-unit sample stride.
+    */
+    scope const(T)[] contiguousRowSpan(size_t y) const @safe nothrow @nogc
+    { return makeConstRowSpan(rowBase(base_, y, rowStride_), width_, sampleStride_); }
+}
+
+/** A callback-scoped row view of a validated affine plane. */
+struct RasterPlaneRow(T)
+{
+private:
+    const(T)* base_;
+    size_t length_;
+    ptrdiff_t sampleStride_;
+
+    this(const(T)* base, size_t length, ptrdiff_t sampleStride)
+    @safe pure nothrow @nogc
+    { base_ = base; length_ = length; sampleStride_ = sampleStride; }
+
+public:
+    @property size_t length() const @safe pure nothrow @nogc { return length_; }
+    T load(size_t x) const @safe nothrow @nogc
+    { return loadUnchecked(base_, x, 0, 0, sampleStride_); }
 }
 
 /// Example referring to the scoped read-window load operation.
@@ -128,6 +161,39 @@ public:
     {
         storeUnchecked(base_, x, y, rowStride_, sampleStride_, value);
     }
+
+    /** Returns a writable row view with the row offset hoisted out of the sample loop. */
+    WritableRasterPlaneRow!T row(size_t y) @safe nothrow @nogc
+    {
+        return WritableRasterPlaneRow!T(rowBaseMutable(base_, y, rowStride_), width_, sampleStride_);
+    }
+
+    /**
+        Returns one validated contiguous writable row as a scoped slice.
+        Returns an empty slice when the row has a non-unit sample stride.
+    */
+    scope T[] contiguousRowSpan(size_t y) @safe nothrow @nogc
+    { return makeMutableRowSpan(rowBaseMutable(base_, y, rowStride_), width_, sampleStride_); }
+}
+
+/** A callback-scoped writable row view of a validated affine plane. */
+struct WritableRasterPlaneRow(T)
+{
+private:
+    T* base_;
+    size_t length_;
+    ptrdiff_t sampleStride_;
+
+    this(T* base, size_t length, ptrdiff_t sampleStride)
+    @safe pure nothrow @nogc
+    { base_ = base; length_ = length; sampleStride_ = sampleStride; }
+
+public:
+    @property size_t length() const @safe pure nothrow @nogc { return length_; }
+    T load(size_t x) const @safe nothrow @nogc
+    { return loadUnchecked(base_, x, 0, 0, sampleStride_); }
+    void store(size_t x, T value) @safe nothrow @nogc
+    { storeUnchecked(base_, x, 0, 0, sampleStride_, value); }
 }
 
 /// Example referring to the scoped writable-window operations.
@@ -198,6 +264,49 @@ nothrow
     auto base = view.executionRegionBase(planeIndex);
     auto samples = makeConstSlice(base, traits.flatElementCount);
     callback(samples, view.width, view.height);
+    return true;
+}
+
+/**
+    Visits several validated flat-contiguous source and destination planes in
+    one synchronous callback. The callback is entered only after every plane
+    has passed contiguous-layout validation; no partial execution occurs.
+*/
+bool withContiguousPlanesInto(Source, Destination)(
+    scope ref const RasterView!Source source,
+    scope const(size_t)[] sourcePlanes,
+    scope ref WritableRasterView!Destination destination,
+    scope const(size_t)[] destinationPlanes,
+    scope const(Source)[][] sourceSlices,
+    scope Destination[][] destinationSlices,
+    scope void delegate(
+        scope const(Source)[][] sources,
+        scope Destination[][] destinations
+    ) @safe nothrow @nogc kernel
+)
+@safe nothrow @nogc
+{
+    if (kernel is null || sourcePlanes.length == 0
+        || sourcePlanes.length != sourceSlices.length
+        || destinationPlanes.length == 0
+        || destinationPlanes.length != destinationSlices.length
+        || source.width != destination.width || source.height != destination.height)
+        return false;
+
+    import raster.internal.execution_layout : PlaneExecutionTraits;
+    foreach (i, plane; sourcePlanes) {
+        PlaneExecutionTraits traits;
+        if (!source.tryPlaneExecutionTraits(plane, traits) || !traits.linearContiguous1D)
+            return false;
+        sourceSlices[i] = makeConstSlice(source.executionRegionBase(plane), traits.flatElementCount);
+    }
+    foreach (i, plane; destinationPlanes) {
+        PlaneExecutionTraits traits;
+        if (!destination.tryPlaneExecutionTraits(plane, traits) || !traits.linearContiguous1D)
+            return false;
+        destinationSlices[i] = makeMutableSlice(destination.executionRegionBase(plane), traits.flatElementCount);
+    }
+    kernel(sourceSlices, destinationSlices);
     return true;
 }
 
@@ -387,12 +496,14 @@ bool withPlanesInto(Source, Destination)(
 
     foreach (sourceWindow; sourceWindows)
         foreach (destinationWindow; destinationWindows)
-            if (envelopesOverlap(envelope(sourceWindow), envelope(destinationWindow)))
+            if (envelopesOverlap(envelope(sourceWindow), envelope(destinationWindow))
+                && !provenDisjointMixed(sourceWindow, destinationWindow))
                 return false;
 
     foreach (i, left; destinationWindows)
         foreach (right; destinationWindows[i + 1 .. $])
-            if (envelopesOverlap(envelope(left), envelope(right)))
+            if (envelopesOverlap(envelope(left), envelope(right))
+                && !provenDisjointSamples(left, right))
                 return false;
 
     kernel(sourceWindows, destinationWindows);
@@ -460,6 +571,28 @@ private T loadUnchecked(T)(const(T)* base, size_t x, size_t y,
         + cast(ptrdiff_t) x * sampleStride];
 }
 
+private const(T)* rowBase(T)(const(T)* base, size_t y, ptrdiff_t rowStride)
+@trusted pure nothrow @nogc
+{ return base + y * rowStride; }
+
+private T* rowBaseMutable(T)(T* base, size_t y, ptrdiff_t rowStride)
+@trusted pure nothrow @nogc
+{ return base + y * rowStride; }
+
+private scope const(T)[] makeConstRowSpan(T)(const(T)* base, size_t length, ptrdiff_t stride)
+@trusted pure nothrow @nogc
+{
+    if (length == 0 || stride != T.sizeof) return null;
+    return base[0 .. length];
+}
+
+private scope T[] makeMutableRowSpan(T)(T* base, size_t length, ptrdiff_t stride)
+@trusted pure nothrow @nogc
+{
+    if (length == 0 || stride != T.sizeof) return null;
+    return base[0 .. length];
+}
+
 /** Stores an affine sample after the enclosing view validated its coordinates. */
 private void storeUnchecked(T)(T* base, size_t x, size_t y,
     ptrdiff_t rowStride, ptrdiff_t sampleStride, T value)
@@ -477,12 +610,13 @@ private ByteEnvelope envelope(T)(scope const(T)* base, size_t width, size_t heig
     if (base is null || width == 0 || height == 0)
         return ByteEnvelope.init;
 
-    const lastX = cast(ptrdiff_t)(width - 1) * sampleStride;
-    const lastY = cast(ptrdiff_t)(height - 1) * rowStride;
-    const(T)* p0 = base;
-    const(T)* p1 = base + lastX;
-    const(T)* p2 = base + lastY;
-    const(T)* p3 = base + lastY + lastX;
+    const lastX = cast(ptrdiff_t)(width - 1) * sampleStride * T.sizeof;
+    const lastY = cast(ptrdiff_t)(height - 1) * rowStride * T.sizeof;
+    const(ubyte)* byteBase = cast(const(ubyte)*) base;
+    const(ubyte)* p0 = byteBase;
+    const(ubyte)* p1 = byteBase + lastX;
+    const(ubyte)* p2 = byteBase + lastY;
+    const(ubyte)* p3 = byteBase + lastY + lastX;
 
     size_t first = cast(size_t)p0;
     size_t end = first + T.sizeof;
@@ -518,4 +652,45 @@ private bool envelopesOverlap(ByteEnvelope left, ByteEnvelope right)
     if (!left.valid || !right.valid)
         return false;
     return left.first < right.end && right.first < left.end;
+}
+
+/** Exact fast proof for equally shaped interleaved planes with disjoint lanes. */
+private bool provenDisjointSamples(T)(
+    scope const WritableRasterPlaneWindow!T left,
+    scope const WritableRasterPlaneWindow!T right)
+@safe pure nothrow @nogc
+{
+    if (left.width_ == 0 || left.height_ == 0
+        || left.rowStride_ != right.rowStride_
+        || left.sampleStride_ != right.sampleStride_
+        || left.sampleStride_ <= 0
+        || left.sampleStride_ * T.sizeof < T.sizeof)
+        return false;
+
+    const leftAddress = cast(size_t) left.base_;
+    const rightAddress = cast(size_t) right.base_;
+    const laneDelta = leftAddress > rightAddress
+        ? leftAddress - rightAddress : rightAddress - leftAddress;
+    return laneDelta > 0 && laneDelta < cast(size_t) left.sampleStride_ * T.sizeof;
+}
+
+private bool provenDisjointMixed(
+    scope const RasterPlaneWindow!ubyte source,
+    scope const WritableRasterPlaneWindow!float destination)
+@safe pure nothrow @nogc
+{
+    const sourceAddress = cast(size_t) source.base_;
+    const destinationAddress = cast(size_t) destination.base_;
+    const commonBase = sourceAddress < destinationAddress
+        ? sourceAddress : destinationAddress;
+    if (sourceAddress < commonBase || destinationAddress < commonBase)
+        return false;
+
+    return classifyValidatedUbyteToFloatAffine2DByteOverlap(
+        source.width_, source.height_,
+        sourceAddress - commonBase,
+        source.rowStride_ * ubyte.sizeof, source.sampleStride_ * ubyte.sizeof,
+        destinationAddress - commonBase,
+        destination.rowStride_ * float.sizeof, destination.sampleStride_ * float.sizeof)
+        == AffineByteOverlapRelation.disjoint;
 }

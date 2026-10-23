@@ -143,3 +143,11 @@ public import raster.conversion_allocated :
 
 public import raster.backing :
     RasterLease;
+
+public import raster.data_plane :
+    RasterPlaneWindow,
+    WritableRasterPlaneWindow,
+    withContiguousPlane,
+    withContiguousPlanesInto,
+    withPlane,
+    withPlanesInto;

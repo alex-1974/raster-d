@@ -26,7 +26,16 @@ private auto layouts(T)()
     ];
 }
 
-private RasterLease!T makeLease(T)(out void* ownedMemory)
+private auto interleavedLayouts(T)()
+{
+    return [
+        PlaneByteLayout(0, cast(ptrdiff_t)(width * channels * T.sizeof), cast(ptrdiff_t)(channels * T.sizeof)),
+        PlaneByteLayout(cast(size_t)T.sizeof, cast(ptrdiff_t)(width * channels * T.sizeof), cast(ptrdiff_t)(channels * T.sizeof)),
+        PlaneByteLayout(cast(size_t)(2 * T.sizeof), cast(ptrdiff_t)(width * channels * T.sizeof), cast(ptrdiff_t)(channels * T.sizeof))
+    ];
+}
+
+private RasterLease!T makeLease(T, bool interleaved = false)(out void* ownedMemory)
 @system
 {
     const bytes = channels * width * height * T.sizeof;
@@ -39,7 +48,8 @@ private RasterLease!T makeLease(T)(out void* ownedMemory)
     OwnedByteResource resource;
     require(tryAdoptMallocResource(ownedMemory, bytes, resource), "adoption failed");
     RasterLease!T lease;
-    require(tryImportOwnedRaster!T(resource, layouts!T(), Region2D(0, 0, width, height), lease).ok,
+    auto layout = interleaved ? interleavedLayouts!T() : layouts!T();
+    require(tryImportOwnedRaster!T(resource, layout, Region2D(0, 0, width, height), lease).ok,
         "import failed");
     return lease;
 }
@@ -104,6 +114,56 @@ private long dataPlanePath(RasterLease!ubyte sourceLease, RasterLease!float dest
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
+private long rowDataPlanePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
+@safe
+{
+    auto source = sourceLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    RasterPlaneWindow!ubyte[channels] sources;
+    WritableRasterPlaneWindow!float[channels] destinations;
+    const start = MonoTime.currTime;
+    require(withPlanesInto(source, [0, 1, 2], destination, [0, 1, 2], sources[], destinations[],
+        (scope const(RasterPlaneWindow!ubyte)[] src, scope WritableRasterPlaneWindow!float[] dst)
+            @safe nothrow @nogc
+        {
+            foreach (y; 0 .. height) {
+                auto r0 = src[0].row(y); auto r1 = src[1].row(y); auto r2 = src[2].row(y);
+                auto w0 = dst[0].row(y); auto w1 = dst[1].row(y); auto w2 = dst[2].row(y);
+                foreach (x; 0 .. width) {
+                    w0.store(x, cast(float) r0.load(x) + 0.5f);
+                    w1.store(x, cast(float) r1.load(x) + 0.5f);
+                    w2.store(x, cast(float) r2.load(x) + 0.5f);
+                }
+            }
+        }), "row data-plane callback failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
+private long multiPlaneSlicePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
+@safe
+{
+    auto source = sourceLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    const(ubyte)[][channels] sources;
+    float[][channels] destinations;
+    const start = MonoTime.currTime;
+    auto ok = withContiguousPlanesInto!(ubyte, float)(source, [0, 1, 2], destination, [0, 1, 2],
+        sources[], destinations[],
+        (scope const(ubyte)[][] src, scope float[][] dst)
+            @safe nothrow @nogc
+        {
+            foreach (band; 0 .. channels)
+                foreach (i; 0 .. src[band].length)
+                    dst[band][i] = cast(float)src[band][i] + 0.5f;
+        });
+    require(ok, "multi-plane contiguous validation failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
 void main()
 @system
 {
@@ -114,19 +174,23 @@ void main()
 
     void* sourceMemory;
     void* destinationMemory;
-    auto source = makeLease!ubyte(sourceMemory);
-    auto destination = makeLease!float(destinationMemory);
+    auto source = makeLease!(ubyte, true)(sourceMemory);
+    auto destination = makeLease!(float, true)(destinationMemory);
 
-    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); }
+    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); }
     long[warmups + samples] checked;
     long[warmups + samples] dataPlane;
+    long[warmups + samples] rows;
     foreach (i; 0 .. checked.length) {
         checked[i] = checkedPath(source, destination);
         dataPlane[i] = dataPlanePath(source, destination);
+        rows[i] = rowDataPlanePath(source, destination);
     }
     auto checkedMeasured = checked[warmups .. $].sort;
     auto dataMeasured = dataPlane[warmups .. $].sort;
-    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f checksum=%016x",
+    auto rowMeasured = rows[warmups .. $].sort;
+    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f checksum=%016x",
         compiler, cast(double)checkedMeasured[$ / 2] / (2 * width * height),
-        cast(double)dataMeasured[$ / 2] / (2 * width * height), checksum(destination));
+        cast(double)dataMeasured[$ / 2] / (2 * width * height),
+        cast(double)rowMeasured[$ / 2] / (2 * width * height), checksum(destination));
 }
