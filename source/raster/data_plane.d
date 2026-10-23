@@ -571,14 +571,17 @@ private T loadUnchecked(T)(const(T)* base, size_t x, size_t y,
         + cast(ptrdiff_t) x * sampleStride];
 }
 
+/** Computes the element-based base address for one validated row. */
 private const(T)* rowBase(T)(const(T)* base, size_t y, ptrdiff_t rowStride)
 @trusted pure nothrow @nogc
 { return base + y * rowStride; }
 
+/** Computes the writable element-based base address for one validated row. */
 private T* rowBaseMutable(T)(T* base, size_t y, ptrdiff_t rowStride)
 @trusted pure nothrow @nogc
 { return base + y * rowStride; }
 
+/** Forms a contiguous read-only row slice after stride validation. */
 private scope const(T)[] makeConstRowSpan(T)(const(T)* base, size_t length, ptrdiff_t stride)
 @trusted pure nothrow @nogc
 {
@@ -674,6 +677,7 @@ private bool provenDisjointSamples(T)(
     return laneDelta > 0 && laneDelta < cast(size_t) left.sampleStride_ * T.sizeof;
 }
 
+/** Proves disjointness for one validated ubyte source and float destination. */
 private bool provenDisjointMixed(
     scope const RasterPlaneWindow!ubyte source,
     scope const WritableRasterPlaneWindow!float destination)
