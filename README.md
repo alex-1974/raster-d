@@ -94,6 +94,7 @@ The current raster foundation includes:
 - lease-bound `WritableRasterView`;
 - checked copy, fill, transform, conversion, reduction, neighbourhood, and
   convolution families;
+- scoped data-plane windows for validated affine and multi-plane kernels;
 - bounded request residency and retained reuse;
 - exact multi-block dependency assembly for streamed requests;
 - synchronous caller-owned materialization;

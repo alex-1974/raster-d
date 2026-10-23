@@ -222,6 +222,7 @@ template isSupportedRasterSumPair(
 }
 
 
+/** Constructs a successful internal sum result. */
 private
 RasterSumResult!Accumulator successfulSumResult(Accumulator)(
     Accumulator value
@@ -244,6 +245,7 @@ if (isSupportedSumAccumulator!Accumulator)
 }
 
 
+/** Constructs a failed internal sum result. */
 private
 RasterSumResult!Accumulator failedSumResult(Accumulator)(
     RasterSumError error
@@ -559,6 +561,7 @@ public:
 }
 
 
+/** Constructs a failed internal mean result. */
 private
 RasterMeanResult!Result failedMeanResult(Result)(
     RasterMeanError error
@@ -578,6 +581,7 @@ if (isSupportedMeanResult!Result)
 }
 
 
+/** Constructs a successful internal mean result. */
 private
 RasterMeanResult!Result successfulMeanResult(Result)(
     Result value
@@ -914,6 +918,7 @@ template isSupportedExtremaSample(T)
 }
 
 
+/** Maps internal extrema status to the public error enum. */
 private
 RasterExtremaError publicExtremaError(
     ExtremaStatus status
@@ -937,6 +942,7 @@ nothrow
 }
 
 
+/** Constructs an internal extrema result. */
 private
 RasterExtremaResult!T extremaResult(T)(
     ExtremaStatus status,
@@ -963,6 +969,7 @@ if (isSupportedExtremaSample!T)
 }
 
 
+/** Constructs an internal min/max result. */
 private
 RasterMinMaxResult!T minMaxResult(T)(
     ExtremaStatus status,

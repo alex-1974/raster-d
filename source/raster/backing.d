@@ -211,6 +211,7 @@ private:
     }
 
 
+    /** Retains one internal backing owner reference. */
     void retain()
     @trusted
     nothrow
@@ -231,6 +232,7 @@ private:
     }
 
 
+    /** Releases one internal backing owner reference. */
     void release()
     @trusted
     nothrow

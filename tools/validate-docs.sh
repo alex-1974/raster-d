@@ -67,8 +67,8 @@ grep -q 'freeze/api-0.1.0' "$repo/README.md" || {
     exit 1
 }
 
-grep -q 'v0.1.0 release candidate' "$repo/README.md" || {
-    echo "FAIL: README.md release status is not synchronized" >&2
+grep -q '^v0.1.0 is released\.' "$repo/README.md" || {
+    echo "FAIL: README.md does not state the finalized v0.1.0 release status" >&2
     exit 1
 }
 

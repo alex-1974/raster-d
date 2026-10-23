@@ -46,6 +46,7 @@ enum ExactRasterConversionError : ubyte
 }
 
 
+/** Tests two checked byte intervals for intersection. */
 private
 bool byteIntervalsOverlap(
     size_t first,
@@ -119,6 +120,7 @@ nothrow
 }
 
 
+/** Tests whether two reachable sample envelopes are provably disjoint. */
 private
 bool envelopesDisjoint(
     size_t firstMinimum,

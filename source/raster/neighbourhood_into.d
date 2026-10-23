@@ -388,6 +388,7 @@ version (LDC)
     }
 
 
+    /** Selects a supported compile-time destination sample stride. */
     private
     bool tryExecuteStaticDestinationSampleStride(
         ptrdiff_t SourceSampleStride,
@@ -486,6 +487,7 @@ version (LDC)
     }
 
 
+    /** Selects a supported compile-time source sample stride. */
     private
     bool tryExecuteStaticSampleStrideNeighbourhood(
         alias Shape,
