@@ -6,6 +6,28 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.4.1 — 2026-10-24
+
+### Fixed
+
+- corrected element-to-byte stride conversion in affine envelope and alias
+  validation;
+- enabled safe interleaved mixed-type affine windows after exact
+  `ubyte`-to-`float` overlap classification;
+- added the public multi-plane contiguous callback and DMD/LDC benchmark
+  coverage for affine row access.
+
+## 0.4.0 — 2026-10-23
+
+### Added
+
+- scoped public affine and multi-plane data-plane windows for downstream
+  kernels, including mixed-type source/destination execution;
+- conservative source/destination and destination/destination byte-envelope
+  overlap rejection before kernel callbacks;
+- DMD/LDC consumer, lifetime, benchmark and archive-gate coverage for the
+  data-plane contract.
+
 ## 0.3.0 — 2026-10-22
 
 This minor version adds generic numeric histograms for consumers including
