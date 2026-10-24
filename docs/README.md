@@ -9,6 +9,7 @@ Start here if you use the library rather than maintain it.
 - [Exact 8-bit histogram](how-to/histogram256.md) counts ubyte values on resident views and windows (v0.3.0 API).
 - [Numeric interval histograms](how-to/histogram-intervals.md) use caller-owned bins for signed, unsigned and floating-point rasters (v0.3.0 API).
 - [v0.3 frozen API](API_0_3.md), [release notes](V0_3_RELEASE_NOTES.md) and [release qualification](V0_3_RELEASE_GATE.md) document the new minor version; verify its current DUB availability before upgrading consumers.
+- [v0.5 release notes](V0_5_RELEASE_NOTES.md) document the callback-scoped strided row API and performance evidence.
 - [Glossary](glossary.md) defines the raster terms used by the API.
 - [Accuracy and validation](accuracy-and-validation.md) explains the numerical contracts and how they are qualified.
 - [v0.2 published release notes and historical qualification](V0_2_RELEASE_NOTES.md) describe changes, qualification evidence and remaining retrospective audits.

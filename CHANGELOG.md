@@ -6,7 +6,23 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
-## 0.4.1 — release candidate
+## 0.5.0 — 2026-10-24
+
+### Added
+
+- public `RasterPlaneRow` and `WritableRasterPlaneRow` exports through
+  `import raster`;
+- callback-scoped row data and sample-stride access for interleaved and
+  planar downstream kernels;
+- an external RGB data-plane benchmark covering DMD and LDC code generation.
+
+### Performance
+
+- the benchmarked DMD interleaved `ubyte` to `float` workload improved from
+  3.78 ns/pixel to 1.79 ns/pixel when row data and stride are hoisted once per
+  row, with no material LDC regression.
+
+## 0.4.1 — 2026-10-24
 
 ### Fixed
 
