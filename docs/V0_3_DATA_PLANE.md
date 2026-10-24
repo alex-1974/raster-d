@@ -1,6 +1,6 @@
-# v0.3 Data-Plane API — Initial Slice
+# Data-Plane API
 
-This document records the first implementation increment for issue #261.
+This document records the public data-plane API increments through v0.5.0.
 
 `withContiguousPlane` performs all layout validation before entering a
 synchronous callback and supplies a scoped D slice for the selected plane.
@@ -60,3 +60,22 @@ one another. Destination/destination and source/destination byte-envelope
 intersections are rejected before the callback. The check is conservative:
 an intersecting envelope is rejected even if individual reachable samples
 might be disjoint.
+
+## Callback-scoped strided rows (v0.5.0)
+
+`RasterPlaneRow!T` and `WritableRasterPlaneRow!T` expose `data` and
+`sampleStride` for a validated row. Consumers can copy both values to local
+variables before entering the inner loop and use direct strided addressing:
+
+```d
+auto row = sourceWindow.row(y);
+auto data = row.data;
+auto stride = row.sampleStride;
+foreach (x; 0 .. row.length)
+    consume(data[x * stride]);
+```
+
+The pointer is borrowed from the enclosing synchronous callback and must not
+escape it. Pointer arithmetic belongs at the consumer's narrow `@trusted`
+boundary; raster-d remains responsible for descriptor, bounds, layout,
+lifetime and alias validation before callback entry.
