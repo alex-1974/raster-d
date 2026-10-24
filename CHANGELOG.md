@@ -6,7 +6,7 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
-## 0.4.1 — release candidate
+## 0.4.1 — 2026-10-24
 
 ### Fixed
 

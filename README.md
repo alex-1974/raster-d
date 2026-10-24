@@ -60,6 +60,12 @@ types and conservative overlap rejection. The [v0.4.0 GitHub Release](https://gi
 [DUB registry](https://code.dlang.org/packages/raster-d) are the authoritative
 publication locations.
 
+v0.4.1 is released. It improves the affine multi-plane data paths used by
+ downstream kernels, including safe interleaved mixed-type windows, corrected
+ byte-stride validation, and public contiguous multi-plane callback support.
+The [v0.4.1 GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.4.1)
+and [changelog](CHANGELOG.md) document the release contents.
+
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
 
