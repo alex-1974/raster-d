@@ -43,7 +43,9 @@ public import raster.writable_view :
 
 public import raster.data_plane :
     RasterPlaneWindow,
+    RasterPlaneRow,
     WritableRasterPlaneWindow,
+    WritableRasterPlaneRow,
     withContiguousPlane,
     withPlane,
     withPlanesInto;
@@ -146,7 +148,9 @@ public import raster.backing :
 
 public import raster.data_plane :
     RasterPlaneWindow,
+    RasterPlaneRow,
     WritableRasterPlaneWindow,
+    WritableRasterPlaneRow,
     withContiguousPlane,
     withContiguousPlanesInto,
     withPlane,
