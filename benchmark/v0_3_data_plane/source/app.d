@@ -141,6 +141,37 @@ private long rowDataPlanePath(RasterLease!ubyte sourceLease, RasterLease!float d
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
+private long stridedRowDataPlanePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
+@safe
+{
+    auto source = sourceLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    RasterPlaneWindow!ubyte[channels] sources;
+    WritableRasterPlaneWindow!float[channels] destinations;
+    const start = MonoTime.currTime;
+    require(withPlanesInto(source, [0, 1, 2], destination, [0, 1, 2], sources[], destinations[],
+        (scope const(RasterPlaneWindow!ubyte)[] src, scope WritableRasterPlaneWindow!float[] dst)
+            @trusted nothrow @nogc
+        {
+            foreach (y; 0 .. height) {
+                auto r0 = src[0].row(y); auto r1 = src[1].row(y); auto r2 = src[2].row(y);
+                auto w0 = dst[0].row(y); auto w1 = dst[1].row(y); auto w2 = dst[2].row(y);
+                auto s0 = r0.data; auto s1 = r1.data; auto s2 = r2.data;
+                auto d0 = w0.data; auto d1 = w1.data; auto d2 = w2.data;
+                const ss0 = r0.sampleStride; const ss1 = r1.sampleStride; const ss2 = r2.sampleStride;
+                const ds0 = w0.sampleStride; const ds1 = w1.sampleStride; const ds2 = w2.sampleStride;
+                foreach (x; 0 .. width) {
+                    d0[x * ds0] = cast(float) s0[x * ss0] + 0.5f;
+                    d1[x * ds1] = cast(float) s1[x * ss1] + 0.5f;
+                    d2[x * ds2] = cast(float) s2[x * ss2] + 0.5f;
+                }
+            }
+        }), "strided row data-plane callback failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
 private long multiPlaneSlicePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
 @safe
 {
@@ -177,20 +208,24 @@ void main()
     auto source = makeLease!(ubyte, true)(sourceMemory);
     auto destination = makeLease!(float, true)(destinationMemory);
 
-    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); }
+    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); }
     long[warmups + samples] checked;
     long[warmups + samples] dataPlane;
     long[warmups + samples] rows;
+    long[warmups + samples] stridedRows;
     foreach (i; 0 .. checked.length) {
         checked[i] = checkedPath(source, destination);
         dataPlane[i] = dataPlanePath(source, destination);
         rows[i] = rowDataPlanePath(source, destination);
+        stridedRows[i] = stridedRowDataPlanePath(source, destination);
     }
     auto checkedMeasured = checked[warmups .. $].sort;
     auto dataMeasured = dataPlane[warmups .. $].sort;
     auto rowMeasured = rows[warmups .. $].sort;
-    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f checksum=%016x",
+    auto stridedMeasured = stridedRows[warmups .. $].sort;
+    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f strided_row_ns_per_pixel=%.3f checksum=%016x",
         compiler, cast(double)checkedMeasured[$ / 2] / (2 * width * height),
         cast(double)dataMeasured[$ / 2] / (2 * width * height),
-        cast(double)rowMeasured[$ / 2] / (2 * width * height), checksum(destination));
+        cast(double)rowMeasured[$ / 2] / (2 * width * height),
+        cast(double)stridedMeasured[$ / 2] / (2 * width * height), checksum(destination));
 }
