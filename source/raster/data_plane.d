@@ -88,6 +88,17 @@ private:
 
 public:
     @property size_t length() const @safe pure nothrow @nogc { return length_; }
+    /**
+        Returns the first sample of this callback-scoped row.
+
+        Consumers may use `data[x * sampleStride]` in a hot loop.  The
+        returned pointer is tied to the row borrow and must not escape the
+        enclosing data-plane callback.
+    */
+    const(T)* data() const return scope @safe pure nothrow @nogc
+    { return base_; }
+    @property ptrdiff_t sampleStride() const @safe pure nothrow @nogc
+    { return sampleStride_; }
     T load(size_t x) const @safe nothrow @nogc
     { return loadUnchecked(base_, x, 0, 0, sampleStride_); }
 }
@@ -107,6 +118,18 @@ public:
     RasterPlaneWindow!ubyte window;
     assert(window.width == 0);
     assert(window.height == 0);
+}
+
+/// A strided row exposes its validated data pointer and element stride.
+@trusted unittest
+{
+    import raster;
+    ubyte[4] values = [1, 2, 3, 4];
+    auto row = RasterPlaneRow!ubyte(cast(const(ubyte)*) values.ptr, 2, 2);
+    assert(row.length == 2);
+    assert(row.sampleStride == 2);
+    assert(row.data[0] == 1);
+    assert(row.data[row.sampleStride] == 3);
 }
 
 /** A validated, writable affine plane window valid only inside one callback. */
@@ -190,6 +213,11 @@ private:
 
 public:
     @property size_t length() const @safe pure nothrow @nogc { return length_; }
+    /** Returns the first sample of this callback-scoped writable row. */
+    T* data() return scope @safe pure nothrow @nogc
+    { return base_; }
+    @property ptrdiff_t sampleStride() const @safe pure nothrow @nogc
+    { return sampleStride_; }
     T load(size_t x) const @safe nothrow @nogc
     { return loadUnchecked(base_, x, 0, 0, sampleStride_); }
     void store(size_t x, T value) @safe nothrow @nogc
@@ -212,6 +240,16 @@ public:
     WritableRasterPlaneWindow!ubyte window;
     assert(window.width == 0);
     assert(window.height == 0);
+}
+
+/// A writable strided row exposes direct callback-scoped storage access.
+@trusted unittest
+{
+    import raster;
+    ubyte[4] values = [1, 2, 3, 4];
+    auto row = WritableRasterPlaneRow!ubyte(values.ptr, 2, 2);
+    row.data[row.sampleStride] = 9;
+    assert(values[2] == 9);
 }
 
 private struct ByteEnvelope
