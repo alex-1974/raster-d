@@ -691,7 +691,7 @@ bool withPlanesParallelPhases(Source)(
     size_t minimumChunk,
     scope bool delegate(
         scope const(RasterPlaneWindow!Source)[] sources,
-        scope ParallelRowsOperation operation
+        ParallelRowsOperation operation
     ) @safe nothrow phases
 )
 @trusted
@@ -730,7 +730,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     scope bool delegate(
         scope const(RasterPlaneWindow!Source)[] sources,
         scope WritableRasterPlaneWindow!Destination[] destinations,
-        scope ParallelRowsOperation operation
+        ParallelRowsOperation operation
     ) @safe nothrow phases
 )
 @trusted
