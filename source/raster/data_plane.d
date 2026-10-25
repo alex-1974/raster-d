@@ -776,6 +776,230 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     return phases(sourceWindows[], destinationWindows[], operation);
 }
 
+/**
+    Performs multiple synchronous row phases over planes belonging to several
+    independently backed, read-only views.  All views must have the same
+    logical extent.  `sourcePlanes[i]` selects planes from `sources[i]` and
+    `sourceWindows[i]` is caller-owned workspace for the corresponding
+    callback-scoped windows.
+
+    This is the multi-view counterpart of `withPlanesParallelPhases`.  It is
+    intentionally homogeneous in sample type so that callbacks can consume
+    compact nested window arrays without a type-erased public API.  Different
+    logical sample domains can be composed by invoking this primitive once
+    per domain around the same caller-owned phase state.
+*/
+bool withViewsParallelPhases(Source)(
+    scope const(RasterView!Source)[] sources,
+    scope const(size_t)[][] sourcePlanes,
+    scope RasterPlaneWindow!Source[][] sourceWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope RasterPlaneWindow!Source[][] sourceWindows,
+        ParallelRowsOperation operation
+    ) @safe nothrow phases
+)
+@trusted
+{
+    if (phases is null || sources.length == 0
+        || sources.length != sourcePlanes.length
+        || sources.length != sourceWindows.length)
+        return false;
+
+    const width = sources[0].width;
+    const height = sources[0].height;
+    foreach (i, source; sources)
+    {
+        if (source.width != width || source.height != height
+            || sourcePlanes[i].length == 0
+            || sourcePlanes[i].length != sourceWindows[i].length)
+            return false;
+        foreach (j, plane; sourcePlanes[i])
+        {
+            ptrdiff_t rowStride;
+            ptrdiff_t sampleStride;
+            if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+                return false;
+            sourceWindows[i][j] = RasterPlaneWindow!Source(
+                source.executionRegionBase(plane), width, height,
+                rowStride, sampleStride);
+        }
+    }
+
+    auto operation = ParallelRowsOperation(height, workerLimit, minimumChunk);
+    return phases(sourceWindows, operation);
+}
+
+/**
+    Multi-view source-to-destination phased execution.  Source views may have
+    distinct backings, while all source and destination views must share the
+    same logical extent.  Destination alias checks are conservative and are
+    performed before the callback is entered.
+*/
+bool withViewsIntoParallelPhases(Source, Destination)(
+    scope const(RasterView!Source)[] sources,
+    scope const(size_t)[][] sourcePlanes,
+    scope RasterPlaneWindow!Source[][] sourceWindows,
+    scope ref WritableRasterView!Destination destination,
+    scope const(size_t)[] destinationPlanes,
+    scope WritableRasterPlaneWindow!Destination[] destinationWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope RasterPlaneWindow!Source[][] sourceWindows,
+        scope WritableRasterPlaneWindow!Destination[] destinations,
+        ParallelRowsOperation operation
+    ) @safe nothrow phases
+)
+@trusted
+{
+    if (phases is null || sources.length == 0
+        || sources.length != sourcePlanes.length
+        || sources.length != sourceWindows.length
+        || destinationPlanes.length == 0
+        || destinationPlanes.length != destinationWindows.length)
+        return false;
+
+    const width = sources[0].width;
+    const height = sources[0].height;
+    foreach (i, source; sources)
+    {
+        if (source.width != width || source.height != height
+            || sourcePlanes[i].length == 0
+            || sourcePlanes[i].length != sourceWindows[i].length)
+            return false;
+        foreach (j, plane; sourcePlanes[i])
+        {
+            ptrdiff_t rowStride;
+            ptrdiff_t sampleStride;
+            if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+                return false;
+            sourceWindows[i][j] = RasterPlaneWindow!Source(
+                source.executionRegionBase(plane), width, height,
+                rowStride, sampleStride);
+        }
+    }
+    if (destination.width != width || destination.height != height)
+        return false;
+    foreach (i, plane; destinationPlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!destination.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        destinationWindows[i] = WritableRasterPlaneWindow!Destination(
+            destination.executionRegionBase(plane), width, height,
+            rowStride, sampleStride);
+    }
+
+    foreach (sourceGroup; sourceWindows)
+        foreach (sourceWindow; sourceGroup)
+            foreach (destinationWindow; destinationWindows)
+                if (envelopesOverlap(envelope(sourceWindow), envelope(destinationWindow))
+                    && !provenDisjointMixed(sourceWindow, destinationWindow))
+                    return false;
+    foreach (i, left; destinationWindows)
+        foreach (right; destinationWindows[i + 1 .. $])
+            if (envelopesOverlap(envelope(left), envelope(right))
+                && !provenDisjointSamples(left, right))
+                return false;
+
+    auto operation = ParallelRowsOperation(height, workerLimit, minimumChunk);
+    return phases(sourceWindows, destinationWindows, operation);
+}
+
+@trusted unittest
+{
+    ubyte[8] rgbStorage;
+    ubyte[8] maskStorage;
+    foreach (i; 0 .. 8)
+    {
+        rgbStorage[i] = cast(ubyte) i;
+        maskStorage[i] = cast(ubyte) (i & 1);
+    }
+    const PlaneDescriptor[1] rgbDescriptors =
+        [PlaneDescriptor(rgbStorage.ptr, 4, 1)];
+    const PlaneDescriptor[1] maskDescriptors =
+        [PlaneDescriptor(maskStorage.ptr, 4, 1)];
+    auto rgb = makeRasterViewAssumeValidated!ubyte(
+        rgbDescriptors[], Region2D(0, 0, 4, 2));
+    auto mask = makeRasterViewAssumeValidated!ubyte(
+        maskDescriptors[], Region2D(0, 0, 4, 2));
+    RasterView!ubyte[2] sources = [rgb, mask];
+    const(size_t)[][] planes = [[size_t(0)], [size_t(0)]];
+    RasterPlaneWindow!ubyte[][] windows = [
+        new RasterPlaneWindow!ubyte[1], new RasterPlaneWindow!ubyte[1]];
+    size_t phasesSeen;
+    assert(withViewsParallelPhases(sources[], planes, windows, 2, 1,
+        (scope RasterPlaneWindow!ubyte[][] grouped,
+            ParallelRowsOperation operation) nothrow
+        {
+            ++phasesSeen;
+            assert(grouped.length == 2);
+            assert(operation.forRows(
+                (size_t worker, size_t first, size_t last) nothrow
+                {
+                    foreach (row; first .. last)
+                        foreach (x; 0 .. grouped[0][0].width)
+                            assert(grouped[0][0].load(x, row)
+                                == cast(ubyte) (row * 4 + x));
+                    return true;
+                }) == ParallelRowsResult.completed);
+            return true;
+        }) == true);
+    assert(phasesSeen == 1);
+}
+
+@trusted unittest
+{
+    ubyte[4] firstStorage;
+    ubyte[4] secondStorage;
+    float[4] outputStorage;
+    const PlaneDescriptor[1] firstDescriptors =
+        [PlaneDescriptor(firstStorage.ptr, 2, 1)];
+    const PlaneDescriptor[1] secondDescriptors =
+        [PlaneDescriptor(secondStorage.ptr, 2, 1)];
+    auto first = makeRasterViewAssumeValidated!ubyte(
+        firstDescriptors[], Region2D(0, 0, 2, 2));
+    auto second = makeRasterViewAssumeValidated!ubyte(
+        secondDescriptors[], Region2D(0, 0, 2, 2));
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(outputStorage.ptr, 2, 1)];
+    const ResourceEntry[1] resources =
+        [ResourceEntry(outputStorage.ptr,
+            outputStorage.length * float.sizeof, null, null,
+            ResourceAccess.readWrite)];
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+    auto destination = tryMakeWritableRasterView!float(
+        resources[], destinationDescriptors[], Region2D(0, 0, 2, 2),
+        validation, certification);
+    assert(validation.ok && certification.ok);
+    RasterView!ubyte[2] sources = [first, second];
+    const(size_t)[][] planes = [[size_t(0)], [size_t(0)]];
+    RasterPlaneWindow!ubyte[][] windows = [
+        new RasterPlaneWindow!ubyte[1], new RasterPlaneWindow!ubyte[1]];
+    WritableRasterPlaneWindow!float[1] destinations;
+    assert(withViewsIntoParallelPhases(sources[], planes, windows,
+        destination, [size_t(0)], destinations[], 1, 1,
+        (scope RasterPlaneWindow!ubyte[][] grouped,
+            scope WritableRasterPlaneWindow!float[] output,
+            ParallelRowsOperation operation) nothrow
+        {
+            return operation.forRows(
+                (size_t worker, size_t firstRow, size_t endRow) nothrow
+                {
+                    foreach (row; firstRow .. endRow)
+                        foreach (x; 0 .. output[0].width)
+                            output[0].store(x, row,
+                                cast(float) (grouped[0][0].load(x, row)
+                                    + grouped[1][0].load(x, row)));
+                    return true;
+                }) == ParallelRowsResult.completed;
+        }));
+}
+
 @trusted unittest
 {
     ubyte[24] storage;

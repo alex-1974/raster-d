@@ -14,6 +14,15 @@ perform their reduction between calls to `forRows`. Worker indices are stable
 within the operation. Threads are still created per phase and joined before
 the phase returns; persistent worker reuse remains outside raster-d.
 
+When inputs are stored in separate backings, `withViewsParallelPhases` and
+`withViewsIntoParallelPhases` expose the same contract over an array of
+read-only source views. Every view is validated independently before the
+callback is entered, and all views must have the same logical extent. The
+source array is homogeneous by sample type; this keeps the callback strongly
+typed and allocation-free while still covering RGB plus a separately backed
+byte mask. A different sample domain can be coordinated by the caller around
+the same phase state.
+
 ## Execution contract
 
 - `workerLimit == 0` means the sequential path.

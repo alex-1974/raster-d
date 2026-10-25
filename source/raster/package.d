@@ -52,7 +52,9 @@ public import raster.data_plane :
     withPlanesParallel,
     withPlanesParallelPhases,
     withPlanesIntoParallelPhases,
-    withPlanesIntoParallel;
+    withPlanesIntoParallel,
+    withViewsParallelPhases,
+    withViewsIntoParallelPhases;
 
 public import raster.parallel_rows :
     ParallelRowsResult,
