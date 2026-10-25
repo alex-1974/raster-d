@@ -225,8 +225,10 @@ private long parallelTwoPhasePath(RasterLease!ubyte sourceLease, RasterLease!flo
     WritableRasterPlaneWindow!float[channels] destinations;
     shared ulong selected;
     const start = MonoTime.currTime;
-    require(withPlanesIntoParallelPhases(source, [0, 1, 2], destination,
-        [0, 1, 2], sources[], destinations[], benchmarkWorkers, benchmarkChunk,
+    require(withPlanesIntoParallelPhases(source,
+        [size_t(0), size_t(1), size_t(2)], destination,
+        [size_t(0), size_t(1), size_t(2)], sources[], destinations[],
+        benchmarkWorkers, benchmarkChunk,
         (scope const(RasterPlaneWindow!ubyte)[] src,
             scope WritableRasterPlaneWindow!float[] dst,
             scope ref ParallelRowsOperation operation) nothrow

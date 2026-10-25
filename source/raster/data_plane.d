@@ -786,7 +786,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
         descriptors[], Region2D(0, 0, 6, 4));
     RasterPlaneWindow!ubyte[1] windows;
     size_t covered;
-    assert(withPlanesParallel(source, [0], windows[], 3, 1,
+    assert(withPlanesParallel(source, [size_t(0)], windows[], 3, 1,
         (scope const(RasterPlaneWindow!ubyte)[] sources,
             size_t first, size_t last) nothrow
         {
@@ -809,7 +809,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     RasterPlaneWindow!ubyte[1] windows;
     size_t firstPhase;
     size_t secondPhase;
-    assert(withPlanesParallelPhases(source, [0], windows[], 1, 1,
+    assert(withPlanesParallelPhases(source, [size_t(0)], windows[], 1, 1,
         (scope const(RasterPlaneWindow!ubyte)[] sources,
             scope ref ParallelRowsOperation operation) nothrow
         {
@@ -853,7 +853,8 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     RasterPlaneWindow!ubyte[1] sources;
     WritableRasterPlaneWindow!float[1] destinations;
     assert(validation.ok && certification.ok);
-    assert(withPlanesIntoParallelPhases(source, [0], destination, [0],
+    assert(withPlanesIntoParallelPhases(source, [size_t(0)], destination,
+        [size_t(0)],
         sources[], destinations[], 1, 1,
         (scope const(RasterPlaneWindow!ubyte)[] ss,
             scope WritableRasterPlaneWindow!float[] ds,
