@@ -25,6 +25,27 @@ Each published release nevertheless has its own frozen source contract.
 - static worker batches and atomic failure publication to avoid a central
   scheduling lock.
 
+## 0.5.2 — 2026-10-25
+
+### Added
+
+- scoped multi-phase parallel row execution through
+  `ParallelRowsOperation`;
+- source-only `withPlanesParallel` execution without a fabricated
+  destination;
+- `withPlanesParallelPhases` and `withPlanesIntoParallelPhases` for
+  barrier-separated analysis and transformation phases;
+- stable worker indices within a scoped operation, with explicit synchronous
+  failure and join semantics.
+
+### Qualification
+
+- DMD and LDC unit tests pass;
+- source-only, destination, multi-phase, barrier and callback-failure tests
+  pass;
+- release benchmark coverage includes the complete two-phase data-plane
+  workload at 1024×768 and 1920×1080.
+
 ## 0.5.0 — 2026-10-24
 
 ### Added
