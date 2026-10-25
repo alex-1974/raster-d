@@ -691,7 +691,7 @@ bool withPlanesParallelPhases(Source)(
     size_t minimumChunk,
     scope bool delegate(
         scope const(RasterPlaneWindow!Source)[] sources,
-        scope ref ParallelRowsOperation operation
+        scope ParallelRowsOperation operation
     ) @safe nothrow phases
 )
 @trusted
@@ -730,7 +730,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     scope bool delegate(
         scope const(RasterPlaneWindow!Source)[] sources,
         scope WritableRasterPlaneWindow!Destination[] destinations,
-        scope ref ParallelRowsOperation operation
+        scope ParallelRowsOperation operation
     ) @safe nothrow phases
 )
 @trusted
@@ -811,7 +811,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     size_t secondPhase;
     assert(withPlanesParallelPhases(source, [size_t(0)], windows[], 1, 1,
         (scope const(RasterPlaneWindow!ubyte)[] sources,
-            scope ref ParallelRowsOperation operation) nothrow
+            scope ParallelRowsOperation operation) nothrow
         {
             assert(operation.forRows(
                 (size_t worker, size_t first, size_t last) nothrow
@@ -858,7 +858,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
         sources[], destinations[], 1, 1,
         (scope const(RasterPlaneWindow!ubyte)[] ss,
             scope WritableRasterPlaneWindow!float[] ds,
-            scope ref ParallelRowsOperation operation) nothrow
+            scope ParallelRowsOperation operation) nothrow
         {
             assert(operation.forRows(
                 (size_t worker, size_t first, size_t last) nothrow

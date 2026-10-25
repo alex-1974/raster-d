@@ -231,7 +231,7 @@ private long parallelTwoPhasePath(RasterLease!ubyte sourceLease, RasterLease!flo
         benchmarkWorkers, benchmarkChunk,
         (scope const(RasterPlaneWindow!ubyte)[] src,
             scope WritableRasterPlaneWindow!float[] dst,
-            scope ref ParallelRowsOperation operation) nothrow
+            scope ParallelRowsOperation operation) nothrow
         {
             assert(operation.forRows(
                 (size_t worker, size_t firstRow, size_t endRow) nothrow
