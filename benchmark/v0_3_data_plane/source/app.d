@@ -2,15 +2,32 @@ module raster.benchmark_v0_3_data_plane;
 
 import core.stdc.stdlib : malloc;
 import core.time : MonoTime;
+import core.atomic : MemoryOrder, atomicFetchAdd;
 import std.algorithm.sorting : sort;
 import std.stdio : writefln;
 import raster;
 
-enum width = 256;
-enum height = 256;
+version (raster_benchmark_1080p)
+{
+    enum width = 1920;
+    enum height = 1080;
+}
+else
+{
+    enum width = 1024;
+    enum height = 768;
+}
 enum channels = 3;
 enum warmups = 3;
 enum samples = 7;
+version (raster_benchmark_workers_1) enum benchmarkWorkers = 1;
+else version (raster_benchmark_workers_2) enum benchmarkWorkers = 2;
+else version (raster_benchmark_workers_8) enum benchmarkWorkers = 8;
+else enum benchmarkWorkers = 4;
+version (raster_benchmark_chunk_8) enum benchmarkChunk = 8;
+else version (raster_benchmark_chunk_64) enum benchmarkChunk = 64;
+else version (raster_benchmark_chunk_128) enum benchmarkChunk = 128;
+else enum benchmarkChunk = 32;
 
 private void require(bool value, string message) @safe
 {
@@ -172,6 +189,74 @@ private long stridedRowDataPlanePath(RasterLease!ubyte sourceLease, RasterLease!
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
+private long parallelRowDataPlanePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
+@safe
+{
+    auto source = sourceLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    RasterPlaneWindow!ubyte[channels] sources;
+    WritableRasterPlaneWindow!float[channels] destinations;
+    const start = MonoTime.currTime;
+    require(withPlanesIntoParallel(source, [0, 1, 2], destination, [0, 1, 2],
+        sources[], destinations[], benchmarkWorkers, benchmarkChunk,
+        (scope const(RasterPlaneWindow!ubyte)[] src,
+            scope WritableRasterPlaneWindow!float[] dst,
+            size_t firstRow, size_t endRow) nothrow
+        {
+            foreach (y; firstRow .. endRow)
+                foreach (band; 0 .. channels)
+                    foreach (x; 0 .. width)
+                        dst[band].store(x, y, cast(float)src[band].load(x, y) + 0.5f);
+            return true;
+        }), "parallel row data-plane callback failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
+private long parallelTwoPhasePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
+@safe
+{
+    auto source = sourceLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    RasterPlaneWindow!ubyte[channels] sources;
+    WritableRasterPlaneWindow!float[channels] destinations;
+    shared ulong selected;
+    const start = MonoTime.currTime;
+    require(withPlanesIntoParallelPhases(source,
+        [size_t(0), size_t(1), size_t(2)], destination,
+        [size_t(0), size_t(1), size_t(2)], sources[], destinations[],
+        benchmarkWorkers, benchmarkChunk,
+        (scope const(RasterPlaneWindow!ubyte)[] src,
+            scope WritableRasterPlaneWindow!float[] dst,
+            scope ParallelRowsOperation operation) nothrow
+        {
+            assert(operation.forRows(
+                (size_t worker, size_t firstRow, size_t endRow) nothrow
+                {
+                    ulong local;
+                    foreach (y; firstRow .. endRow)
+                        foreach (x; 0 .. width)
+                            local += src[0].load(x, y) != 0;
+                    atomicFetchAdd!(MemoryOrder.rel)(selected, local);
+                    return true;
+                }) == ParallelRowsResult.completed);
+            return operation.forRows(
+                (size_t worker, size_t firstRow, size_t endRow) nothrow
+                {
+                    foreach (y; firstRow .. endRow)
+                        foreach (band; 0 .. channels)
+                            foreach (x; 0 .. width)
+                                dst[band].store(x, y,
+                                    cast(float)src[band].load(x, y) + 0.5f);
+                    return true;
+                }) == ParallelRowsResult.completed;
+        }), "two-phase data-plane callback failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
 private long multiPlaneSlicePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
 @safe
 {
@@ -208,24 +293,33 @@ void main()
     auto source = makeLease!(ubyte, true)(sourceMemory);
     auto destination = makeLease!(float, true)(destinationMemory);
 
-    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); }
+    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); parallelRowDataPlanePath(source, destination); parallelTwoPhasePath(source, destination); }
     long[warmups + samples] checked;
     long[warmups + samples] dataPlane;
     long[warmups + samples] rows;
     long[warmups + samples] stridedRows;
+    long[warmups + samples] parallelRows;
+    long[warmups + samples] twoPhase;
     foreach (i; 0 .. checked.length) {
         checked[i] = checkedPath(source, destination);
         dataPlane[i] = dataPlanePath(source, destination);
         rows[i] = rowDataPlanePath(source, destination);
         stridedRows[i] = stridedRowDataPlanePath(source, destination);
+        parallelRows[i] = parallelRowDataPlanePath(source, destination);
+        twoPhase[i] = parallelTwoPhasePath(source, destination);
     }
     auto checkedMeasured = checked[warmups .. $].sort;
     auto dataMeasured = dataPlane[warmups .. $].sort;
     auto rowMeasured = rows[warmups .. $].sort;
     auto stridedMeasured = stridedRows[warmups .. $].sort;
-    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f strided_row_ns_per_pixel=%.3f checksum=%016x",
+    auto parallelMeasured = parallelRows[warmups .. $].sort;
+    auto twoPhaseMeasured = twoPhase[warmups .. $].sort;
+    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f strided_row_ns_per_pixel=%.3f parallel_row_ns_per_pixel=%.3f two_phase_ns_per_pixel=%.3f workers=%s minimum_chunk=%s checksum=%016x",
         compiler, cast(double)checkedMeasured[$ / 2] / (2 * width * height),
         cast(double)dataMeasured[$ / 2] / (2 * width * height),
         cast(double)rowMeasured[$ / 2] / (2 * width * height),
-        cast(double)stridedMeasured[$ / 2] / (2 * width * height), checksum(destination));
+        cast(double)stridedMeasured[$ / 2] / (2 * width * height),
+        cast(double)parallelMeasured[$ / 2] / (2 * width * height),
+        cast(double)twoPhaseMeasured[$ / 2] / (2 * width * height),
+        benchmarkWorkers, benchmarkChunk, checksum(destination));
 }

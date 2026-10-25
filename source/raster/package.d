@@ -48,7 +48,16 @@ public import raster.data_plane :
     WritableRasterPlaneRow,
     withContiguousPlane,
     withPlane,
-    withPlanesInto;
+    withPlanesInto,
+    withPlanesParallel,
+    withPlanesParallelPhases,
+    withPlanesIntoParallelPhases,
+    withPlanesIntoParallel;
+
+public import raster.parallel_rows :
+    ParallelRowsResult,
+    ParallelRowsOperation,
+    parallelRows;
 
 public import raster.reduction :
     RasterSumError,

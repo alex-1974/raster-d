@@ -60,12 +60,13 @@ types and conservative overlap rejection. The [v0.4.0 GitHub Release](https://gi
 [DUB registry](https://code.dlang.org/packages/raster-d) are the authoritative
 publication locations.
 
-v0.5.0 is released. It extends the data-plane contract with public,
+v0.5.2 is released. It extends the data-plane contract with scoped,
 callback-scoped strided row access for planar and interleaved layouts. A row
 exposes validated data and sample stride so downstream DMD consumers can hoist
-address arithmetic out of the pixel loop without per-sample raster-d calls.
-See the [v0.5.0 release notes](docs/V0_5_RELEASE_NOTES.md) and [GitHub
-Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.0).
+address arithmetic out of the pixel loop without per-sample raster-d calls,
+and adds barrier-separated multi-phase row execution.
+See the [v0.5.2 release notes](docs/V0_5_2_RELEASE_NOTES.md) and [GitHub
+Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.2).
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.

@@ -6,6 +6,46 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.5.1 — 2026-10-25
+
+### Added
+
+- opt-in, bounded parallel row kernels for callback-scoped affine plane
+  borrows through `withPlanesIntoParallel`;
+- generic `parallelRows` execution primitive with caller-selected worker and
+  chunk limits, sequential fallback, and synchronous worker joining;
+- DMD/LDC correctness, ThreadSanitizer, stride/ROI/aliasing tests and release
+  benchmark matrix for 1024×768 and 1920×1080.
+
+### Scheduling and safety
+
+- no process-global worker pool or hidden persistent scheduler;
+- `@safe nothrow` row callbacks with explicit partial-write-on-failure
+  semantics;
+- static worker batches and atomic failure publication to avoid a central
+  scheduling lock.
+
+## 0.5.2 — 2026-10-25
+
+### Added
+
+- scoped multi-phase parallel row execution through
+  `ParallelRowsOperation`;
+- source-only `withPlanesParallel` execution without a fabricated
+  destination;
+- `withPlanesParallelPhases` and `withPlanesIntoParallelPhases` for
+  barrier-separated analysis and transformation phases;
+- stable worker indices within a scoped operation, with explicit synchronous
+  failure and join semantics.
+
+### Qualification
+
+- DMD and LDC unit tests pass;
+- source-only, destination, multi-phase, barrier and callback-failure tests
+  pass;
+- release benchmark coverage includes the complete two-phase data-plane
+  workload at 1024×768 and 1920×1080.
+
 ## 0.5.0 — 2026-10-24
 
 ### Added

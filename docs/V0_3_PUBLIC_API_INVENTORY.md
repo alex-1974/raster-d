@@ -12,11 +12,16 @@ the immutable v0.2 API checkpoint.
 - `WritableRasterPlaneWindow!T`;
 - `withContiguousPlane`;
 - `withPlane`;
-- `withPlanesInto`.
+- `withPlanesInto`;
+- `withPlanesIntoParallel`;
+- `ParallelRowsResult`;
+- `parallelRows`.
 
 ## Contract
 
-All callbacks are synchronous, `@safe`, `nothrow`, and `@nogc`. Window values
+The synchronous data-plane callbacks are `@safe`, `nothrow`, and `@nogc`.
+The opt-in parallel callback is `@safe` and `nothrow`; worker creation is
+intentionally outside the `@nogc` contract. Window values
 and slices are scoped to the callback and do not expose raw pointers.
 
 `withPlane` supports validated signed row/sample strides, including planar,
@@ -28,6 +33,11 @@ per-sample bounds checks in the hot loop.
 caller supplies window workspace, so the API performs no allocation. Source
 planes may alias each other. Source/destination and destination/destination
 byte-envelope intersections are rejected before the callback.
+
+`withPlanesIntoParallel` applies the same validation and passes each callback
+a disjoint half-open row range. It creates only invocation-local workers,
+joins every started worker before returning, and may leave partial writes on a
+failed callback. It does not install a persistent executor or global pool.
 
 ## Evidence
 

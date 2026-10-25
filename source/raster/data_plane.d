@@ -15,9 +15,18 @@
 module raster.data_plane;
 
 import raster.view : RasterView;
+import raster.view : makeRasterViewAssumeValidated;
 import raster.writable_view : WritableRasterView;
+import raster.writable_view : tryMakeWritableRasterView;
+import raster.descriptor : PlaneDescriptor;
+import raster.region : Region2D;
+import raster.resource : ResourceAccess, ResourceEntry;
+import raster.validation : BackingValidationResult,
+    WritableBackingCertificationResult;
+import core.atomic : MemoryOrder, atomicFetchAdd;
 import raster.internal.affine_relation : AffineByteOverlapRelation;
 import raster.internal.validated_affine_relation : classifyValidatedUbyteToFloatAffine2DByteOverlap;
+import raster.parallel_rows : ParallelRowsResult, ParallelRowsOperation, parallelRows;
 
 /** A validated, read-only affine plane window valid only inside one callback. */
 struct RasterPlaneWindow(T)
@@ -225,7 +234,7 @@ public:
 }
 
 /// Example referring to the scoped writable-window operations.
-@safe unittest
+@trusted unittest
 {
     import raster;
     WritableRasterPlaneWindow!ubyte window;
@@ -546,6 +555,435 @@ bool withPlanesInto(Source, Destination)(
 
     kernel(sourceWindows, destinationWindows);
     return true;
+}
+
+/**
+    Validates affine planes and executes a bounded row-parallel kernel.
+
+    The callback receives the same callback-scoped windows as
+    `withPlanesInto`, plus a half-open logical row range.  It must only write
+    its assigned rows and must not retain any argument or start work that
+    outlives this call.  All locally created workers are joined before this
+    function returns.  A failed callback may leave partial destination
+    writes; callers should publish temporary output only after success.
+
+    This is a general raster primitive: it has no imagery-specific sample
+    types, operation semantics, or process-global scheduler.
+*/
+bool withPlanesIntoParallel(Source, Destination)(
+    scope ref const RasterView!Source source,
+    scope const(size_t)[] sourcePlanes,
+    scope ref WritableRasterView!Destination destination,
+    scope const(size_t)[] destinationPlanes,
+    scope RasterPlaneWindow!Source[] sourceWindows,
+    scope WritableRasterPlaneWindow!Destination[] destinationWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope const(RasterPlaneWindow!Source)[] sources,
+        scope WritableRasterPlaneWindow!Destination[] destinations,
+        size_t firstRow,
+        size_t endRow
+    ) @safe nothrow kernel
+)
+@trusted
+{
+    if (kernel is null
+        || sourcePlanes.length == 0
+        || sourcePlanes.length != sourceWindows.length
+        || destinationPlanes.length == 0
+        || destinationPlanes.length != destinationWindows.length
+        || source.width != destination.width
+        || source.height != destination.height)
+        return false;
+
+    foreach (i, plane; sourcePlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        sourceWindows[i] = RasterPlaneWindow!Source(
+            source.executionRegionBase(plane), source.width, source.height,
+            rowStride, sampleStride);
+    }
+    foreach (i, plane; destinationPlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!destination.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        destinationWindows[i] = WritableRasterPlaneWindow!Destination(
+            destination.executionRegionBase(plane), destination.width,
+            destination.height, rowStride, sampleStride);
+    }
+
+    foreach (sourceWindow; sourceWindows)
+        foreach (destinationWindow; destinationWindows)
+            if (envelopesOverlap(envelope(sourceWindow), envelope(destinationWindow))
+                && !provenDisjointMixed(sourceWindow, destinationWindow))
+                return false;
+    foreach (i, left; destinationWindows)
+        foreach (right; destinationWindows[i + 1 .. $])
+            if (envelopesOverlap(envelope(left), envelope(right))
+                && !provenDisjointSamples(left, right))
+                return false;
+
+    return parallelRows(source.height, workerLimit, minimumChunk,
+        (size_t firstRow, size_t endRow)
+        {
+            return kernel(sourceWindows[], destinationWindows[], firstRow, endRow);
+        }) == ParallelRowsResult.completed;
+}
+
+/**
+    Validates read-only affine planes and executes a bounded row-parallel
+    kernel.  Unlike `withPlanesIntoParallel`, this source-only form does not
+    require a fabricated destination.  Read-only planes may overlap.
+*/
+bool withPlanesParallel(Source)(
+    scope ref const RasterView!Source source,
+    scope const(size_t)[] sourcePlanes,
+    scope RasterPlaneWindow!Source[] sourceWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope const(RasterPlaneWindow!Source)[] sources,
+        size_t firstRow,
+        size_t endRow
+    ) @safe nothrow kernel
+)
+@trusted
+{
+    if (kernel is null || sourcePlanes.length == 0
+        || sourcePlanes.length != sourceWindows.length)
+        return false;
+
+    foreach (i, plane; sourcePlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        sourceWindows[i] = RasterPlaneWindow!Source(
+            source.executionRegionBase(plane), source.width, source.height,
+            rowStride, sampleStride);
+    }
+
+    return parallelRows(source.height, workerLimit, minimumChunk,
+        (size_t firstRow, size_t endRow)
+        {
+            return kernel(sourceWindows[], firstRow, endRow);
+        }) == ParallelRowsResult.completed;
+}
+
+/**
+    Performs multiple synchronous row phases under one validated source-only
+    borrow.  `phases` owns the operation barrier: every `forRows` call joins
+    its callbacks before returning, so callers may reduce phase-local state
+    before starting the next phase.
+*/
+bool withPlanesParallelPhases(Source)(
+    scope ref const RasterView!Source source,
+    scope const(size_t)[] sourcePlanes,
+    scope RasterPlaneWindow!Source[] sourceWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope const(RasterPlaneWindow!Source)[] sources,
+        ParallelRowsOperation operation
+    ) @safe nothrow phases
+)
+@trusted
+{
+    if (phases is null || sourcePlanes.length == 0
+        || sourcePlanes.length != sourceWindows.length)
+        return false;
+    foreach (i, plane; sourcePlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        sourceWindows[i] = RasterPlaneWindow!Source(
+            source.executionRegionBase(plane), source.width, source.height,
+            rowStride, sampleStride);
+    }
+    auto operation = ParallelRowsOperation(source.height, workerLimit, minimumChunk);
+    return phases(sourceWindows[], operation);
+}
+
+/**
+    Performs multiple synchronous row phases under one validated
+    source-to-destination borrow.  Destination alias checks are identical to
+    `withPlanesIntoParallel`; the destination windows remain callback-scoped.
+*/
+bool withPlanesIntoParallelPhases(Source, Destination)(
+    scope ref const RasterView!Source source,
+    scope const(size_t)[] sourcePlanes,
+    scope ref WritableRasterView!Destination destination,
+    scope const(size_t)[] destinationPlanes,
+    scope RasterPlaneWindow!Source[] sourceWindows,
+    scope WritableRasterPlaneWindow!Destination[] destinationWindows,
+    size_t workerLimit,
+    size_t minimumChunk,
+    scope bool delegate(
+        scope const(RasterPlaneWindow!Source)[] sources,
+        scope WritableRasterPlaneWindow!Destination[] destinations,
+        ParallelRowsOperation operation
+    ) @safe nothrow phases
+)
+@trusted
+{
+    if (phases is null || sourcePlanes.length == 0
+        || sourcePlanes.length != sourceWindows.length
+        || destinationPlanes.length == 0
+        || destinationPlanes.length != destinationWindows.length
+        || source.width != destination.width
+        || source.height != destination.height)
+        return false;
+    foreach (i, plane; sourcePlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!source.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        sourceWindows[i] = RasterPlaneWindow!Source(
+            source.executionRegionBase(plane), source.width, source.height,
+            rowStride, sampleStride);
+    }
+    foreach (i, plane; destinationPlanes)
+    {
+        ptrdiff_t rowStride;
+        ptrdiff_t sampleStride;
+        if (!destination.tryExecutionPlaneStrides(plane, rowStride, sampleStride))
+            return false;
+        destinationWindows[i] = WritableRasterPlaneWindow!Destination(
+            destination.executionRegionBase(plane), destination.width,
+            destination.height, rowStride, sampleStride);
+    }
+    foreach (sourceWindow; sourceWindows)
+        foreach (destinationWindow; destinationWindows)
+            if (envelopesOverlap(envelope(sourceWindow), envelope(destinationWindow))
+                && !provenDisjointMixed(sourceWindow, destinationWindow))
+                return false;
+    foreach (i, left; destinationWindows)
+        foreach (right; destinationWindows[i + 1 .. $])
+            if (envelopesOverlap(envelope(left), envelope(right))
+                && !provenDisjointSamples(left, right))
+                return false;
+    auto operation = ParallelRowsOperation(source.height, workerLimit, minimumChunk);
+    return phases(sourceWindows[], destinationWindows[], operation);
+}
+
+@trusted unittest
+{
+    ubyte[24] storage;
+    foreach (i, ref value; storage) value = cast(ubyte) i;
+    const PlaneDescriptor[1] descriptors =
+        [PlaneDescriptor(storage.ptr, 6, 1)];
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        descriptors[], Region2D(0, 0, 6, 4));
+    RasterPlaneWindow!ubyte[1] windows;
+    size_t covered;
+    assert(withPlanesParallel(source, [size_t(0)], windows[], 3, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] sources,
+            size_t first, size_t last) nothrow
+        {
+            foreach (y; first .. last)
+                foreach (x; 0 .. sources[0].width)
+                    assert(sources[0].load(x, y) == storage[y * 6 + x]);
+            atomicFetchAdd!(MemoryOrder.rel)(covered, last - first);
+            return true;
+        }));
+    assert(covered == 4);
+}
+
+@trusted unittest
+{
+    ubyte[8] storage;
+    const PlaneDescriptor[1] descriptors =
+        [PlaneDescriptor(storage.ptr, 4, 1)];
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        descriptors[], Region2D(0, 0, 4, 2));
+    RasterPlaneWindow!ubyte[1] windows;
+    size_t firstPhase;
+    size_t secondPhase;
+    assert(withPlanesParallelPhases(source, [size_t(0)], windows[], 1, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] sources,
+            scope ParallelRowsOperation operation) nothrow
+        {
+            assert(operation.forRows(
+                (size_t worker, size_t first, size_t last) nothrow
+                {
+                    firstPhase += last - first;
+                    return true;
+                }) == ParallelRowsResult.completed);
+            assert(firstPhase == 2);
+            assert(operation.forRows(
+                (size_t worker, size_t first, size_t last) nothrow
+                {
+                    secondPhase += last - first;
+                    return true;
+                }) == ParallelRowsResult.completed);
+            return true;
+        }));
+    assert(secondPhase == 2);
+}
+
+@trusted unittest
+{
+    ubyte[8] sourceStorage;
+    float[8] destinationStorage;
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage.ptr, 4, 1)];
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 4, 1)];
+    const ResourceEntry[1] resources =
+        [ResourceEntry(destinationStorage.ptr,
+            destinationStorage.length * float.sizeof, null, null,
+            ResourceAccess.readWrite)];
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        sourceDescriptors[], Region2D(0, 0, 4, 2));
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+    auto destination = tryMakeWritableRasterView!float(
+        resources[], destinationDescriptors[], Region2D(0, 0, 4, 2),
+        validation, certification);
+    RasterPlaneWindow!ubyte[1] sources;
+    WritableRasterPlaneWindow!float[1] destinations;
+    assert(validation.ok && certification.ok);
+    assert(withPlanesIntoParallelPhases(source, [size_t(0)], destination,
+        [size_t(0)],
+        sources[], destinations[], 1, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] ss,
+            scope WritableRasterPlaneWindow!float[] ds,
+            scope ParallelRowsOperation operation) nothrow
+        {
+            assert(operation.forRows(
+                (size_t worker, size_t first, size_t last) nothrow
+                {
+                    foreach (y; first .. last)
+                        foreach (x; 0 .. ss[0].width)
+                            ds[0].store(x, y, cast(float) ss[0].load(x, y));
+                    return true;
+                }) == ParallelRowsResult.completed);
+            return true;
+        }));
+    foreach (i, value; destinationStorage)
+        assert(value == cast(float) sourceStorage[i]);
+}
+
+@trusted unittest
+{
+    ubyte[24] sourceStorage;
+    float[24] destinationStorage;
+    foreach (i, ref value; sourceStorage) value = cast(ubyte) i;
+
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage.ptr, 6, 1)];
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 6, 1)];
+    const ResourceEntry[1] destinationResources =
+        [ResourceEntry(destinationStorage.ptr,
+            destinationStorage.length * float.sizeof, null, null,
+            ResourceAccess.readWrite)];
+
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        sourceDescriptors[], Region2D(0, 0, 6, 4));
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+    auto destination = tryMakeWritableRasterView!float(
+        destinationResources[], destinationDescriptors[],
+        Region2D(0, 0, 6, 4), validation, certification);
+    assert(validation.ok && certification.ok);
+
+    RasterPlaneWindow!ubyte[1] sources;
+    WritableRasterPlaneWindow!float[1] destinations;
+    size_t covered;
+    auto result = withPlanesIntoParallel(
+        source, [0], destination, [0], sources[], destinations[], 3, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] ss,
+            scope WritableRasterPlaneWindow!float[] ds,
+            size_t first, size_t last) nothrow
+        {
+            foreach (y; first .. last)
+                foreach (x; 0 .. ss[0].width)
+                    ds[0].store(x, y, cast(float) ss[0].load(x, y));
+            atomicFetchAdd!(MemoryOrder.rel)(covered, last - first);
+            return true;
+        });
+    assert(result && covered == 4);
+    foreach (i, value; destinationStorage)
+        assert(value == cast(float) sourceStorage[i]);
+}
+
+@trusted unittest
+{
+    ubyte[24] sourceStorage;
+    float[24] destinationStorage;
+    foreach (i, ref value; sourceStorage) value = cast(ubyte)(i + 1);
+
+    // The logical first row starts at the last physical row and walks up.
+    const PlaneDescriptor[1] sourceDescriptors =
+        [PlaneDescriptor(sourceStorage[18 .. $].ptr, -6, 1)];
+    const PlaneDescriptor[1] destinationDescriptors =
+        [PlaneDescriptor(destinationStorage.ptr, 6, 1)];
+    const ResourceEntry[1] resources =
+        [ResourceEntry(destinationStorage.ptr,
+            destinationStorage.length * float.sizeof, null, null,
+            ResourceAccess.readWrite)];
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        sourceDescriptors[], Region2D(0, 0, 6, 4));
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+    auto destination = tryMakeWritableRasterView!float(
+        resources[], destinationDescriptors[], Region2D(0, 0, 6, 4),
+        validation, certification);
+    assert(validation.ok && certification.ok);
+
+    RasterPlaneWindow!ubyte[1] sources;
+    WritableRasterPlaneWindow!float[1] destinations;
+    assert(withPlanesIntoParallel(source, [0], destination, [0],
+        sources[], destinations[], 2, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] ss,
+            scope WritableRasterPlaneWindow!float[] ds,
+            size_t first, size_t last) nothrow
+        {
+            foreach (y; first .. last)
+                foreach (x; 0 .. ss[0].width)
+                    ds[0].store(x, y, cast(float) ss[0].load(x, y));
+            return true;
+        }));
+    foreach (y; 0 .. 4)
+        foreach (x; 0 .. 6)
+            assert(destinationStorage[y * 6 + x]
+                == cast(float) sourceStorage[(3 - y) * 6 + x]);
+}
+
+@trusted unittest
+{
+    ubyte[8] storage;
+    const PlaneDescriptor[1] descriptors =
+        [PlaneDescriptor(storage.ptr, 4, 1)];
+    const ResourceEntry[1] resources =
+        [ResourceEntry(storage.ptr, storage.length, null, null,
+            ResourceAccess.readWrite)];
+    auto source = makeRasterViewAssumeValidated!ubyte(
+        descriptors[], Region2D(0, 0, 4, 2));
+    BackingValidationResult validation;
+    WritableBackingCertificationResult certification;
+    auto destination = tryMakeWritableRasterView!ubyte(
+        resources[], descriptors[], Region2D(0, 0, 4, 2),
+        validation, certification);
+    assert(validation.ok && certification.ok);
+    RasterPlaneWindow!ubyte[1] sources;
+    WritableRasterPlaneWindow!ubyte[1] destinations;
+    assert(!withPlanesIntoParallel(source, [0], destination, [0],
+        sources[], destinations[], 2, 1,
+        (scope const(RasterPlaneWindow!ubyte)[] ss,
+            scope WritableRasterPlaneWindow!ubyte[] ds,
+            size_t first, size_t last) nothrow { return true; }));
 }
 
 /// Example rejecting an invalid multi-plane request.
