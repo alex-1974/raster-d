@@ -18,8 +18,10 @@ dub build --root=benchmark/v0_3_data_plane --compiler=ldc2 --build=release
 The benchmark uses 1024x768 RGB source and destination planes by default, or
 1920x1080 when built with `-version=raster_benchmark_1080p`. Both cases use
 three interleaved channels, three warmups and seven measured samples. The
-output includes the serial strided-row path and the opt-in parallel row path
-(four local workers, minimum chunk 32), including setup and execution cost.
+output includes the serial strided-row path, the opt-in parallel row path and
+the complete two-phase scoped operation (four local workers, minimum chunk
+32), including setup and execution cost. The two-phase case performs a
+read-only analysis pass, synchronizes, then transforms into the destination.
 
 ```sh
 dub build --root=benchmark/v0_3_data_plane --compiler=dmd --build=release

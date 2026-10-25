@@ -7,6 +7,13 @@ logical rows. It is part of raster-d's generic data-plane API and does not
 encode an imagery operation, sample-type pair, queue policy, or application
 scheduler.
 
+`withPlanesParallel` is the source-only sibling for analysis passes that do
+not produce a raster. `ParallelRowsOperation` provides the common scoped
+multi-phase barrier primitive: callers may execute multiple row phases and
+perform their reduction between calls to `forRows`. Worker indices are stable
+within the operation. Threads are still created per phase and joined before
+the phase returns; persistent worker reuse remains outside raster-d.
+
 ## Execution contract
 
 - `workerLimit == 0` means the sequential path.

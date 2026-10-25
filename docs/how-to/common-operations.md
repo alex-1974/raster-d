@@ -87,6 +87,13 @@ partially written the destination, so callers should publish temporary output
 only after success. Queueing, affinity, cancellation, and persistent worker
 reuse remain application-layer responsibilities.
 
+For a read-only analysis pass, use `withPlanesParallel`; it accepts one or
+more source planes and does not require a dummy destination. For multiple
+phases, create a `ParallelRowsOperation` with the raster height and call
+`forRows` for each phase. Each call is a full barrier, so caller-owned
+reduction state can safely be updated between phases. The operation remains
+synchronous and owns no persistent worker pool.
+
 For precise signatures, failure enums and guarantees, consult the
 [public v0.2 API contract](../API_0_2.md) and generated DDox reference.
 The [accuracy guide](../accuracy-and-validation.md) explains why execution

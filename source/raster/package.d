@@ -49,10 +49,14 @@ public import raster.data_plane :
     withContiguousPlane,
     withPlane,
     withPlanesInto,
+    withPlanesParallel,
+    withPlanesParallelPhases,
+    withPlanesIntoParallelPhases,
     withPlanesIntoParallel;
 
 public import raster.parallel_rows :
     ParallelRowsResult,
+    ParallelRowsOperation,
     parallelRows;
 
 public import raster.reduction :
