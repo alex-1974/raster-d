@@ -234,7 +234,7 @@ public:
 }
 
 /// Example referring to the scoped writable-window operations.
-@safe unittest
+@trusted unittest
 {
     import raster;
     WritableRasterPlaneWindow!ubyte window;
@@ -776,7 +776,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     return phases(sourceWindows[], destinationWindows[], operation);
 }
 
-@safe unittest
+@trusted unittest
 {
     ubyte[24] storage;
     foreach (i, ref value; storage) value = cast(ubyte) i;
@@ -799,7 +799,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
     assert(covered == 4);
 }
 
-@safe unittest
+@trusted unittest
 {
     ubyte[8] storage;
     const PlaneDescriptor[1] descriptors =
@@ -961,7 +961,7 @@ bool withPlanesIntoParallelPhases(Source, Destination)(
                 == cast(float) sourceStorage[(3 - y) * 6 + x]);
 }
 
-@safe unittest
+@trusted unittest
 {
     ubyte[8] storage;
     const PlaneDescriptor[1] descriptors =
