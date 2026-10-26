@@ -19,17 +19,21 @@ for compiler in dmd ldc2; do
                 [[ "$worker_version" != raster_benchmark_workers_4 ]] && versions+=" --d-version=$worker_version"
                 [[ "$chunk_version" != default ]] && versions+=" --d-version=$chunk_version"
                 dub build --root=benchmark/v0_3_data_plane --compiler="$compiler" --build=release $versions >/dev/null
-                values=()
+                serial_values=()
+                parallel_values=()
                 for _ in $(seq 1 "$runs"); do
-                    value=$(./benchmark/v0_3_data_plane/raster-v0-3-data-plane-benchmark \
-                        | sed -n 's/.*parallel_row_ns_per_pixel=\([0-9.]*\).*/\1/p')
-                    values+=("$value")
+                    read -r serial parallel < <(./benchmark/v0_3_data_plane/raster-v0-3-data-plane-benchmark \
+                        | sed -n 's/.*imagery_serial_ns_per_pixel=\([0-9.]*\).*imagery_two_phase_ns_per_pixel=\([0-9.]*\).*/\1 \2/p')
+                    serial_values+=("$serial")
+                    parallel_values+=("$parallel")
                 done
-                sorted=$(printf '%s\n' "${values[@]}" | sort -n)
-                median=$(printf '%s\n' "$sorted" | awk -v n="$runs" 'NR == int((n + 1) / 2) { print; exit }')
-                p95=$(printf '%s\n' "$sorted" | awk -v n="$runs" 'NR >= int(0.95 * n + 0.999999) { print; exit }')
-                printf '%s %s %s %s median=%s p95=%s samples=' "$compiler" "$size_version" "$worker_version" "$chunk_version" "$median" "$p95"
-                printf '%s,' "${values[@]}" | sed 's/,$/\n/'
+                serial_sorted=$(printf '%s\n' "${serial_values[@]}" | sort -n)
+                parallel_sorted=$(printf '%s\n' "${parallel_values[@]}" | sort -n)
+                serial_median=$(printf '%s\n' "$serial_sorted" | awk -v n="$runs" 'NR == int((n + 1) / 2) { print; exit }')
+                parallel_median=$(printf '%s\n' "$parallel_sorted" | awk -v n="$runs" 'NR == int((n + 1) / 2) { print; exit }')
+                printf '%s %s %s %s serial_median=%s parallel_median=%s serial_samples=' "$compiler" "$size_version" "$worker_version" "$chunk_version" "$serial_median" "$parallel_median"
+                printf '%s,' "${serial_values[@]}" | sed 's/,$/ parallel_samples=/'
+                printf '%s,' "${parallel_values[@]}" | sed 's/,$/\n/'
             done
         done
     done
