@@ -19,9 +19,11 @@ The benchmark uses 1024x768 RGB source and destination planes by default, or
 1920x1080 when built with `-version=raster_benchmark_1080p`. Both cases use
 three interleaved channels, three warmups and seven measured samples. The
 output includes the serial strided-row path, the opt-in parallel row path and
-the complete two-phase scoped operation (four local workers, minimum chunk
-32), including setup and execution cost. The two-phase case performs a
-read-only analysis pass, synchronizes, then transforms into the destination.
+both two-phase scoped operations (four local workers, minimum chunk 32),
+including setup and execution cost. The imagery-shaped case uses an RGB source
+and a separately backed mask view, worker-local 65,536-entry `ulong`
+histograms, deterministic reduction and threshold derivation, then transforms
+into three disjoint interleaved float destination channels.
 
 ```sh
 dub build --root=benchmark/v0_3_data_plane --compiler=dmd --build=release

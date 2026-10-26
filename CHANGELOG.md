@@ -6,6 +6,17 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## Unreleased
+
+### Added
+
+- `withViewsParallelPhases` and `withViewsIntoParallelPhases` for synchronous
+  phased execution over multiple independently backed source views;
+- independent validation of each source view, common logical extents, and
+  callback-scoped grouped windows for RGB plus separately backed masks;
+- imagery-shaped benchmark coverage with worker-local 65,536-bin histograms,
+  deterministic reduction, threshold derivation, and destination transform.
+
 ## 0.5.1 — 2026-10-25
 
 ### Added

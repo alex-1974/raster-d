@@ -257,6 +257,77 @@ private long parallelTwoPhasePath(RasterLease!ubyte sourceLease, RasterLease!flo
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
+private long imageryShapedTwoPhasePath(RasterLease!ubyte rgbLease,
+    RasterLease!ubyte maskLease, RasterLease!float destinationLease)
+@safe
+{
+    auto rgb = rgbLease.view();
+    auto mask = maskLease.view();
+    bool writableOk;
+    auto destination = destinationLease.tryWritableView(writableOk);
+    require(writableOk, "writable view failed");
+    RasterView!ubyte[2] views = [rgb, mask];
+    const(size_t)[][] planes = [[size_t(0), size_t(1), size_t(2)], [size_t(0)]];
+    RasterPlaneWindow!ubyte[][] windows = [
+        new RasterPlaneWindow!ubyte[channels], new RasterPlaneWindow!ubyte[1]];
+    WritableRasterPlaneWindow!float[channels] destinations;
+    ulong[][benchmarkWorkers] histograms;
+    ulong[benchmarkWorkers] selected;
+    foreach (ref histogram; histograms) histogram = new ulong[65536];
+    const start = MonoTime.currTime;
+    require(withViewsIntoParallelPhases(views[], planes, windows,
+        destination, [size_t(0), size_t(1), size_t(2)], destinations[],
+        benchmarkWorkers, benchmarkChunk,
+        (scope RasterPlaneWindow!ubyte[][] src,
+            scope WritableRasterPlaneWindow!float[] dst,
+            scope ParallelRowsOperation operation) nothrow
+        {
+            if (operation.forRows(
+                (size_t worker, size_t firstRow, size_t endRow) nothrow
+                {
+                    auto histogram = histograms[worker];
+                    ulong localSelected;
+                    foreach (y; firstRow .. endRow)
+                        foreach (x; 0 .. width)
+                        {
+                            const value = cast(ushort)(
+                                (cast(ushort)src[0][0].load(x, y) << 8)
+                                | src[0][1].load(x, y));
+                            ++histogram[value];
+                            localSelected += src[1][0].load(x, y) != 0;
+                        }
+                    selected[worker] += localSelected;
+                    return true;
+                }) != ParallelRowsResult.completed)
+                return false;
+            ulong selectedTotal;
+            ulong histogramTotal;
+            foreach (worker; 0 .. benchmarkWorkers)
+            {
+                selectedTotal += selected[worker];
+                foreach (count; histograms[worker]) histogramTotal += count;
+            }
+            const threshold = histogramTotal == 0 ? 0
+                : cast(ushort)(selectedTotal % histogramTotal);
+            return operation.forRows(
+                (size_t worker, size_t firstRow, size_t endRow) nothrow
+                {
+                    foreach (y; firstRow .. endRow)
+                        foreach (x; 0 .. width)
+                        {
+                            const value = (cast(ushort)src[0][0].load(x, y) << 8)
+                                | src[0][1].load(x, y);
+                            const offset = cast(float)(value >= threshold ? 1 : 0);
+                            foreach (band; 0 .. channels)
+                                dst[band].store(x, y,
+                                    cast(float)src[0][band].load(x, y) + offset);
+                        }
+                    return true;
+                }) == ParallelRowsResult.completed;
+        }), "imagery-shaped two-phase callback failed");
+    return (MonoTime.currTime - start).total!"nsecs";
+}
+
 private long multiPlaneSlicePath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
 @safe
 {
@@ -290,16 +361,19 @@ void main()
 
     void* sourceMemory;
     void* destinationMemory;
+    void* maskMemory;
     auto source = makeLease!(ubyte, true)(sourceMemory);
+    auto mask = makeLease!(ubyte, true)(maskMemory);
     auto destination = makeLease!(float, true)(destinationMemory);
 
-    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); parallelRowDataPlanePath(source, destination); parallelTwoPhasePath(source, destination); }
+    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); parallelRowDataPlanePath(source, destination); parallelTwoPhasePath(source, destination); imageryShapedTwoPhasePath(source, mask, destination); }
     long[warmups + samples] checked;
     long[warmups + samples] dataPlane;
     long[warmups + samples] rows;
     long[warmups + samples] stridedRows;
     long[warmups + samples] parallelRows;
     long[warmups + samples] twoPhase;
+    long[warmups + samples] imageryTwoPhase;
     foreach (i; 0 .. checked.length) {
         checked[i] = checkedPath(source, destination);
         dataPlane[i] = dataPlanePath(source, destination);
@@ -307,6 +381,7 @@ void main()
         stridedRows[i] = stridedRowDataPlanePath(source, destination);
         parallelRows[i] = parallelRowDataPlanePath(source, destination);
         twoPhase[i] = parallelTwoPhasePath(source, destination);
+        imageryTwoPhase[i] = imageryShapedTwoPhasePath(source, mask, destination);
     }
     auto checkedMeasured = checked[warmups .. $].sort;
     auto dataMeasured = dataPlane[warmups .. $].sort;
@@ -314,12 +389,14 @@ void main()
     auto stridedMeasured = stridedRows[warmups .. $].sort;
     auto parallelMeasured = parallelRows[warmups .. $].sort;
     auto twoPhaseMeasured = twoPhase[warmups .. $].sort;
-    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f strided_row_ns_per_pixel=%.3f parallel_row_ns_per_pixel=%.3f two_phase_ns_per_pixel=%.3f workers=%s minimum_chunk=%s checksum=%016x",
+    auto imageryTwoPhaseMeasured = imageryTwoPhase[warmups .. $].sort;
+    writefln("data_plane_benchmark compiler=%s checked_ns_per_pixel=%.3f data_plane_ns_per_pixel=%.3f row_ns_per_pixel=%.3f strided_row_ns_per_pixel=%.3f parallel_row_ns_per_pixel=%.3f two_phase_ns_per_pixel=%.3f imagery_two_phase_ns_per_pixel=%.3f workers=%s minimum_chunk=%s checksum=%016x",
         compiler, cast(double)checkedMeasured[$ / 2] / (2 * width * height),
         cast(double)dataMeasured[$ / 2] / (2 * width * height),
         cast(double)rowMeasured[$ / 2] / (2 * width * height),
         cast(double)stridedMeasured[$ / 2] / (2 * width * height),
         cast(double)parallelMeasured[$ / 2] / (2 * width * height),
         cast(double)twoPhaseMeasured[$ / 2] / (2 * width * height),
+        cast(double)imageryTwoPhaseMeasured[$ / 2] / (2 * width * height),
         benchmarkWorkers, benchmarkChunk, checksum(destination));
 }

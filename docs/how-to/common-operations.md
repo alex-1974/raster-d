@@ -94,6 +94,34 @@ phases, create a `ParallelRowsOperation` with the raster height and call
 reduction state can safely be updated between phases. The operation remains
 synchronous and owns no persistent worker pool.
 
+For inputs from separate raster backings, use `withViewsParallelPhases`:
+
+```d
+RasterView!ubyte[2] views = [rgbView, maskView];
+const(size_t)[][] planes = [[0], [0]];
+RasterPlaneWindow!ubyte[][] windows = [
+    new RasterPlaneWindow!ubyte[1],
+    new RasterPlaneWindow!ubyte[1]];
+
+const success = withViewsParallelPhases(
+    views[], planes, windows[], 4, 32,
+    (scope RasterPlaneWindow!ubyte[][] inputs,
+        ParallelRowsOperation operation)
+    {
+        // inputs[0] and inputs[1] are callback-scoped RGB/mask windows.
+        return operation.forRows(
+            (size_t worker, size_t firstRow, size_t endRow)
+            {
+                // Analyse only [firstRow, endRow) here.
+                return true;
+            }) == ParallelRowsResult.completed;
+    });
+```
+
+The views may have independent storage and arbitrary validated affine
+strides. Shape mismatches, invalid plane selections, and source/destination
+aliasing are rejected before the phase callback starts.
+
 For precise signatures, failure enums and guarantees, consult the
 [public v0.2 API contract](../API_0_2.md) and generated DDox reference.
 The [accuracy guide](../accuracy-and-validation.md) explains why execution
