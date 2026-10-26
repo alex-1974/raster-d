@@ -68,12 +68,13 @@ and adds barrier-separated multi-phase row execution.
 See the [v0.5.2 release notes](docs/V0_5_2_RELEASE_NOTES.md) and [GitHub
 Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.2).
 
-The next development API adds `withViewsParallelPhases` and
+v0.5.3 adds `withViewsParallelPhases` and
 `withViewsIntoParallelPhases` for synchronous phased execution across multiple
 independently backed source views. This covers generic multi-view workloads
 such as RGB data plus a separately backed byte mask while preserving validated
 strides, common logical extents, callback-scoped borrows, and bounded worker
-execution. It is currently unreleased.
+execution. See the [v0.5.3 release notes](docs/V0_5_3_RELEASE_NOTES.md) and
+[GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.3).
 
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
