@@ -50,3 +50,35 @@ resolutions, four worker limits and four chunk sizes. Use the recorded samples
 to calculate median and P95; process-level repetition is intentional because
 allocation, phase thread startup, reduction, and host scheduling are part of
 thread startup and host scheduling are part of this API's measured cost.
+
+## Issue #274 acceptance measurements
+
+The focused acceptance run used five process-level samples, four workers,
+minimum chunk 32, Release builds, and included the complete serial and
+parallel imagery-shaped operation. Values below are local to the recorded
+host and are nanoseconds per pixel; P95 is the largest of the five samples.
+
+| Compiler | Size | Serial median / P95 | Parallel median / P95 |
+|---|---:|---:|---:|
+| DMD | 1024x768 | 24.804 / 25.795 | 8.637 / 9.216 |
+| DMD | 1920x1080 | 24.149 / 24.553 | 8.181 / 8.610 |
+| LDC | 1024x768 | 15.686 / 20.875 | 13.483 / 15.633 |
+| LDC | 1920x1080 | 13.870 / 18.894 | 13.617 / 14.018 |
+
+Reproduce the focused matrix from the repository root:
+
+```sh
+for compiler in dmd ldc2; do
+    for version in default raster_benchmark_1080p; do
+        versions=""
+        test "$version" = default || versions="--d-version=$version"
+        dub build --root=benchmark/v0_3_data_plane --compiler="$compiler" --build=release $versions
+        for run in 1 2 3 4 5; do
+            ./benchmark/v0_3_data_plane/raster-v0-3-data-plane-benchmark
+        done
+    done
+done
+```
+
+Every run also performs the independent histogram fixture and the direct
+element-wise serial/parallel output comparison before reporting timings.

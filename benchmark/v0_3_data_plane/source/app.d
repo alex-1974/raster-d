@@ -33,7 +33,6 @@ version (raster_benchmark_chunk_8) enum benchmarkChunk = 8;
 else version (raster_benchmark_chunk_64) enum benchmarkChunk = 64;
 else version (raster_benchmark_chunk_128) enum benchmarkChunk = 128;
 else enum benchmarkChunk = 32;
-
 private void require(bool value, string message) @safe
 {
     if (!value) throw new Exception(message);
@@ -90,6 +89,28 @@ private ulong checksum(RasterLease!float lease)
                 result = (result ^ cast(ulong)(value * 1000.0f)) * 1099511628211UL;
             }
     return result;
+}
+
+private void requireEqualOutputs(RasterLease!float leftLease,
+    RasterLease!float rightLease)
+@safe
+{
+    auto left = leftLease.view();
+    auto right = rightLease.view();
+    float leftValue, rightValue;
+    foreach (band; 0 .. channels)
+        foreach (y; 0 .. height)
+            foreach (x; 0 .. width)
+            {
+                require(left.trySample(band, x, y, leftValue), "left output read failed");
+                require(right.trySample(band, x, y, rightValue), "right output read failed");
+                if (leftValue != rightValue)
+                {
+                    writefln("mismatch band=%s x=%s y=%s serial=%s parallel=%s",
+                        band, x, y, leftValue, rightValue);
+                    throw new Exception("serial and parallel output arrays differ");
+                }
+            }
 }
 
 private long checkedPath(RasterLease!ubyte sourceLease, RasterLease!float destinationLease)
@@ -236,7 +257,7 @@ private long parallelTwoPhasePath(RasterLease!ubyte sourceLease, RasterLease!flo
         benchmarkWorkers, benchmarkChunk,
         (scope const(RasterPlaneWindow!ubyte)[] src,
             scope WritableRasterPlaneWindow!float[] dst,
-            scope ParallelRowsOperation operation) nothrow
+            scope ParallelRowsOperation operation) @safe nothrow
         {
             assert(operation.forRows(
                 (size_t worker, size_t firstRow, size_t endRow) nothrow
@@ -280,12 +301,12 @@ private long imageryShapedTwoPhasePath(RasterLease!ubyte rgbLease,
     ulong[benchmarkWorkers] selected;
     foreach (ref histogram; histograms) histogram = new ulong[histogramBins];
     const start = MonoTime.currTime;
-    require(withViewsIntoParallelPhases(views[], planes, windows,
+    const completed = withViewsIntoParallelPhases(views[], planes, windows,
         destination, [size_t(0), size_t(1), size_t(2)], destinations[],
         benchmarkWorkers, benchmarkChunk,
         (scope RasterPlaneWindow!ubyte[][] src,
             scope WritableRasterPlaneWindow!float[] dst,
-            scope ParallelRowsOperation operation) nothrow
+            scope ParallelRowsOperation operation) @safe nothrow
         {
             if (operation.forRows(
                 (size_t worker, size_t firstRow, size_t endRow) nothrow
@@ -293,6 +314,7 @@ private long imageryShapedTwoPhasePath(RasterLease!ubyte rgbLease,
                     auto histogram = histograms[worker];
                     ulong localSelected;
                     foreach (y; firstRow .. endRow)
+                    {
                         foreach (x; 0 .. width)
                         {
                             if (src[1][0].load(x, y) != 0) {
@@ -302,6 +324,7 @@ private long imageryShapedTwoPhasePath(RasterLease!ubyte rgbLease,
                                 ++localSelected;
                             }
                         }
+                    }
                     selected[worker] += localSelected;
                     return true;
                 }) != ParallelRowsResult.completed)
@@ -314,23 +337,30 @@ private long imageryShapedTwoPhasePath(RasterLease!ubyte rgbLease,
                 foreach (count; histograms[worker]) histogramTotal += count;
             }
             const threshold = nearestRank(histograms, histogramTotal, percentile);
-            return operation.forRows(
-                (size_t worker, size_t firstRow, size_t endRow) nothrow
-                {
-                    foreach (y; firstRow .. endRow)
-                        foreach (x; 0 .. width)
-                        {
-                            const value = lumaBin(src[0][0].load(x, y),
-                                src[0][1].load(x, y), src[0][2].load(x, y));
-                            const offset = cast(float)(src[1][0].load(x, y) != 0
-                                && value >= threshold ? 1 : 0);
-                            foreach (band; 0 .. channels)
-                                dst[band].store(x, y,
-                                    cast(float)src[0][band].load(x, y) + offset);
-                        }
-                    return true;
-                }) == ParallelRowsResult.completed;
-        }), "imagery-shaped two-phase callback failed");
+            try
+            {
+                if (parallelRows(height, benchmarkWorkers, benchmarkChunk,
+                    (size_t firstRow, size_t endRow) nothrow
+                    {
+                        foreach (y; firstRow .. endRow)
+                            foreach (x; 0 .. width)
+                            {
+                                const value = lumaBin(src[0][0].load(x, y),
+                                    src[0][1].load(x, y), src[0][2].load(x, y));
+                                const offset = cast(float)(value >= threshold ? 1 : 0);
+                                foreach (band; 0 .. channels)
+                                    dst[band].store(x, y,
+                                        cast(float)src[0][band].load(x, y) + offset);
+                            }
+                        return true;
+                    }) != ParallelRowsResult.completed)
+                    return false;
+            }
+            catch (Exception)
+                return false;
+            return true;
+        });
+    require(completed, "imagery-shaped two-phase callback failed");
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
@@ -369,6 +399,13 @@ private void validateHistogramReference() @safe
     foreach (bin; 0 .. histogramBins) reduced[0][bin] = histogram[bin];
     require(nearestRank(reduced, selectedTotal, percentile) == lumaBin(30, 30, 30),
         "reference percentile mismatch");
+
+    // The excluded high sample still receives the threshold-derived transform.
+    const threshold = lumaBin(30, 30, 30);
+    require(cast(float)250 + (lumaBin(250, 250, 250) >= threshold ? 1 : 0) == 251,
+        "excluded reference sample was not transformed");
+    require(cast(float)10 + (lumaBin(10, 10, 10) >= threshold ? 1 : 0) == 10,
+        "below-threshold reference sample was transformed incorrectly");
 }
 
 private long serialImageryPath(RasterLease!ubyte rgbLease,
@@ -382,7 +419,8 @@ private long serialImageryPath(RasterLease!ubyte rgbLease,
     const start = MonoTime.currTime;
     foreach (y; 0 .. height) foreach (x; 0 .. width) {
         ubyte maskValue;
-        if (mask.trySample(0, x, y, maskValue) && maskValue != 0) {
+        require(mask.trySample(0, x, y, maskValue), "mask read failed");
+        if (maskValue != 0) {
             ubyte r, g, b; require(rgb.trySample(0, x, y, r) && rgb.trySample(1, x, y, g)
                 && rgb.trySample(2, x, y, b), "source read failed");
             ++histogram[lumaBin(r, g, b)]; ++selectedTotal;
@@ -392,16 +430,22 @@ private long serialImageryPath(RasterLease!ubyte rgbLease,
     foreach (ref h; reduced) h = new ulong[histogramBins];
     foreach (bin; 0 .. histogramBins) reduced[0][bin] = histogram[bin];
     const threshold = nearestRank(reduced, selectedTotal, percentile);
-    foreach (y; 0 .. height) foreach (x; 0 .. width) {
-        ubyte maskValue; require(mask.trySample(0, x, y, maskValue), "mask read failed");
-        ubyte r, g, b; require(rgb.trySample(0, x, y, r) && rgb.trySample(1, x, y, g)
-            && rgb.trySample(2, x, y, b), "source read failed");
-        const offset = cast(float)(maskValue != 0 && lumaBin(r, g, b) >= threshold ? 1 : 0);
-        foreach (band; 0 .. channels) {
-            ubyte value; require(rgb.trySample(band, x, y, value), "source read failed");
-            require(destination.trySetSample(band, x, y, cast(float)value + offset), "destination write failed");
-        }
-    }
+    RasterPlaneWindow!ubyte[channels] sourceWindows;
+    WritableRasterPlaneWindow!float[channels] destinationWindows;
+    require(withPlanesInto(rgb, [size_t(0), size_t(1), size_t(2)], destination,
+        [size_t(0), size_t(1), size_t(2)], sourceWindows[], destinationWindows[],
+        (scope const(RasterPlaneWindow!ubyte)[] src,
+            scope WritableRasterPlaneWindow!float[] dst) @safe nothrow @nogc
+        {
+            foreach (y; 0 .. height)
+                foreach (x; 0 .. width)
+                {
+                    const value = lumaBin(src[0].load(x, y), src[1].load(x, y), src[2].load(x, y));
+                    const offset = cast(float)(value >= threshold ? 1 : 0);
+                    foreach (band; 0 .. channels)
+                        dst[band].store(x, y, cast(float)src[band].load(x, y) + offset);
+                }
+        }), "serial transform window failed");
     return (MonoTime.currTime - start).total!"nsecs";
 }
 
@@ -441,10 +485,14 @@ void main()
     void* destinationMemory;
     void* maskMemory;
     auto source = makeLease!(ubyte, true)(sourceMemory);
-    auto mask = makeLease!(ubyte, true)(maskMemory);
+    auto mask = makeLease!(ubyte)(maskMemory);
     auto destination = makeLease!(float, true)(destinationMemory);
+    void* serialDestinationMemory;
+    auto serialDestination = makeLease!(float, true)(serialDestinationMemory);
+    void* imageryDestinationMemory;
+    auto imageryDestination = makeLease!(float, true)(imageryDestinationMemory);
 
-    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); parallelRowDataPlanePath(source, destination); parallelTwoPhasePath(source, destination); imageryShapedTwoPhasePath(source, mask, destination); }
+    foreach (_; 0 .. warmups) { checkedPath(source, destination); dataPlanePath(source, destination); rowDataPlanePath(source, destination); stridedRowDataPlanePath(source, destination); parallelRowDataPlanePath(source, destination); parallelTwoPhasePath(source, destination); serialImageryPath(source, mask, serialDestination); imageryShapedTwoPhasePath(source, mask, imageryDestination); }
     long[warmups + samples] checked;
     long[warmups + samples] dataPlane;
     long[warmups + samples] rows;
@@ -460,10 +508,9 @@ void main()
         stridedRows[i] = stridedRowDataPlanePath(source, destination);
         parallelRows[i] = parallelRowDataPlanePath(source, destination);
         twoPhase[i] = parallelTwoPhasePath(source, destination);
-        imagerySerial[i] = serialImageryPath(source, mask, destination);
-        const serialResult = checksum(destination);
-        imageryTwoPhase[i] = imageryShapedTwoPhasePath(source, mask, destination);
-        require(serialResult == checksum(destination), "serial and parallel results differ");
+        imagerySerial[i] = serialImageryPath(source, mask, serialDestination);
+        imageryTwoPhase[i] = imageryShapedTwoPhasePath(source, mask, imageryDestination);
+        requireEqualOutputs(serialDestination, imageryDestination);
     }
     auto checkedMeasured = checked[warmups .. $].sort;
     auto dataMeasured = dataPlane[warmups .. $].sort;
