@@ -6,6 +6,18 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.5.4 — 2026-10-27
+
+### Fixed
+
+- corrected the imagery-shaped benchmark to use mask-filtered worker-local
+  histograms, deterministic 75th-percentile thresholding, and a matching
+  serial workload;
+- added independent reference validation and serial/parallel result checks;
+- documented the corrected benchmark workload and matrix measurements.
+
+The public API is unchanged.
+
 ## 0.5.3 — 2026-10-26
 
 ### Added
