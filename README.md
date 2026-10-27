@@ -76,6 +76,11 @@ strides, common logical extents, callback-scoped borrows, and bounded worker
 execution. See the [v0.5.3 release notes](docs/V0_5_3_RELEASE_NOTES.md) and
 [GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.3).
 
+v0.5.4 is a patch release with corrected, independently validated
+imagery-shaped benchmark semantics. The public API is unchanged. See the
+[v0.5.4 release notes](docs/V0_5_4_RELEASE_NOTES.md) and [GitHub
+Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.4).
+
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
 
