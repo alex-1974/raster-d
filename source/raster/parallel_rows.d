@@ -80,13 +80,19 @@ public:
                 atomicStore!(MemoryOrder.rel)(failed, 1);
         }
 
+        // Bind the index as a parameter of a factory call.  Do not let the
+        // thread closure capture the foreach variable's storage: some D
+        // frontends reuse that storage for the loop and all callbacks can
+        // otherwise observe the final index.
+        Thread makeThread(size_t workerIndex)
+        {
+            return new Thread({ run(workerIndex); });
+        }
+
         try
         {
             foreach (i; 1 .. activeWorkers)
-            {
-                const workerIndex = i;
-                threads ~= new Thread({ run(workerIndex); });
-            }
+                threads ~= makeThread(i);
             foreach (thread; threads) thread.start();
             run(0);
             foreach (thread; threads)
@@ -277,5 +283,38 @@ ParallelRowsResult parallelRows(
         (size_t a, size_t b) nothrow { first = a; last = b; return true; })
         == ParallelRowsResult.completed);
     assert(first == 0 && last == size_t.max);
+}
+
+@safe unittest
+{
+    // Exercise the real threaded path repeatedly, including a short final
+    // chunk.  Each phase must cover every row exactly once and each worker
+    // slot must be exclusive while its callback is active.
+    enum rowCount = 37;
+    foreach (workerLimit; [size_t(2), 4, 8])
+    foreach (minimumChunk; [size_t(1), 3, 7])
+    {
+        auto operation = ParallelRowsOperation(rowCount, workerLimit,
+            minimumChunk);
+        auto visits = new shared size_t[rowCount];
+        auto active = new shared size_t[workerLimit];
+        auto maxActive = new shared size_t[workerLimit];
+        foreach (phase; 0 .. 2)
+        {
+            assert(operation.forRows(
+                (size_t worker, size_t first, size_t last) nothrow
+                {
+                    assert(atomicFetchAdd!(MemoryOrder.acq_rel)(active[worker], 1) == 0);
+                    atomicStore!(MemoryOrder.rel)(maxActive[worker], 1);
+                    foreach (row; first .. last)
+                        atomicFetchAdd!(MemoryOrder.acq_rel)(visits[row], 1);
+                    atomicStore!(MemoryOrder.rel)(active[worker], 0);
+                    return true;
+                }) == ParallelRowsResult.completed);
+        }
+        foreach (count; visits) assert(count == 2);
+        foreach (slot; maxActive) assert(slot <= 1);
+        foreach (slot; active) assert(slot == 0);
+    }
 }
 
