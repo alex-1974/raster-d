@@ -82,12 +82,13 @@ public:
 
         try
         {
-            foreach (i; 0 .. activeWorkers)
+            foreach (i; 1 .. activeWorkers)
             {
                 const workerIndex = i;
                 threads ~= new Thread({ run(workerIndex); });
             }
             foreach (thread; threads) thread.start();
+            run(0);
             foreach (thread; threads)
                 try thread.join();
                 catch (Throwable) return ParallelRowsResult.callbackFailed;
@@ -167,10 +168,11 @@ ParallelRowsResult parallelRows(
 
     try
     {
-        foreach (i; 0 .. activeWorkers)
+        foreach (i; 1 .. activeWorkers)
             threads ~= makeThread(i);
         foreach (thread; threads)
             thread.start();
+        run(0);
         foreach (thread; threads)
             thread.join();
     }
