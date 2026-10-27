@@ -6,6 +6,18 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.5.5 — 2026-10-27
+
+### Fixed
+
+- fixed parallel row worker binding so every callback receives a stable,
+  disjoint row range and worker slot;
+- added repeated multi-worker, multi-phase coverage tests for DMD and LDC;
+- qualified caller-selected worker limits and documented the decision not to
+  add an unproven public tile scheduler.
+
+The public API is unchanged.
+
 ## 0.5.4 — 2026-10-27
 
 ### Fixed
