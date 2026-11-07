@@ -166,3 +166,11 @@ raster-d retains synchronous, allocation-conscious, region/dependency-oriented
 mechanics and leaves execution scheduling to the caller by default. This
 satisfies the workspace concurrency contract while preserving the useful
 research lessons for higher-level consumers.
+
+## Later opt-in row execution
+
+The default remains unchanged. A later raster-d extension adds
+`withPlanesIntoParallel` for explicitly requested, bounded row kernels. It
+owns only the threads of one synchronous invocation, joins them before return,
+and does not install a persistent or process-global scheduler. Queueing,
+affinity, cancellation and worker reuse remain caller responsibilities.

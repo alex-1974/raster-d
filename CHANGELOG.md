@@ -6,6 +6,124 @@ The format follows a simple release-oriented structure. Because `raster-d`
 is pre-1.0, later minor releases may intentionally evolve the public API.
 Each published release nevertheless has its own frozen source contract.
 
+## 0.5.5 — 2026-10-27
+
+### Fixed
+
+- fixed parallel row worker binding so every callback receives a stable,
+  disjoint row range and worker slot;
+- added repeated multi-worker, multi-phase coverage tests for DMD and LDC;
+- qualified caller-selected worker limits and documented the decision not to
+  add an unproven public tile scheduler.
+
+The public API is unchanged.
+
+## 0.5.4 — 2026-10-27
+
+### Fixed
+
+- corrected the imagery-shaped benchmark to use mask-filtered worker-local
+  histograms, deterministic 75th-percentile thresholding, and a matching
+  serial workload;
+- added independent reference validation and serial/parallel result checks;
+- documented the corrected benchmark workload and matrix measurements.
+
+The public API is unchanged.
+
+## 0.5.3 — 2026-10-26
+
+### Added
+
+- `withViewsParallelPhases` and `withViewsIntoParallelPhases` for synchronous
+  phased execution over multiple independently backed source views;
+- independent validation of each source view, common logical extents, and
+  callback-scoped grouped windows for RGB plus separately backed masks;
+- imagery-shaped benchmark coverage with worker-local 65,536-bin histograms,
+  deterministic reduction, threshold derivation, and destination transform.
+
+### Qualification
+
+- DMD and LDC tests, including DIP1000 probes, pass;
+- all PR #272 release gates pass.
+
+## 0.5.1 — 2026-10-25
+
+### Added
+
+- opt-in, bounded parallel row kernels for callback-scoped affine plane
+  borrows through `withPlanesIntoParallel`;
+- generic `parallelRows` execution primitive with caller-selected worker and
+  chunk limits, sequential fallback, and synchronous worker joining;
+- DMD/LDC correctness, ThreadSanitizer, stride/ROI/aliasing tests and release
+  benchmark matrix for 1024×768 and 1920×1080.
+
+### Scheduling and safety
+
+- no process-global worker pool or hidden persistent scheduler;
+- `@safe nothrow` row callbacks with explicit partial-write-on-failure
+  semantics;
+- static worker batches and atomic failure publication to avoid a central
+  scheduling lock.
+
+## 0.5.2 — 2026-10-25
+
+### Added
+
+- scoped multi-phase parallel row execution through
+  `ParallelRowsOperation`;
+- source-only `withPlanesParallel` execution without a fabricated
+  destination;
+- `withPlanesParallelPhases` and `withPlanesIntoParallelPhases` for
+  barrier-separated analysis and transformation phases;
+- stable worker indices within a scoped operation, with explicit synchronous
+  failure and join semantics.
+
+### Qualification
+
+- DMD and LDC unit tests pass;
+- source-only, destination, multi-phase, barrier and callback-failure tests
+  pass;
+- release benchmark coverage includes the complete two-phase data-plane
+  workload at 1024×768 and 1920×1080.
+
+## 0.5.0 — 2026-10-24
+
+### Added
+
+- public `RasterPlaneRow` and `WritableRasterPlaneRow` exports through
+  `import raster`;
+- callback-scoped row data and sample-stride access for interleaved and
+  planar downstream kernels;
+- an external RGB data-plane benchmark covering DMD and LDC code generation.
+
+### Performance
+
+- the benchmarked DMD interleaved `ubyte` to `float` workload improved from
+  3.78 ns/pixel to 1.79 ns/pixel when row data and stride are hoisted once per
+  row, with no material LDC regression.
+
+## 0.4.1 — 2026-10-24
+
+### Fixed
+
+- corrected element-to-byte stride conversion in affine envelope and alias
+  validation;
+- enabled safe interleaved mixed-type affine windows after exact
+  `ubyte`-to-`float` overlap classification;
+- added the public multi-plane contiguous callback and DMD/LDC benchmark
+  coverage for affine row access.
+
+## 0.4.0 — 2026-10-23
+
+### Added
+
+- scoped public affine and multi-plane data-plane windows for downstream
+  kernels, including mixed-type source/destination execution;
+- conservative source/destination and destination/destination byte-envelope
+  overlap rejection before kernel callbacks;
+- DMD/LDC consumer, lifetime, benchmark and archive-gate coverage for the
+  data-plane contract.
+
 ## 0.3.0 — 2026-10-22
 
 This minor version adds generic numeric histograms for consumers including

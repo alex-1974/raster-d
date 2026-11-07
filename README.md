@@ -53,6 +53,34 @@ Check the [GitHub releases](https://github.com/alex-1974/raster-d/releases)
 and [DUB registry](https://code.dlang.org/packages/raster-d) for current
 v0.3.0 publication and dependency availability.
 
+v0.4.0 is released. It adds the scoped public data-plane API for contiguous,
+affine and multi-plane kernels, including mixed source/destination sample
+types and conservative overlap rejection. The [v0.4.0 GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.4.0),
+[versioned API documentation](https://alex-1974.github.io/raster-d/), and
+[DUB registry](https://code.dlang.org/packages/raster-d) are the authoritative
+publication locations.
+
+v0.5.2 is released. It extends the data-plane contract with scoped,
+callback-scoped strided row access for planar and interleaved layouts. A row
+exposes validated data and sample stride so downstream DMD consumers can hoist
+address arithmetic out of the pixel loop without per-sample raster-d calls,
+and adds barrier-separated multi-phase row execution.
+See the [v0.5.2 release notes](docs/V0_5_2_RELEASE_NOTES.md) and [GitHub
+Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.2).
+
+v0.5.3 adds `withViewsParallelPhases` and
+`withViewsIntoParallelPhases` for synchronous phased execution across multiple
+independently backed source views. This covers generic multi-view workloads
+such as RGB data plus a separately backed byte mask while preserving validated
+strides, common logical extents, callback-scoped borrows, and bounded worker
+execution. See the [v0.5.3 release notes](docs/V0_5_3_RELEASE_NOTES.md) and
+[GitHub Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.3).
+
+v0.5.4 is a patch release with corrected, independently validated
+imagery-shaped benchmark semantics. The public API is unchanged. See the
+[v0.5.4 release notes](docs/V0_5_4_RELEASE_NOTES.md) and [GitHub
+Release](https://github.com/alex-1974/raster-d/releases/tag/v0.5.4).
+
 Because raster-d is pre-1.0, a later minor release may deliberately evolve the
 API. Published release contracts stay fixed.
 
@@ -122,6 +150,8 @@ The current raster foundation includes:
 - checked copy, fill, transform, conversion, reduction, neighbourhood, and
   convolution families;
 - exact ubyte and configurable numeric interval histograms (v0.3.0);
+- bounded, barrier-separated parallel row execution over one or more source
+  views (development API; unreleased);
 - bounded request residency and retained reuse;
 - exact multi-block dependency assembly for streamed requests;
 - synchronous caller-owned materialization;

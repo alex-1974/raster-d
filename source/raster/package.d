@@ -41,6 +41,26 @@ public import raster.view :
 public import raster.writable_view :
     WritableRasterView;
 
+public import raster.data_plane :
+    RasterPlaneWindow,
+    RasterPlaneRow,
+    WritableRasterPlaneWindow,
+    WritableRasterPlaneRow,
+    withContiguousPlane,
+    withPlane,
+    withPlanesInto,
+    withPlanesParallel,
+    withPlanesParallelPhases,
+    withPlanesIntoParallelPhases,
+    withPlanesIntoParallel,
+    withViewsParallelPhases,
+    withViewsIntoParallelPhases;
+
+public import raster.parallel_rows :
+    ParallelRowsResult,
+    ParallelRowsOperation,
+    parallelRows;
+
 public import raster.reduction :
     RasterSumError,
     RasterSumResult,
@@ -136,3 +156,13 @@ public import raster.conversion_allocated :
 
 public import raster.backing :
     RasterLease;
+
+public import raster.data_plane :
+    RasterPlaneWindow,
+    RasterPlaneRow,
+    WritableRasterPlaneWindow,
+    WritableRasterPlaneRow,
+    withContiguousPlane,
+    withContiguousPlanesInto,
+    withPlane,
+    withPlanesInto;
