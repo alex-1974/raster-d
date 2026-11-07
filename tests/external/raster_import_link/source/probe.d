@@ -20,6 +20,7 @@ import std.algorithm.mutation :
 import raster :
     OwnedByteResource,
     OwnedRasterResourceDisposition,
+    OwnedRasterImportError,
     PlaneByteLayout,
     RasterLease,
     RasterPlaneWindow,
@@ -240,6 +241,63 @@ unittest
      * unittest executable failed for both DMD and LDC because the required
      * SafeRefCounted/object.destroy instantiation was absent from raster-d.
      */
+}
+
+unittest
+{
+    // Public consumer contract: interleaved float RGB with caller-owned data.
+    void* memory = malloc(24);
+    assert(memory !is null);
+    auto samples = (cast(float*) memory)[0 .. 6];
+    samples[] = [1.0f, 10.0f, 100.0f, 2.0f, 20.0f, 200.0f];
+
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 24, resource));
+    const PlaneByteLayout[3] planes = [
+        PlaneByteLayout(0, 12, 12),
+        PlaneByteLayout(4, 12, 12),
+        PlaneByteLayout(8, 12, 12)
+    ];
+
+    RasterLease!float lease;
+    auto result = tryImportOwnedRaster!float(
+        resource, planes[], Region2D(0, 0, 2, 1), lease);
+    assert(result.ok);
+    assert(!resource.ownsResource);
+
+    auto view = lease.view();
+    float value;
+    assert(view.trySample(1, 1, 0, value) && value == 20.0f);
+    assert(view.trySample(2, 0, 0, value) && value == 100.0f);
+}
+
+unittest
+{
+    // Public error categories remain distinguishable at the import boundary.
+    void* memory = malloc(4);
+    assert(memory !is null);
+    OwnedByteResource resource;
+    assert(tryAdoptMallocResource(memory, 4, resource));
+
+    const PlaneByteLayout[1] invalidStride = [PlaneByteLayout(0, 3, 1)];
+    RasterLease!ubyte lease;
+    auto invalid = tryImportOwnedRaster!ubyte(
+        resource, invalidStride[], Region2D(0, 0, 2, 2), lease);
+    assert(!invalid.ok);
+    assert(invalid.error == OwnedRasterImportError.insufficientStorage);
+    assert(invalid.resourceDisposition ==
+        OwnedRasterResourceDisposition.unchanged);
+
+    void* otherMemory = malloc(8);
+    assert(otherMemory !is null);
+    OwnedByteResource otherResource;
+    assert(tryAdoptMallocResource(otherMemory, 8, otherResource));
+    const PlaneByteLayout[1] invalidSampleStride = [PlaneByteLayout(0, 8, 2)];
+    RasterLease!float floatLease;
+    auto malformed = tryImportOwnedRaster!float(
+        otherResource, invalidSampleStride[], Region2D(0, 0, 2, 1), floatLease);
+    assert(!malformed.ok);
+    assert(malformed.error == OwnedRasterImportError.invalidPlaneLayout);
 }
 
 unittest

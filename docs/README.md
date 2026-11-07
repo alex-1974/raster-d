@@ -6,6 +6,7 @@ Start here if you use the library rather than maintain it.
 
 - [Getting started](tutorial/getting-started.md) shows how to create a retained raster and read samples.
 - [Common operations](how-to/common-operations.md) shows copy, conversion, transform, reduction, and convolution workflows.
+- [Generic owned RGB storage](how-to/owned-rgb-storage.md) documents the public adapter contract for imagery-d consumers.
 - [Exact 8-bit histogram](how-to/histogram256.md) counts ubyte values on resident views and windows (v0.3.0 API).
 - [Numeric interval histograms](how-to/histogram-intervals.md) use caller-owned bins for signed, unsigned and floating-point rasters (v0.3.0 API).
 - [v0.3 frozen API](API_0_3.md), [release notes](V0_3_RELEASE_NOTES.md) and [release qualification](V0_3_RELEASE_GATE.md) document the new minor version; verify its current DUB availability before upgrading consumers.
