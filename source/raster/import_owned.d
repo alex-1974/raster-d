@@ -27,10 +27,14 @@ import raster.backing :
     RasterLease;
 
 import raster.byte_layout :
-    PlaneByteLayout;
+    PlaneByteLayout,
+    PlaneByteLayoutConversionError;
 
 import raster.construction :
     RasterConstructionError;
+
+import raster.validation :
+    BackingValidationError;
 
 import raster.import_single_resource :
     SingleResourceRasterImportError,
@@ -68,6 +72,12 @@ enum OwnedRasterImportError : ubyte
     invalidPlaneLayout,
 
     invalidBackingLayout,
+
+    insufficientStorage,
+
+    arithmeticOverflow,
+
+    ownershipMisuse,
 
     backingAllocationFailed,
 
@@ -324,14 +334,14 @@ nothrow
 
         case SingleResourceRasterImportError.emptyResource:
             return makePublicImportResult(
-                OwnedRasterImportError.emptyResource,
+                OwnedRasterImportError.ownershipMisuse,
                 OwnedRasterResourceDisposition.unchanged
             );
 
 
         case SingleResourceRasterImportError.outputLeaseNotEmpty:
             return makePublicImportResult(
-                OwnedRasterImportError.outputLeaseNotEmpty,
+                OwnedRasterImportError.ownershipMisuse,
                 OwnedRasterResourceDisposition.unchanged
             );
 
@@ -345,7 +355,7 @@ nothrow
 
         case SingleResourceRasterImportError.descriptorMetadataSizeOverflow:
             return makePublicImportResult(
-                OwnedRasterImportError.internalConstructionFailure,
+                OwnedRasterImportError.arithmeticOverflow,
                 OwnedRasterResourceDisposition.unchanged
             );
 
@@ -359,18 +369,65 @@ nothrow
 
 
         case SingleResourceRasterImportError.planeLayoutConversionFailed:
-            return makePublicImportResult(
-                OwnedRasterImportError.invalidPlaneLayout,
-                OwnedRasterResourceDisposition.unchanged,
-                internal.planeIndex
-            );
+            final switch (internal.layoutError)
+            {
+                case PlaneByteLayoutConversionError.planeBaseAddressOverflow:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.arithmeticOverflow,
+                        OwnedRasterResourceDisposition.unchanged,
+                        internal.planeIndex
+                    );
+
+                case PlaneByteLayoutConversionError.byteOffsetOutsideResource:
+                case PlaneByteLayoutConversionError.invalidResourceRange:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.insufficientStorage,
+                        OwnedRasterResourceDisposition.unchanged,
+                        internal.planeIndex
+                    );
+
+                case PlaneByteLayoutConversionError.none:
+                case PlaneByteLayoutConversionError.nullResourceBase:
+                case PlaneByteLayoutConversionError.misalignedPlaneBase:
+                case PlaneByteLayoutConversionError.sampleSizeNotRepresentable:
+                case PlaneByteLayoutConversionError.rowStrideNotDivisibleBySampleSize:
+                case PlaneByteLayoutConversionError.sampleStrideNotDivisibleBySampleSize:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.invalidPlaneLayout,
+                        OwnedRasterResourceDisposition.unchanged,
+                        internal.planeIndex
+                    );
+            }
 
 
         case SingleResourceRasterImportError.backingValidationFailed:
-            return makePublicImportResult(
-                OwnedRasterImportError.invalidBackingLayout,
-                OwnedRasterResourceDisposition.unchanged
-            );
+            final switch (internal.validation.error)
+            {
+                case BackingValidationError.regionExtentOverflow:
+                case BackingValidationError.coordinateRepresentationOverflow:
+                case BackingValidationError.coordinateStrideOverflow:
+                case BackingValidationError.offsetOverflow:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.arithmeticOverflow,
+                        OwnedRasterResourceDisposition.unchanged
+                    );
+
+                case BackingValidationError.planeOutsideResources:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.insufficientStorage,
+                        OwnedRasterResourceDisposition.unchanged
+                    );
+
+                case BackingValidationError.none:
+                case BackingValidationError.noPlanes:
+                case BackingValidationError.invalidResourceRange:
+                case BackingValidationError.nullPlaneBase:
+                case BackingValidationError.misalignedPlaneBase:
+                    return makePublicImportResult(
+                        OwnedRasterImportError.invalidBackingLayout,
+                        OwnedRasterResourceDisposition.unchanged
+                    );
+            }
 
 
         case SingleResourceRasterImportError.retainedConstructionFailed:
@@ -605,7 +662,7 @@ unittest
 
     assert(
         result.error
-        == OwnedRasterImportError.internalConstructionFailure
+        == OwnedRasterImportError.arithmeticOverflow
     );
 
     assert(
@@ -1045,7 +1102,7 @@ unittest
 
         assert(
             result.error
-            == OwnedRasterImportError.invalidBackingLayout
+            == OwnedRasterImportError.insufficientStorage
         );
 
         assert(
