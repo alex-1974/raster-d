@@ -15,16 +15,17 @@ A result has 256 `ulong` bins, indexed 0 through 255.
 import raster;
 
 // source is an already validated, lifetime-bound RasterView!ubyte.
-RasterHistogram256Result counts = histogram256(source, planeIndex);
+auto counts = histogram256(source, planeIndex);
 
-if (counts.ok)
+if (counts.hasValue)
 {
-    ulong zeroValues = counts.bins[0];
-    ulong maximumValues = counts.bins[255];
+    auto bins = counts.value().bins;
+    ulong zeroValues = bins[0];
+    ulong maximumValues = bins[255];
 }
 else
 {
-    // counts.error says invalidPlane or countOverflow.
+    // counts.error() says invalidPlane or countOverflow.
 }
 ~~~
 
@@ -43,7 +44,7 @@ scope auto roi = source.tryRoi(Region2D(12, 8, 128, 64), ok);
 if (ok)
 {
     auto h = roi.histogram256(planeIndex);
-    assert(h.ok); // assuming the selected plane is valid
+    assert(h.hasValue); // assuming the selected plane is valid
 }
 ~~~
 
@@ -65,7 +66,7 @@ foreach (window; residentWindows)
 {
     // Each window is a validated RasterView!ubyte covering a disjoint region.
     const h = window.histogram256(planeIndex);
-    if (!h.ok)
+    if (!h.hasValue)
     {
         // Handle the error; do not publish partially accumulated totals.
         break;
@@ -73,12 +74,12 @@ foreach (window; residentWindows)
 
     foreach (i; 0 .. 256)
     {
-        if (h.bins[i] > ulong.max - totals[i])
+        if (h.value().bins[i] > ulong.max - totals[i])
         {
             // Count overflow: reject the aggregation.
             break;
         }
-        totals[i] += h.bins[i];
+        totals[i] += h.value().bins[i];
     }
 }
 ~~~

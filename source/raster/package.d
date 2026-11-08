@@ -11,6 +11,10 @@
 +/
 module raster;
 
+public import raster.result :
+    RasterResult,
+    RasterVoidResult;
+
 public import raster.sample :
     isRasterSampleType,
     isNumericRasterSample,
@@ -27,7 +31,10 @@ public import raster.import_owned :
     OwnedRasterImportError,
     OwnedRasterImportResult,
     OwnedRasterResourceDisposition,
-    tryImportOwnedRaster;
+    tryImportOwnedRaster,
+    OwnedRasterImportFailure,
+    OwnedRasterImportResultV2,
+    tryImportOwnedRasterResult;
 
 public import raster.descriptor :
     PlaneDescriptor;

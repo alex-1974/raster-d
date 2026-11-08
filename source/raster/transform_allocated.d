@@ -64,6 +64,9 @@ import raster.transform_into :
 import raster.view :
     RasterView;
 
+import raster.result :
+    RasterResult;
+
 
 /++
     Failure category for tryTransformAllocated().
@@ -112,119 +115,14 @@ enum RasterAllocatedTransformError : ubyte
     second ownership type. transformInto() remains the semantic execution
     primitive.
 +/
-struct RasterAllocatedTransformResult(T)
+struct RasterAllocatedTransformFailure
 {
-    static assert(
-        isRasterSampleType!T,
-        "Allocating transform requires a valid raster sample type."
-    );
-
-private:
-    RasterAllocatedTransformError error_ =
-        RasterAllocatedTransformError.internalFailure;
-
-    RasterTransformError transformError_ =
-        RasterTransformError.none;
-
-    RasterLease!T lease_;
-
-
-public:
-    /++
-        Whether allocation, retained construction and transform all succeeded.
-    +/
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_ == RasterAllocatedTransformError.none;
-    }
-
-/// Example reading success from a default allocating-transform result.
-@safe unittest
-{
-    import raster;
-    RasterAllocatedTransformResult!float result;
-    assert(!result.ok);
+    RasterAllocatedTransformError error;
+    RasterTransformError transformError;
 }
 
-
-
-    /++
-        High-level failure category.
-    +/
-    @property
-    RasterAllocatedTransformError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-/// Example reading the high-level default failure.
-@safe unittest
-{
-    import raster;
-    RasterAllocatedTransformResult!float result;
-    assert(result.error == RasterAllocatedTransformError.internalFailure);
-}
-
-
-
-    /++
-        Underlying transformInto() failure when error == transformFailed.
-
-        Returns RasterTransformError.none for all other states.
-    +/
-    @property
-    RasterTransformError transformError() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return transformError_;
-    }
-
-/// Example reading the absent nested transform failure.
-@safe unittest
-{
-    import raster;
-    RasterAllocatedTransformResult!float result;
-    assert(result.transformError == RasterTransformError.none);
-}
-
-
-
-    /++
-        Returns an O(1) retained copy of the successful output owner.
-
-        Failure returns RasterLease!T.init.
-    +/
-    RasterLease!T lease()
-    @safe
-    {
-        if (!ok)
-            return RasterLease!T.init;
-
-        return lease_;
-    }
-
-/// Example obtaining an inert lease from a failed result.
-@safe unittest
-{
-    import raster;
-    RasterAllocatedTransformResult!float result;
-    auto lease = result.lease();
-    assert(lease.view().empty);
-}
-
-}
+alias RasterAllocatedTransformResult(T) =
+    RasterResult!(RasterLease!T, RasterAllocatedTransformFailure);
 
 
 /// Example inspecting the deliberately failing default result.
@@ -234,19 +132,7 @@ public:
 
     RasterAllocatedTransformResult!ubyte result;
 
-    assert(!result.ok);
-
-    assert(
-        result.error
-        == RasterAllocatedTransformError.internalFailure
-    );
-
-    assert(
-        result.transformError
-        == RasterTransformError.none
-    );
-
-    assert(result.lease().view().planeCount == 0);
+    assert(result.isEmpty);
 }
 
 
@@ -297,17 +183,20 @@ RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
 )
 @safe
 {
-    RasterAllocatedTransformResult!T result;
+    alias R = RasterAllocatedTransformResult!T;
+
+    auto failure(RasterAllocatedTransformError error,
+        RasterTransformError transformError = RasterTransformError.none)
+    {
+        return R.failure(RasterAllocatedTransformFailure(error, transformError));
+    }
 
     if (
         sourcePlaneIndex
         >= source.planeCount
     )
     {
-        result.error_ =
-            RasterAllocatedTransformError.invalidSourcePlane;
-
-        return result;
+        return failure(RasterAllocatedTransformError.invalidSourcePlane);
     }
 
     auto allocated =
@@ -322,24 +211,16 @@ RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
             break;
 
         case CompactAllocationError.sizeOverflow:
-            result.error_ =
-                RasterAllocatedTransformError.sizeOverflow;
-            return result;
+            return failure(RasterAllocatedTransformError.sizeOverflow);
 
         case CompactAllocationError.allocationFailed:
-            result.error_ =
-                RasterAllocatedTransformError.allocationFailed;
-            return result;
+            return failure(RasterAllocatedTransformError.allocationFailed);
 
         case CompactAllocationError.backingConstructionFailed:
-            result.error_ =
-                RasterAllocatedTransformError.backingConstructionFailed;
-            return result;
+            return failure(RasterAllocatedTransformError.backingConstructionFailed);
 
         case CompactAllocationError.internalFailure:
-            result.error_ =
-                RasterAllocatedTransformError.internalFailure;
-            return result;
+            return failure(RasterAllocatedTransformError.internalFailure);
     }
 
     bool writableOk;
@@ -351,10 +232,7 @@ RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
 
     if (!writableOk)
     {
-        result.error_ =
-            RasterAllocatedTransformError.writableDestinationUnavailable;
-
-        return result;
+        return failure(RasterAllocatedTransformError.writableDestinationUnavailable);
     }
 
     RasterTransformError transformError;
@@ -368,22 +246,10 @@ RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
         )
     )
     {
-        result.error_ =
-            RasterAllocatedTransformError.transformFailed;
-
-        result.transformError_ =
-            transformError;
-
-        return result;
+        return failure(RasterAllocatedTransformError.transformFailed, transformError);
     }
 
-    result.error_ =
-        RasterAllocatedTransformError.none;
-
-    result.lease_ =
-        move(allocated.lease);
-
-    return result;
+    return R.success(move(allocated.lease));
 }
 
 
@@ -404,10 +270,10 @@ RasterAllocatedTransformResult!T tryTransformAllocated(alias transform, T)(
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error().error
         == RasterAllocatedTransformError.invalidSourcePlane
     );
 }
@@ -484,11 +350,10 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.error == RasterAllocatedTransformError.none);
+    assert(result.hasValue);
 
     auto outputLease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         outputLease.view();
@@ -567,10 +432,10 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
 
     auto outputLease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         outputLease.view();
@@ -606,14 +471,12 @@ unittest
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error().error
         == RasterAllocatedTransformError.invalidSourcePlane
     );
-
-    assert(result.lease().view().planeCount == 0);
 }
 
 } // version (unittest)

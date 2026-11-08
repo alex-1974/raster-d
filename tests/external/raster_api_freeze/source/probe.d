@@ -308,17 +308,23 @@ void operationSignatureContract()
         source: sourceFloats,
         planeIndex: 0
     );
-    cast(void) sumResult.ok;
-    cast(void) sumResult.error;
-    cast(void) sumResult.value;
+    cast(void) sumResult.hasValue;
+    cast(void) sumResult.hasError;
+    if (sumResult.hasValue)
+        cast(void) sumResult.value().value;
+    if (sumResult.hasError)
+        cast(void) sumResult.error();
 
     const meanResult = mean!(double, double)(
         source: sourceFloats,
         planeIndex: 0
     );
-    cast(void) meanResult.ok;
-    cast(void) meanResult.error;
-    cast(void) meanResult.value;
+    cast(void) meanResult.hasValue;
+    cast(void) meanResult.hasError;
+    if (meanResult.hasValue)
+        cast(void) meanResult.value().value;
+    if (meanResult.hasError)
+        cast(void) meanResult.error();
 
     const minimum = min(
         source: sourceFloats,
@@ -332,10 +338,15 @@ void operationSignatureContract()
         source: sourceFloats,
         planeIndex: 0
     );
-    cast(void) minimum.value;
-    cast(void) maximum.value;
-    cast(void) extrema.minimum;
-    cast(void) extrema.maximum;
+    if (minimum.hasValue)
+        cast(void) minimum.value().value;
+    if (maximum.hasValue)
+        cast(void) maximum.value().value;
+    if (extrema.hasValue)
+    {
+        cast(void) extrema.value().minimum;
+        cast(void) extrema.value().maximum;
+    }
 
     double strictSum;
     cast(void) trySumFloatToDouble(
@@ -384,25 +395,23 @@ void allocatingSignatureContract()
         source: sourceFloats,
         sourcePlaneIndex: 0
     );
-    assert(!transformed.ok);
+    assert(transformed.hasError);
     assert(
-        transformed.error
+        transformed.error().error
         == RasterAllocatedTransformError.invalidSourcePlane
     );
-    assert(transformed.transformError == RasterTransformError.none);
-    assert(transformed.lease().view().empty);
+    assert(transformed.error().transformError == RasterTransformError.none);
 
     auto converted = tryConvertAllocated!float(
         source: sourceBytes,
         sourcePlaneIndex: 0
     );
-    assert(!converted.ok);
+    assert(converted.hasError);
     assert(
-        converted.error
+        converted.error().error
         == RasterAllocatedConversionError.invalidSourcePlane
     );
-    assert(converted.conversionError == RasterConversionError.none);
-    assert(converted.lease().view().empty);
+    assert(converted.error().conversionError == RasterConversionError.none);
 }
 
 @system nothrow @nogc
@@ -426,17 +435,20 @@ void importSignatureContract(
     const PlaneByteLayout[1] planes =
         [PlaneByteLayout(0, 4, 1)];
 
-    const result = tryImportOwnedRaster!ubyte(
+    const result = tryImportOwnedRasterResult!ubyte(
         resource: resource,
         planes: planes[],
         residentRegion: Region2D(0, 0, 4, 1),
         lease: lease
     );
 
-    cast(void) result.error;
-    cast(void) result.planeIndex;
-    cast(void) result.ok;
-    cast(void) result.resourceDisposition;
+    cast(void) result.hasError;
+    if (result.hasError)
+    {
+        cast(void) result.error().error;
+        cast(void) result.error().planeIndex;
+        cast(void) result.error().resourceDisposition;
+    }
 }
 
 unittest
@@ -451,36 +463,22 @@ unittest
     assert(constant.value == 17);
 
     RasterSumResult!double sumResult;
-    assert(!sumResult.ok);
-    assert(sumResult.error == RasterSumError.invalidPlane);
-    assert(sumResult.value == 0.0);
+    assert(sumResult.isEmpty);
 
     RasterMeanResult!double meanResult;
-    assert(!meanResult.ok);
-    assert(meanResult.error == RasterMeanError.invalidPlane);
-    assert(meanResult.value == 0.0);
+    assert(meanResult.isEmpty);
 
     RasterExtremaResult!float extremaResult;
-    assert(!extremaResult.ok);
-    assert(extremaResult.error == RasterExtremaError.invalidPlane);
+    assert(extremaResult.isEmpty);
 
     RasterMinMaxResult!float minMaxResult;
-    assert(!minMaxResult.ok);
-    assert(minMaxResult.error == RasterExtremaError.invalidPlane);
+    assert(minMaxResult.isEmpty);
 
     RasterAllocatedTransformResult!float transformResult;
-    assert(!transformResult.ok);
-    assert(
-        transformResult.error
-        == RasterAllocatedTransformError.internalFailure
-    );
+    assert(transformResult.isEmpty);
 
     RasterAllocatedConversionResult!float conversionResult;
-    assert(!conversionResult.ok);
-    assert(
-        conversionResult.error
-        == RasterAllocatedConversionError.internalFailure
-    );
+    assert(conversionResult.isEmpty);
 
     // RasterLease.init is a valid inert lifetime capability.
     RasterLease!ubyte emptyLease;
@@ -495,11 +493,8 @@ unittest
     assert(!writableSuccess);
     assert(emptyWritable.empty);
 
-    OwnedRasterImportResult result;
-    assert(!result.ok);
-    assert(result.error == OwnedRasterImportError.internalConstructionFailure);
-    assert(result.planeIndex == size_t.max);
-    assert(result.resourceDisposition == OwnedRasterResourceDisposition.unchanged);
+    OwnedRasterImportResultV2 result;
+    assert(result.isEmpty);
 
     OwnedByteResource resource;
     assert(!resource.ownsResource);
@@ -522,18 +517,14 @@ unittest
 
     RasterLease!ubyte lease;
 
-    const imported = tryImportOwnedRaster!ubyte(
+    const imported = tryImportOwnedRasterResult!ubyte(
         resource,
         planes[],
         Region2D(0, 0, 2, 2),
         lease
     );
 
-    assert(imported.ok);
-    assert(
-        imported.resourceDisposition
-        == OwnedRasterResourceDisposition.transferredToLease
-    );
+    assert(imported.hasValue);
 
     scope auto readable = lease.view();
     assert(readable.planeCount == 1);
@@ -561,12 +552,12 @@ unittest
 
     RasterLease!ubyte lease;
 
-    assert(tryImportOwnedRaster!ubyte(
+    assert(tryImportOwnedRasterResult!ubyte(
         resource,
         planes[],
         Region2D(0, 0, 1, 1),
         lease
-    ).ok);
+    ).hasValue);
 
     auto retainedCopy = lease;
     scope auto view = retainedCopy.view();
