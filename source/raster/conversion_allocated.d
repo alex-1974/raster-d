@@ -38,6 +38,9 @@ import raster.internal.conversion_policy :
 import raster.view :
     RasterView;
 
+import raster.result :
+    RasterResult;
+
 
 /++
     Failure category for allocating raster conversion.
@@ -81,73 +84,21 @@ enum RasterAllocatedConversionError : ubyte
 
     conversionError is meaningful only when error == conversionFailed.
 +/
-struct RasterAllocatedConversionResult(To)
+struct RasterAllocatedConversionFailure
 {
-private:
-    RasterAllocatedConversionError error_ =
-        RasterAllocatedConversionError.internalFailure;
-
-    RasterConversionError conversionError_ =
-        RasterConversionError.none;
-
-    RasterLease!To lease_;
-
-
-public:
-
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_
-            == RasterAllocatedConversionError.none;
-    }
-
-
-    @property
-    RasterAllocatedConversionError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-
-    @property
-    RasterConversionError conversionError() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return conversionError_;
-    }
-
-
-    RasterLease!To lease()
-    @safe
-    {
-        if (!ok)
-            return RasterLease!To.init;
-
-        return lease_;
-    }
+    RasterAllocatedConversionError error;
+    RasterConversionError conversionError;
 }
+
+alias RasterAllocatedConversionResult(To) =
+    RasterResult!(RasterLease!To, RasterAllocatedConversionFailure);
 
 /// Example inspecting the deliberately failing default conversion result.
 @safe unittest
 {
     import raster;
-    RasterAllocatedConversionResult!float result;
-    assert(!result.ok);
-    assert(result.error == RasterAllocatedConversionError.internalFailure);
-    assert(result.conversionError == RasterConversionError.none);
-    assert(result.lease().view().empty);
+    auto result = RasterAllocatedConversionResult!float.init;
+    assert(result.isEmpty);
 }
 
 
@@ -204,17 +155,20 @@ if (
     )
 )
 {
-    RasterAllocatedConversionResult!To result;
+    alias R = RasterAllocatedConversionResult!To;
+
+    auto failure(RasterAllocatedConversionError error,
+        RasterConversionError conversionError = RasterConversionError.none)
+    {
+        return R.failure(RasterAllocatedConversionFailure(error, conversionError));
+    }
 
     if (
         sourcePlaneIndex
         >= source.planeCount
     )
     {
-        result.error_ =
-            RasterAllocatedConversionError.invalidSourcePlane;
-
-        return result;
+        return failure(RasterAllocatedConversionError.invalidSourcePlane);
     }
 
     auto allocated =
@@ -229,24 +183,16 @@ if (
             break;
 
         case CompactAllocationError.sizeOverflow:
-            result.error_ =
-                RasterAllocatedConversionError.sizeOverflow;
-            return result;
+            return failure(RasterAllocatedConversionError.sizeOverflow);
 
         case CompactAllocationError.allocationFailed:
-            result.error_ =
-                RasterAllocatedConversionError.allocationFailed;
-            return result;
+            return failure(RasterAllocatedConversionError.allocationFailed);
 
         case CompactAllocationError.backingConstructionFailed:
-            result.error_ =
-                RasterAllocatedConversionError.backingConstructionFailed;
-            return result;
+            return failure(RasterAllocatedConversionError.backingConstructionFailed);
 
         case CompactAllocationError.internalFailure:
-            result.error_ =
-                RasterAllocatedConversionError.internalFailure;
-            return result;
+            return failure(RasterAllocatedConversionError.internalFailure);
     }
 
     bool writableOk;
@@ -258,11 +204,7 @@ if (
 
     if (!writableOk)
     {
-        result.error_ =
-            RasterAllocatedConversionError
-                .writableDestinationUnavailable;
-
-        return result;
+        return failure(RasterAllocatedConversionError.writableDestinationUnavailable);
     }
 
     RasterConversionError conversionError;
@@ -279,22 +221,10 @@ if (
         )
     )
     {
-        result.error_ =
-            RasterAllocatedConversionError.conversionFailed;
-
-        result.conversionError_ =
-            conversionError;
-
-        return result;
+        return failure(RasterAllocatedConversionError.conversionFailed, conversionError);
     }
 
-    result.error_ =
-        RasterAllocatedConversionError.none;
-
-    result.lease_ =
-        move(allocated.lease);
-
-    return result;
+    return R.success(move(allocated.lease));
 }
 
 
@@ -310,10 +240,10 @@ if (
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error().error
         == RasterAllocatedConversionError.invalidSourcePlane
     );
 }
@@ -361,10 +291,10 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
 
     auto outputLease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         outputLease.view();
@@ -437,10 +367,10 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
 
     auto outputLease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         outputLease.view();
@@ -493,10 +423,10 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
 
     auto outputLease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         outputLease.view();
@@ -531,14 +461,13 @@ unittest
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error().error
         == RasterAllocatedConversionError.invalidSourcePlane
     );
 
-    assert(result.lease().view().planeCount == 0);
 }
 
 
@@ -574,10 +503,10 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
 
     auto lease =
-        result.lease();
+        result.takeValue();
 
     scope auto output =
         lease.view();

@@ -27,12 +27,12 @@ const result = elevation.histogramInto(
     0, cast(short) -500, cast(short) 4500, counts[]
 );
 
-if (result.ok)
+if (result.hasValue)
 {
     // counts[0..100] contain exact sample frequencies per interval.
     // Samples outside the requested range have separate counts.
-    ulong low = result.belowRange;
-    ulong high = result.aboveRange;
+    ulong low = result.value().belowRange;
+    ulong high = result.value().aboveRange;
 }
 ~~~
 
@@ -76,12 +76,15 @@ reduce the bin counts.
 
 ## Failures, empty rasters and buffers
 
-The `RasterHistogramResult` contains `ok`, `error`,
-`belowRange`, `aboveRange` and `nanCount`; the actual bins remain
-in the caller-owned slice.
+`histogramInto` returns an `error-d.Result` containing a
+`RasterHistogramValue` on success or a `RasterHistogramError` on failure.
+The value contains `belowRange`, `aboveRange` and `nanCount`; the actual bins
+remain in the caller-owned slice. Inspect `hasValue`/`hasError`, then use
+`value()` or `error()`.
 
 Possible errors: `invalidPlane`, `emptyBins`, `invalidRange`, and
-`countOverflow`. `RasterHistogramResult.init` is a failure.
+`countOverflow`. The default `Result.init` is empty and must not be treated as
+success.
 A valid empty raster succeeds with zero counts.
 
 The complete destination is **overwritten**, not incremented. On any

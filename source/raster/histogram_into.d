@@ -14,6 +14,7 @@ module raster.histogram_into;
 
 import raster.sample : isNumericRasterSample;
 import raster.view : RasterView;
+import raster.result : RasterResult;
 
 
 /++
@@ -51,7 +52,7 @@ enum RasterHistogramError : ubyte
     On error, all three result counters AND the entire caller-supplied bins
     slice are zero. The default .init state is an invalid-plane failure.
 +/
-struct RasterHistogramResult
+struct RasterHistogramValue
 {
     /// Samples strictly below the lower bound, including -Infinity.
     ulong belowRange;
@@ -60,7 +61,7 @@ struct RasterHistogramResult
     @safe unittest
     {
         import raster;
-        RasterHistogramResult result;
+        RasterHistogramValue result;
         assert(result.belowRange == 0);
     }
 
@@ -71,7 +72,7 @@ struct RasterHistogramResult
     @safe unittest
     {
         import raster;
-        RasterHistogramResult result;
+        RasterHistogramValue result;
         assert(result.aboveRange == 0);
     }
 
@@ -82,66 +83,21 @@ struct RasterHistogramResult
     @safe unittest
     {
         import raster;
-        RasterHistogramResult result;
+        RasterHistogramValue result;
         assert(result.nanCount == 0);
     }
 
-private:
-    RasterHistogramError error_ = RasterHistogramError.invalidPlane;
-
-public:
-    /++ The operation's result or error category. +/
-    @property
-    RasterHistogramError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-    /// Example reading a default failed result.
-    @safe unittest
-    {
-        import raster;
-        RasterHistogramResult result;
-        assert(result.error == RasterHistogramError.invalidPlane);
-    }
-
-    /++ Whether all counts were produced successfully. +/
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_ == RasterHistogramError.none;
-    }
-
-    /// Example verifying the default result cannot be mistaken for success.
-    @safe unittest
-    {
-        import raster;
-        RasterHistogramResult result;
-        assert(!result.ok);
-        assert(result.belowRange == 0);
-        assert(result.aboveRange == 0);
-        assert(result.nanCount == 0);
-    }
 }
+
+/// Result of a numeric interval histogram.
+alias RasterHistogramResult = RasterResult!(RasterHistogramValue, RasterHistogramError);
 
 /// Example checking the failing default result and zero counts.
 @safe unittest
 {
     import raster;
-    RasterHistogramResult result;
-    assert(!result.ok);
-    assert(result.error == RasterHistogramError.invalidPlane);
-    assert(result.belowRange == 0);
-    assert(result.aboveRange == 0);
-    assert(result.nanCount == 0);
+    auto result = RasterHistogramResult.init;
+    assert(result.isEmpty);
 }
 
 
@@ -212,22 +168,21 @@ nothrow
 @nogc
 if (isNumericRasterSample!T)
 {
-    RasterHistogramResult result;
+    alias R = RasterHistogramResult;
+    RasterHistogramValue value;
     bins[] = 0;
 
     if (planeIndex >= source.planeCount)
-        return result;
+        return R.failure(RasterHistogramError.invalidPlane);
 
     if (bins.length == 0)
     {
-        result.error_ = RasterHistogramError.emptyBins;
-        return result;
+        return R.failure(RasterHistogramError.emptyBins);
     }
 
     if (!(lower < upper))
     {
-        result.error_ = RasterHistogramError.invalidRange;
-        return result;
+        return R.failure(RasterHistogramError.invalidRange);
     }
 
     static if (is(T == float) || is(T == double))
@@ -238,8 +193,7 @@ if (isNumericRasterSample!T)
             || !(upper >= -T.max && upper <= T.max)
         )
         {
-            result.error_ = RasterHistogramError.invalidRange;
-            return result;
+            return R.failure(RasterHistogramError.invalidRange);
         }
     }
 
@@ -249,16 +203,14 @@ if (isNumericRasterSample!T)
         && cast(ulong) source.width > ulong.max / source.height
     )
     {
-        result.error_ = RasterHistogramError.countOverflow;
-        return result;
+        return R.failure(RasterHistogramError.countOverflow);
     }
 
     executeIntervalHistogram(
-        source, planeIndex, lower, upper, bins, result
+        source, planeIndex, lower, upper, bins, value
     );
 
-    result.error_ = RasterHistogramError.none;
-    return result;
+    return R.success(value);
 }
 
 /// Example calculating a signed elevation histogram using the public importer.
@@ -286,9 +238,9 @@ if (isNumericRasterSample!T)
     scope auto view = lease.view();
     ulong[4] counts;
     const result = view.histogramInto(0, cast(short) -100, cast(short) 100, counts[]);
-    assert(result.ok);
+    assert(result.hasValue);
     assert(counts == [1UL, 0UL, 1UL, 2UL]);
-    assert(result.belowRange == 0 && result.aboveRange == 0);
+    assert(result.value().belowRange == 0 && result.value().aboveRange == 0);
 }
 
 
@@ -416,7 +368,7 @@ void executeIntervalHistogram(T)(
     T lower,
     T upper,
     scope ulong[] bins,
-    ref RasterHistogramResult result
+    ref RasterHistogramValue result
 )
 @trusted
 nothrow
@@ -531,11 +483,11 @@ version (unittest)
             const result = source.histogramInto(
                 0, cast(Sample) 0, cast(Sample) 10, bins[]
             );
-            assert(result.ok);
+            assert(result.hasValue);
             assert(bins == [1UL, 1UL, 1UL, 0UL, 1UL]);
-            assert(result.belowRange == 0);
-            assert(result.aboveRange == 0);
-            assert(result.nanCount == 0);
+            assert(result.value().belowRange == 0);
+            assert(result.value().aboveRange == 0);
+            assert(result.value().nanCount == 0);
         }}
     }
 
@@ -553,11 +505,11 @@ version (unittest)
         const result = source.histogramInto(
             0, cast(short) -10, cast(short) 10, bins[]
         );
-        assert(result.ok);
+        assert(result.hasValue);
         assert(bins == [1UL, 1UL, 1UL, 2UL]);
-        assert(result.belowRange == 1);
-        assert(result.aboveRange == 2);
-        assert(result.nanCount == 0);
+        assert(result.value().belowRange == 1);
+        assert(result.value().aboveRange == 2);
+        assert(result.value().nanCount == 0);
     }
 
     // Wide integral domains must never round through double or overflow.
@@ -576,7 +528,7 @@ version (unittest)
         const result = source.histogramInto(
             0, 0UL, ulong.max, bins[]
         );
-        assert(result.ok);
+        assert(result.hasValue);
         assert(bins == [2UL, 1UL, 0UL, 2UL]);
     }
 
@@ -593,7 +545,7 @@ version (unittest)
         const result = source.histogramInto(
             0, long.min, long.max, bins[]
         );
-        assert(result.ok);
+        assert(result.hasValue);
         assert(bins == [1UL, 1UL, 1UL, 1UL]);
     }
 
@@ -647,7 +599,7 @@ version (unittest)
 
         ulong[4] whole;
         const all = source.histogramInto(0, 0, 6, whole[]);
-        assert(all.ok);
+        assert(all.hasValue);
         assert(whole == [1UL, 1UL, 1UL, 1UL]);
 
         bool ok;
@@ -658,8 +610,8 @@ version (unittest)
 
         ulong[4] a;
         ulong[4] b;
-        assert(left.histogramInto(0, 0, 6, a[]).ok);
-        assert(right.histogramInto(0, 0, 6, b[]).ok);
+        assert(left.histogramInto(0, 0, 6, a[]).hasValue);
+        assert(right.histogramInto(0, 0, 6, b[]).hasValue);
         foreach (i; 0 .. 4)
             assert(whole[i] == a[i] + b[i]);
     }
@@ -690,9 +642,9 @@ version (unittest)
             ulong[4] aa;
             ulong[4] bb;
             assert(a.histogramInto(plane, cast(ubyte) 0,
-                cast(ubyte) 60, aa[]).ok);
+                cast(ubyte) 60, aa[]).hasValue);
             assert(b.histogramInto(plane, cast(ubyte) 0,
-                cast(ubyte) 60, bb[]).ok);
+                cast(ubyte) 60, bb[]).hasValue);
             assert(aa == bb);
         }
     }
@@ -718,11 +670,11 @@ version (unittest)
             const result = source.histogramInto(
                 0, cast(Sample) -10, cast(Sample) 10, bins[]
             );
-            assert(result.ok);
+            assert(result.hasValue);
             assert(bins == [1UL, 1UL, 1UL, 2UL]);
-            assert(result.belowRange == 1);
-            assert(result.aboveRange == 1);
-            assert(result.nanCount == 1);
+            assert(result.value().belowRange == 1);
+            assert(result.value().aboveRange == 1);
+            assert(result.value().nanCount == 1);
         }}
     }
 
@@ -739,7 +691,7 @@ version (unittest)
         const result = source.histogramInto(
             0, -double.max, double.max, bins[]
         );
-        assert(result.ok);
+        assert(result.hasValue);
         assert(bins == [1UL, 2UL]);
     }
 
@@ -758,18 +710,18 @@ version (unittest)
         auto r = source.histogramInto(
             7, cast(ubyte) 0, cast(ubyte) 10, counts[]
         );
-        assert(!r.ok && r.error == RasterHistogramError.invalidPlane);
+        assert(r.hasError && r.error() == RasterHistogramError.invalidPlane);
         assert(counts == [0UL, 0UL]);
 
         counts[] = 9;
         r = source.histogramInto(0, cast(ubyte) 10,
             cast(ubyte) 10, counts[]);
-        assert(!r.ok && r.error == RasterHistogramError.invalidRange);
+        assert(r.hasError && r.error() == RasterHistogramError.invalidRange);
         assert(counts == [0UL, 0UL]);
 
         r = source.histogramInto(0, cast(ubyte) 0,
             cast(ubyte) 10, counts[0 .. 0]);
-        assert(!r.ok && r.error == RasterHistogramError.emptyBins);
+        assert(r.hasError && r.error() == RasterHistogramError.emptyBins);
 
         ulong[2] missing = [1, 2];
         // NaN and infinite bounds are invalid even for a valid plane.
@@ -783,13 +735,13 @@ version (unittest)
         auto invalid = floats.histogramInto(
             0, float.nan, 10.0f, missing[]
         );
-        assert(invalid.error == RasterHistogramError.invalidRange);
+        assert(invalid.error() == RasterHistogramError.invalidRange);
         assert(missing == [0UL, 0UL]);
 
         invalid = floats.histogramInto(
             0, -float.infinity, 10.0f, missing[]
         );
-        assert(invalid.error == RasterHistogramError.invalidRange);
+        assert(invalid.error() == RasterHistogramError.invalidRange);
     }
 
     // Valid empty views never dereference their descriptor.
@@ -804,7 +756,7 @@ version (unittest)
 
         ulong[3] bins = [9, 9, 9];
         const result = source.histogramInto(0, -1, 10, bins[]);
-        assert(result.ok);
+        assert(result.hasValue);
         assert(bins == [0UL, 0UL, 0UL]);
     }
 
@@ -821,8 +773,8 @@ version (unittest)
         );
         ulong[2] bins = [4, 5];
         const result = source.histogramInto(0, 0UL, 10UL, bins[]);
-        assert(!result.ok);
-        assert(result.error == RasterHistogramError.countOverflow);
+        assert(result.hasError);
+        assert(result.error() == RasterHistogramError.countOverflow);
         assert(bins == [0UL, 0UL]);
     }
 } // version (unittest)

@@ -30,6 +30,9 @@ import raster.sample :
 import raster.view :
     RasterView;
 
+import raster.result :
+    RasterResult;
+
 
 /++
     Failure category for the v0.2 generic strict sum family.
@@ -61,60 +64,21 @@ enum RasterSumError : ubyte
     value is meaningful only when ok is true. Failed results expose the additive
     identity in value so no partial accumulation escapes as if it were complete.
 +/
-struct RasterSumResult(Accumulator)
+struct RasterSumValue(Accumulator)
 if (isSupportedSumAccumulator!Accumulator)
 {
-private:
-    RasterSumError error_ =
-        RasterSumError.invalidPlane;
-
-    Accumulator value_ =
-        cast(Accumulator) 0;
-
-public:
-
-    @property
-    RasterSumError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-
-    @property
-    Accumulator value() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return value_;
-    }
-
-
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_
-            == RasterSumError.none;
-    }
+    Accumulator value;
 }
+
+alias RasterSumResult(Accumulator) =
+    RasterResult!(RasterSumValue!Accumulator, RasterSumError);
 
 /// Example inspecting the deliberately failing default sum result.
 @safe unittest
 {
     import raster;
-    RasterSumResult!double result;
-    assert(!result.ok);
-    assert(result.error == RasterSumError.invalidPlane);
-    assert(result.value == 0.0);
+    auto result = RasterSumResult!double.init;
+    assert(result.isEmpty);
 }
 
 
@@ -255,15 +219,9 @@ nothrow
 @nogc
 if (isSupportedSumAccumulator!Accumulator)
 {
-    RasterSumResult!Accumulator result;
-
-    result.error_ =
-        RasterSumError.none;
-
-    result.value_ =
-        value;
-
-    return result;
+    return RasterSumResult!Accumulator.success(
+        RasterSumValue!Accumulator(value)
+    );
 }
 
 
@@ -280,12 +238,7 @@ nothrow
 @nogc
 if (isSupportedSumAccumulator!Accumulator)
 {
-    RasterSumResult!Accumulator result;
-
-    result.error_ =
-        error;
-
-    return result;
+    return RasterSumResult!Accumulator.failure(error);
 }
 
 
@@ -429,15 +382,15 @@ if (
             0
         );
 
-    assert(!ordinary.ok);
-    assert(!ufcs.ok);
+    assert(ordinary.hasError);
+    assert(ufcs.hasError);
 
     assert(
-        ordinary.error
+        ordinary.error()
         == RasterSumError.invalidPlane
     );
 
-    assert(ufcs.error == ordinary.error);
+    assert(ufcs.error() == ordinary.error());
 }
 
 
@@ -547,60 +500,21 @@ enum RasterMeanError : ubyte
     value is meaningful only when ok is true. Failed results expose +0 in the
     selected Result type rather than a partial or fabricated mean.
 +/
-struct RasterMeanResult(Result)
+struct RasterMeanValue(Result)
 if (isSupportedMeanResult!Result)
 {
-private:
-    RasterMeanError error_ =
-        RasterMeanError.invalidPlane;
-
-    Result value_ =
-        cast(Result) 0;
-
-public:
-
-    @property
-    RasterMeanError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-
-    @property
-    Result value() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return value_;
-    }
-
-
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_
-            == RasterMeanError.none;
-    }
+    Result value;
 }
+
+alias RasterMeanResult(Result) =
+    RasterResult!(RasterMeanValue!Result, RasterMeanError);
 
 /// Example inspecting the deliberately failing default mean result.
 @safe unittest
 {
     import raster;
-    RasterMeanResult!double result;
-    assert(!result.ok);
-    assert(result.error == RasterMeanError.invalidPlane);
-    assert(result.value == 0.0);
+    auto result = RasterMeanResult!double.init;
+    assert(result.isEmpty);
 }
 
 
@@ -618,12 +532,7 @@ nothrow
 @nogc
 if (isSupportedMeanResult!Result)
 {
-    RasterMeanResult!Result result;
-
-    result.error_ =
-        error;
-
-    return result;
+    return RasterMeanResult!Result.failure(error);
 }
 
 
@@ -640,15 +549,9 @@ nothrow
 @nogc
 if (isSupportedMeanResult!Result)
 {
-    RasterMeanResult!Result result;
-
-    result.error_ =
-        RasterMeanError.none;
-
-    result.value_ =
-        value;
-
-    return result;
+    return RasterMeanResult!Result.success(
+        RasterMeanValue!Result(value)
+    );
 }
 
 
@@ -753,7 +656,7 @@ if (
             planeIndex
         );
 
-    if (!accumulated.ok)
+    if (!accumulated.hasValue)
     {
         final switch (accumulated.error)
         {
@@ -774,7 +677,7 @@ if (
 
     const numerator =
         cast(Result)
-            accumulated.value;
+            accumulated.value().value;
 
     const denominator =
         cast(Result)
@@ -810,15 +713,15 @@ if (
             0
         );
 
-    assert(!ordinary.ok);
-    assert(!ufcs.ok);
+    assert(ordinary.hasError);
+    assert(ufcs.hasError);
 
     assert(
-        ordinary.error
+        ordinary.error()
         == RasterMeanError.invalidPlane
     );
 
-    assert(ufcs.error == ordinary.error);
+    assert(ufcs.error() == ordinary.error());
 }
 
 
@@ -854,59 +757,21 @@ enum RasterExtremaError : ubyte
 
     value is meaningful only when ok is true.
 +/
-struct RasterExtremaResult(T)
+struct RasterExtremaValue(T)
 if (isSupportedExtremaSample!T)
 {
-private:
-    RasterExtremaError error_ =
-        RasterExtremaError.invalidPlane;
-
-    T value_ =
-        T.init;
-
-public:
-
-    @property
-    RasterExtremaError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-
-    @property
-    T value() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return value_;
-    }
-
-
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_
-            == RasterExtremaError.none;
-    }
+    T value;
 }
+
+alias RasterExtremaResult(T) =
+    RasterResult!(RasterExtremaValue!T, RasterExtremaError);
 
 /// Example inspecting the default extrema result.
 @safe unittest
 {
     import raster;
-    RasterExtremaResult!float result;
-    assert(!result.ok);
-    assert(result.error == RasterExtremaError.invalidPlane);
+    auto result = RasterExtremaResult!float.init;
+    assert(result.isEmpty);
 }
 
 
@@ -916,73 +781,22 @@ public:
 
     minimum and maximum are meaningful only when ok is true.
 +/
-struct RasterMinMaxResult(T)
+struct RasterMinMaxValue(T)
 if (isSupportedExtremaSample!T)
 {
-private:
-    RasterExtremaError error_ =
-        RasterExtremaError.invalidPlane;
-
-    T minimum_ =
-        T.init;
-
-    T maximum_ =
-        T.init;
-
-public:
-
-    @property
-    RasterExtremaError error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-
-    @property
-    T minimum() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return minimum_;
-    }
-
-
-    @property
-    T maximum() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return maximum_;
-    }
-
-
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_
-            == RasterExtremaError.none;
-    }
+    T minimum;
+    T maximum;
 }
+
+alias RasterMinMaxResult(T) =
+    RasterResult!(RasterMinMaxValue!T, RasterExtremaError);
 
 /// Example inspecting the default one-pass min/max result.
 @safe unittest
 {
     import raster;
-    RasterMinMaxResult!float result;
-    assert(!result.ok);
-    assert(result.error == RasterExtremaError.invalidPlane);
+    auto result = RasterMinMaxResult!float.init;
+    assert(result.isEmpty);
 }
 
 
@@ -1035,18 +849,9 @@ nothrow
 @nogc
 if (isSupportedExtremaSample!T)
 {
-    RasterExtremaResult!T result;
-
-    result.error_ =
-        publicExtremaError(status);
-
-    if (status == ExtremaStatus.none)
-    {
-        result.value_ =
-            value;
-    }
-
-    return result;
+    if (status != ExtremaStatus.none)
+        return RasterExtremaResult!T.failure(publicExtremaError(status));
+    return RasterExtremaResult!T.success(RasterExtremaValue!T(value));
 }
 
 
@@ -1065,21 +870,11 @@ nothrow
 @nogc
 if (isSupportedExtremaSample!T)
 {
-    RasterMinMaxResult!T result;
-
-    result.error_ =
-        publicExtremaError(status);
-
-    if (status == ExtremaStatus.none)
-    {
-        result.minimum_ =
-            minimum;
-
-        result.maximum_ =
-            maximum;
-    }
-
-    return result;
+    if (status != ExtremaStatus.none)
+        return RasterMinMaxResult!T.failure(publicExtremaError(status));
+    return RasterMinMaxResult!T.success(
+        RasterMinMaxValue!T(minimum, maximum)
+    );
 }
 
 
@@ -1135,8 +930,8 @@ if (isSupportedExtremaSample!T)
     import raster;
     RasterView!float source;
     const result = source.min(0);
-    assert(!result.ok);
-    assert(result.error == RasterExtremaError.invalidPlane);
+    assert(result.hasError);
+    assert(result.error() == RasterExtremaError.invalidPlane);
 }
 
 
@@ -1186,8 +981,8 @@ if (isSupportedExtremaSample!T)
     import raster;
     RasterView!float source;
     const result = source.max(0);
-    assert(!result.ok);
-    assert(result.error == RasterExtremaError.invalidPlane);
+    assert(result.hasError);
+    assert(result.error() == RasterExtremaError.invalidPlane);
 }
 
 
@@ -1255,17 +1050,17 @@ if (isSupportedExtremaSample!T)
             0
         );
 
-    assert(!ordinary.ok);
-    assert(!ufcs.ok);
-    assert(!pair.ok);
+    assert(ordinary.hasError);
+    assert(ufcs.hasError);
+    assert(pair.hasError);
 
     assert(
-        ordinary.error
+        ordinary.error()
         == RasterExtremaError.invalidPlane
     );
 
-    assert(ufcs.error == ordinary.error);
-    assert(pair.error == ordinary.error);
+    assert(ufcs.error() == ordinary.error());
+    assert(pair.error() == ordinary.error());
 }
 
 /++
@@ -1412,9 +1207,9 @@ unittest
             0
         );
 
-    assert(generic.ok);
-    assert(generic.value == legacy);
-    assert(generic.value == 1.0);
+    assert(generic.hasValue);
+    assert(generic.value().value == legacy);
+    assert(generic.value().value == 1.0);
 }
 
 
@@ -1446,9 +1241,9 @@ unittest
             0
         );
 
-    assert(result.ok);
+    assert(result.hasValue);
     assert(
-        result.value
+        result.value().value
         == cast(ulong) uint.max + 6UL
     );
 }
@@ -1482,8 +1277,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value == 10);
+    assert(result.hasValue);
+    assert(result.value().value == 10);
 }
 
 
@@ -1515,14 +1310,13 @@ unittest
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error()
         == RasterSumError.accumulatorOverflow
     );
 
-    assert(result.value == 0);
 }
 
 
@@ -1554,8 +1348,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value != result.value);
+    assert(result.hasValue);
+    assert(result.value().value != result.value().value);
 }
 
 
@@ -1589,8 +1383,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value == 0);
+    assert(result.hasValue);
+    assert(result.value().value == 0);
 }
 
 
@@ -1621,10 +1415,10 @@ unittest
             1
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error()
         == RasterSumError.invalidPlane
     );
 }
@@ -1781,14 +1575,14 @@ unittest
     const pair =
         source.minMax(0);
 
-    assert(minimum.ok);
-    assert(maximum.ok);
-    assert(pair.ok);
+    assert(minimum.hasValue);
+    assert(maximum.hasValue);
+    assert(pair.hasValue);
 
-    assert(minimum.value == -8);
-    assert(maximum.value == 9);
-    assert(pair.minimum == minimum.value);
-    assert(pair.maximum == maximum.value);
+    assert(minimum.value().value == -8);
+    assert(maximum.value().value == 9);
+    assert(pair.value().minimum == minimum.value().value);
+    assert(pair.value().maximum == maximum.value().value);
 }
 
 
@@ -1818,9 +1612,9 @@ unittest
     const pair =
         source.minMax(0);
 
-    assert(pair.ok);
-    assert(pair.minimum == -3);
-    assert(pair.maximum == 8);
+    assert(pair.hasValue);
+    assert(pair.value().minimum == -3);
+    assert(pair.value().maximum == 8);
 }
 
 
@@ -1855,16 +1649,16 @@ unittest
     const invalidResult =
         source.minMax(1);
 
-    assert(!emptyResult.ok);
-    assert(!invalidResult.ok);
+    assert(emptyResult.hasError);
+    assert(invalidResult.hasError);
 
     assert(
-        emptyResult.error
+        emptyResult.error()
         == RasterExtremaError.emptyInput
     );
 
     assert(
-        invalidResult.error
+        invalidResult.error()
         == RasterExtremaError.invalidPlane
     );
 }
@@ -1903,14 +1697,14 @@ unittest
     const pair =
         source.minMax(0);
 
-    assert(minimum.ok);
-    assert(maximum.ok);
-    assert(pair.ok);
+    assert(minimum.hasValue);
+    assert(maximum.hasValue);
+    assert(pair.hasValue);
 
-    assert(minimum.value != minimum.value);
-    assert(maximum.value != maximum.value);
-    assert(pair.minimum != pair.minimum);
-    assert(pair.maximum != pair.maximum);
+    assert(minimum.value().value != minimum.value().value);
+    assert(maximum.value().value != maximum.value().value);
+    assert(pair.value().minimum != pair.value().minimum);
+    assert(pair.value().maximum != pair.value().maximum);
 }
 
 
@@ -1948,15 +1742,15 @@ unittest
     const pair =
         source.minMax(0);
 
-    assert(minimum.ok);
-    assert(maximum.ok);
-    assert(pair.ok);
+    assert(minimum.hasValue);
+    assert(maximum.hasValue);
+    assert(pair.hasValue);
 
-    assert(signbit(minimum.value));
-    assert(!signbit(maximum.value));
+    assert(signbit(minimum.value().value));
+    assert(!signbit(maximum.value().value));
 
-    assert(signbit(pair.minimum));
-    assert(!signbit(pair.maximum));
+    assert(signbit(pair.value().minimum));
+    assert(!signbit(pair.value().maximum));
 }
 
 
@@ -1990,9 +1784,9 @@ unittest
     const pair =
         source.minMax(0);
 
-    assert(pair.ok);
-    assert(pair.minimum == -double.infinity);
-    assert(pair.maximum == double.infinity);
+    assert(pair.hasValue);
+    assert(pair.value().minimum == -double.infinity);
+    assert(pair.value().maximum == double.infinity);
 }
 
 
@@ -2056,8 +1850,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value == 2.5);
+    assert(result.hasValue);
+    assert(result.value().value == 2.5);
 }
 
 
@@ -2092,8 +1886,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value == 2.5);
+    assert(result.hasValue);
+    assert(result.value().value == 2.5);
 }
 
 
@@ -2147,11 +1941,11 @@ unittest
             0
         );
 
-    assert(narrowAccumulator.ok);
-    assert(wideAccumulator.ok);
+    assert(narrowAccumulator.hasValue);
+    assert(wideAccumulator.hasValue);
 
-    assert(narrowAccumulator.value == 0.25);
-    assert(wideAccumulator.value == 0.5);
+    assert(narrowAccumulator.value().value == 0.25);
+    assert(wideAccumulator.value().value == 0.5);
 }
 
 
@@ -2196,16 +1990,16 @@ unittest
             1
         );
 
-    assert(!emptyResult.ok);
-    assert(!invalidResult.ok);
+    assert(emptyResult.hasError);
+    assert(invalidResult.hasError);
 
     assert(
-        emptyResult.error
+        emptyResult.error()
         == RasterMeanError.emptyInput
     );
 
     assert(
-        invalidResult.error
+        invalidResult.error()
         == RasterMeanError.invalidPlane
     );
 }
@@ -2250,10 +2044,10 @@ unittest
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error()
         == RasterMeanError.countOverflow
     );
 }
@@ -2290,10 +2084,10 @@ unittest
             0
         );
 
-    assert(!result.ok);
+    assert(result.hasError);
 
     assert(
-        result.error
+        result.error()
         == RasterMeanError.accumulatorOverflow
     );
 }
@@ -2330,8 +2124,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value != result.value);
+    assert(result.hasValue);
+    assert(result.value().value != result.value().value);
 }
 
 
@@ -2366,8 +2160,8 @@ unittest
             0
         );
 
-    assert(result.ok);
-    assert(result.value == double.infinity);
+    assert(result.hasValue);
+    assert(result.value().value == double.infinity);
 }
 
 

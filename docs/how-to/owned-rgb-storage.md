@@ -28,9 +28,9 @@ const PlaneByteLayout[3] planes = [
 ];
 
 RasterLease!float lease;
-auto result = tryImportOwnedRaster!float(
+auto result = tryImportOwnedRasterResult!float(
     resource, planes[], Region2D(0, 0, width, height), lease);
-assert(result.ok);
+assert(result.hasValue);
 assert(!resource.ownsResource);
 ```
 
@@ -49,12 +49,12 @@ successful import ownership moves to `RasterLease` and is released exactly
 once when the final lease is destroyed.
 
 ```d
-auto result = tryImportOwnedRaster!float(
+auto result = tryImportOwnedRasterResult!float(
     resource, invalidPlanes[], Region2D(0, 0, width, height), lease);
 
-if (!result.ok) {
+if (result.hasError) {
     // Keep or retry the resource for pre-commit failures.
-    assert(result.resourceDisposition ==
+    assert(result.error().resourceDisposition ==
         OwnedRasterResourceDisposition.unchanged);
 }
 ```

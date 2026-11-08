@@ -12,3 +12,4 @@ sourcePaths "source"
 
 
 dependency "mir-algorithm" version="~>3.22.4"
+dependency "error-d" version="~>0.4.1"

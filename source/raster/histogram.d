@@ -14,6 +14,7 @@
 module raster.histogram;
 
 import raster.view : RasterView;
+import raster.result : RasterResult;
 
 
 /++
@@ -50,7 +51,7 @@ enum RasterHistogram256Error : ubyte
     counts. On every failure the complete returned bins array is zero, never
     a partial accumulation. Inspect ok before using a result as a histogram.
 +/
-struct RasterHistogram256Result
+struct RasterHistogram256Value
 {
     /// Exact frequency counts indexed by the original ubyte sample value.
     ulong[256] bins;
@@ -59,68 +60,25 @@ struct RasterHistogram256Result
     @safe unittest
     {
         import raster;
-        RasterHistogram256Result result;
+        RasterHistogram256Value result;
         assert(result.bins.length == 256);
         assert(result.bins[0] == 0);
         assert(result.bins[255] == 0);
     }
 
-private:
-    RasterHistogram256Error error_ = RasterHistogram256Error.invalidPlane;
-
-public:
-    /++ Returns the reduction's success or failure category. +/
-    @property
-    RasterHistogram256Error error() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_;
-    }
-
-    /// Example reading the default error category.
-    @safe unittest
-    {
-        import raster;
-        RasterHistogram256Result result;
-        assert(result.error == RasterHistogram256Error.invalidPlane);
-    }
-
-    /++ Whether the complete histogram was calculated successfully. +/
-    @property
-    bool ok() const
-    @safe
-    pure
-    nothrow
-    @nogc
-    {
-        return error_ == RasterHistogram256Error.none;
-    }
-
-    /// Example checking that an uncomputed histogram is not success.
-    @safe unittest
-    {
-        import raster;
-        RasterHistogram256Result result;
-        assert(!result.ok);
-        assert(result.bins[0] == 0);
-        assert(result.bins[255] == 0);
-    }
 }
+
+/// Result of an exact ubyte histogram.
+alias RasterHistogram256Result =
+    RasterResult!(RasterHistogram256Value, RasterHistogram256Error);
 
 /// Example checking the deliberately failing default result.
 @safe unittest
 {
     import raster;
 
-    RasterHistogram256Result result;
-    assert(!result.ok);
-    assert(result.error == RasterHistogram256Error.invalidPlane);
-
-    foreach (count; result.bins)
-        assert(count == 0);
+    auto result = RasterHistogram256Result.init;
+    assert(result.isEmpty);
 }
 
 
@@ -166,10 +124,10 @@ RasterHistogram256Result histogram256(
 nothrow
 @nogc
 {
-    RasterHistogram256Result result;
+    alias R = RasterHistogram256Result;
 
     if (planeIndex >= source.planeCount)
-        return result;
+        return R.failure(RasterHistogram256Error.invalidPlane);
 
     // Check the logical count before any sample access, including empty views.
     if (
@@ -177,20 +135,18 @@ nothrow
         && cast(ulong) source.width > ulong.max / source.height
     )
     {
-        result.error_ = RasterHistogram256Error.countOverflow;
-        return result;
+        return R.failure(RasterHistogram256Error.countOverflow);
     }
 
-    if (!executeHistogram256(source, planeIndex, result.bins))
+    RasterHistogram256Value value;
+    if (!executeHistogram256(source, planeIndex, value.bins))
     {
         // Partial private accumulation must never become a public result.
-        result.bins[] = 0;
-        result.error_ = RasterHistogram256Error.countOverflow;
-        return result;
+        value.bins[] = 0;
+        return R.failure(RasterHistogram256Error.countOverflow);
     }
 
-    result.error_ = RasterHistogram256Error.none;
-    return result;
+    return R.success(value);
 }
 
 /// Example counting exact raster values through the public, owned import API.
@@ -216,10 +172,10 @@ nothrow
 
     scope auto source = lease.view();
     const result = source.histogram256(0);
-    assert(result.ok);
-    assert(result.bins[0] == 1);
-    assert(result.bins[1] == 2);
-    assert(result.bins[255] == 1);
+    assert(result.hasValue);
+    assert(result.value().bins[0] == 1);
+    assert(result.value().bins[1] == 2);
+    assert(result.value().bins[255] == 1);
 }
 
 
@@ -303,23 +259,21 @@ version (unittest)
         );
 
         const result = histogram256(source, 0);
-        assert(result.ok);
-        assert(result.bins[0] == 1);
-        assert(result.bins[1] == 1);
-        assert(result.bins[2] == 3);
-        assert(result.bins[255] == 1);
-        assert(result.bins[3] == 0);
+        assert(result.hasValue);
+        assert(result.value().bins[0] == 1);
+        assert(result.value().bins[1] == 1);
+        assert(result.value().bins[2] == 3);
+        assert(result.value().bins[255] == 1);
+        assert(result.value().bins[3] == 0);
 
         ulong total;
-        foreach (count; result.bins)
+        foreach (count; result.value().bins)
             total += count;
         assert(total == 6);
 
         const failed = source.histogram256(1);
-        assert(!failed.ok);
-        assert(failed.error == RasterHistogram256Error.invalidPlane);
-        foreach (count; failed.bins)
-            assert(count == 0);
+        assert(failed.hasError);
+        assert(failed.error() == RasterHistogram256Error.invalidPlane);
     }
 
     // Equivalent three-plane planar and interleaved layouts.
@@ -357,8 +311,8 @@ version (unittest)
         {
             const left = a.histogram256(plane);
             const right = b.histogram256(plane);
-            assert(left.ok && right.ok);
-            assert(left.bins == right.bins);
+            assert(left.hasValue && right.hasValue);
+            assert(left.value().bins == right.value().bins);
         }
     }
 
@@ -375,10 +329,10 @@ version (unittest)
         );
 
         const result = source.histogram256(0);
-        assert(result.ok);
+        assert(result.hasValue);
         foreach (value; 1 .. 5)
-            assert(result.bins[value] == 1);
-        assert(result.bins[99] == 0);
+            assert(result.value().bins[value] == 1);
+        assert(result.value().bins[99] == 0);
     }
 
     // A full view and its adjacent, complete windows compose exactly.
@@ -411,16 +365,16 @@ version (unittest)
         const second = right.histogram256(0);
         const cropped = inner.histogram256(0);
 
-        assert(whole.ok && first.ok && second.ok && cropped.ok);
+        assert(whole.hasValue && first.hasValue && second.hasValue && cropped.hasValue);
         foreach (index; 0 .. 256)
         {
-            assert(first.bins[index] <= ulong.max - second.bins[index]);
-            assert(whole.bins[index] ==
-                first.bins[index] + second.bins[index]);
+            assert(first.value().bins[index] <= ulong.max - second.value().bins[index]);
+            assert(whole.value().bins[index] ==
+                first.value().bins[index] + second.value().bins[index]);
         }
 
-        assert(cropped.bins[2] == 3);
-        assert(cropped.bins[3] == 1);
+        assert(cropped.value().bins[2] == 3);
+        assert(cropped.value().bins[3] == 1);
     }
 
     // An empty selected plane succeeds and never forms a sample pointer.
@@ -435,8 +389,8 @@ version (unittest)
         );
 
         const result = source.histogram256(0);
-        assert(result.ok);
-        foreach (count; result.bins)
+        assert(result.hasValue);
+        foreach (count; result.value().bins)
             assert(count == 0);
     }
 

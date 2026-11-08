@@ -50,6 +50,9 @@ import raster.region :
 import raster.sample :
     isRasterSampleType;
 
+import raster.result :
+    RasterVoidResult;
+
 
 /++
     Stable public error categories for retained owned-raster import.
@@ -509,6 +512,46 @@ OwnedRasterImportResult tryImportOwnedRaster(T)(
     return mapInternalImportResult(
         internal
     );
+}
+
+/// Unified Result-based spelling of tryImportOwnedRaster().
+alias OwnedRasterImportFailure = OwnedRasterImportResult;
+alias OwnedRasterImportResultV2 = RasterVoidResult!OwnedRasterImportFailure;
+
+OwnedRasterImportResultV2 tryImportOwnedRasterResult(T)(
+    ref OwnedByteResource resource,
+    scope const(PlaneByteLayout)[] planes,
+    Region2D residentRegion,
+    ref RasterLease!T lease
+)
+@safe
+{
+    const legacy = tryImportOwnedRaster(
+        resource, planes, residentRegion, lease
+    );
+
+    if (legacy.ok)
+        return OwnedRasterImportResultV2.success();
+
+    return OwnedRasterImportResultV2.failure(legacy);
+}
+
+@safe unittest
+{
+    import raster;
+    OwnedRasterByteResourceResultSmoke!ubyte();
+}
+
+private void OwnedRasterByteResourceResultSmoke(T)()
+@safe
+{
+    RasterLease!T lease;
+    OwnedByteResource resource;
+    const PlaneByteLayout[] planes;
+    auto result = tryImportOwnedRasterResult!T(
+        resource, planes, Region2D.init, lease
+    );
+    assert(result.hasError);
 }
 
 /// Example importing one owned 2 x 2 ubyte raster.

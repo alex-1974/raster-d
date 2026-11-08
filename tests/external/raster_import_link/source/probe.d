@@ -28,7 +28,7 @@ import raster :
     WritableRasterPlaneWindow,
     Region2D,
     tryAdoptMallocResource,
-    tryImportOwnedRaster,
+    tryImportOwnedRasterResult,
     withContiguousPlane,
     withPlane,
     withPlanesInto;
@@ -87,7 +87,7 @@ RasterLease!ubyte makeImportedLease()
     RasterLease!ubyte lease;
 
     const result =
-        tryImportOwnedRaster!ubyte(
+        tryImportOwnedRasterResult!ubyte(
             resource,
             planes[],
             Region2D(
@@ -100,12 +100,7 @@ RasterLease!ubyte makeImportedLease()
         );
 
 
-    assert(result.ok);
-
-    assert(
-        result.resourceDisposition
-        == OwnedRasterResourceDisposition.transferredToLease
-    );
+    assert(result.hasValue);
 
     assert(!resource.ownsResource);
 
@@ -260,9 +255,9 @@ unittest
     ];
 
     RasterLease!float lease;
-    auto result = tryImportOwnedRaster!float(
+    auto result = tryImportOwnedRasterResult!float(
         resource, planes[], Region2D(0, 0, 2, 1), lease);
-    assert(result.ok);
+    assert(result.hasValue);
     assert(!resource.ownsResource);
 
     auto view = lease.view();
@@ -281,11 +276,11 @@ unittest
 
     const PlaneByteLayout[1] invalidStride = [PlaneByteLayout(0, 3, 1)];
     RasterLease!ubyte lease;
-    auto invalid = tryImportOwnedRaster!ubyte(
+    auto invalid = tryImportOwnedRasterResult!ubyte(
         resource, invalidStride[], Region2D(0, 0, 2, 2), lease);
-    assert(!invalid.ok);
-    assert(invalid.error == OwnedRasterImportError.insufficientStorage);
-    assert(invalid.resourceDisposition ==
+    assert(invalid.hasError);
+    assert(invalid.error().error == OwnedRasterImportError.insufficientStorage);
+    assert(invalid.error().resourceDisposition ==
         OwnedRasterResourceDisposition.unchanged);
 
     void* otherMemory = malloc(8);
@@ -294,10 +289,10 @@ unittest
     assert(tryAdoptMallocResource(otherMemory, 8, otherResource));
     const PlaneByteLayout[1] invalidSampleStride = [PlaneByteLayout(0, 8, 2)];
     RasterLease!float floatLease;
-    auto malformed = tryImportOwnedRaster!float(
+    auto malformed = tryImportOwnedRasterResult!float(
         otherResource, invalidSampleStride[], Region2D(0, 0, 2, 1), floatLease);
-    assert(!malformed.ok);
-    assert(malformed.error == OwnedRasterImportError.invalidPlaneLayout);
+    assert(malformed.hasError);
+    assert(malformed.error().error == OwnedRasterImportError.invalidPlaneLayout);
 }
 
 unittest
@@ -315,8 +310,8 @@ unittest
         [PlaneByteLayout(4, -2, 1)];
 
     RasterLease!ubyte lease;
-    assert(tryImportOwnedRaster!ubyte(
-        resource, planes[], Region2D(0, 0, 2, 3), lease).ok);
+    assert(tryImportOwnedRasterResult!ubyte(
+        resource, planes[], Region2D(0, 0, 2, 3), lease).hasValue);
 
     bool writableSuccess;
     scope auto writable = lease.tryWritableView(writableSuccess);
@@ -358,8 +353,8 @@ unittest
         [PlaneByteLayout(0, 4, 2), PlaneByteLayout(1, 4, 2)];
 
     RasterLease!ubyte lease;
-    assert(tryImportOwnedRaster!ubyte(
-        resource, planes[], Region2D(0, 0, 2, 2), lease).ok);
+    assert(tryImportOwnedRasterResult!ubyte(
+        resource, planes[], Region2D(0, 0, 2, 2), lease).hasValue);
 
     bool writableSuccess;
     scope auto writable = lease.tryWritableView(writableSuccess);
@@ -400,8 +395,8 @@ unittest
         [PlaneByteLayout(0, 2, 1), PlaneByteLayout(2, 2, 1), PlaneByteLayout(4, 2, 1)];
 
     RasterLease!ubyte sourceLease;
-    assert(tryImportOwnedRaster!ubyte(
-        sourceResource, sourceLayouts[], Region2D(0, 0, 2, 1), sourceLease).ok);
+    assert(tryImportOwnedRasterResult!ubyte(
+        sourceResource, sourceLayouts[], Region2D(0, 0, 2, 1), sourceLease).hasValue);
     scope auto sourceView = sourceLease.view();
 
     void* destinationMemory = malloc(24);
@@ -415,8 +410,8 @@ unittest
         [PlaneByteLayout(0, 8, 4), PlaneByteLayout(8, 8, 4), PlaneByteLayout(16, 8, 4)];
 
     RasterLease!float destinationLease;
-    assert(tryImportOwnedRaster!float(
-        destinationResource, destinationLayouts[], Region2D(0, 0, 2, 1), destinationLease).ok);
+    assert(tryImportOwnedRasterResult!float(
+        destinationResource, destinationLayouts[], Region2D(0, 0, 2, 1), destinationLease).hasValue);
     bool writableSuccess;
     scope auto destinationView = destinationLease.tryWritableView(writableSuccess);
     assert(writableSuccess);
